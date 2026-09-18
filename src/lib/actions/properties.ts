@@ -1,0 +1,45 @@
+"use server";
+
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { requireOrgId } from "@/lib/session";
+
+const propertySchema = z.object({
+  name: z.string().min(1, "الاسم مطلوب"),
+  nameAr: z.string().optional(),
+  propertyType: z.enum(["RESIDENTIAL", "COMMERCIAL", "MIXED"]),
+  city: z.string().optional(),
+  district: z.string().optional(),
+  street: z.string().optional(),
+});
+
+export async function createProperty(formData: FormData) {
+  const organizationId = await requireOrgId();
+  const parsed = propertySchema.parse({
+    name: formData.get("name"),
+    nameAr: formData.get("nameAr") || undefined,
+    propertyType: formData.get("propertyType"),
+    city: formData.get("city") || undefined,
+    district: formData.get("district") || undefined,
+    street: formData.get("street") || undefined,
+  });
+
+  await prisma.property.create({ data: { ...parsed, organizationId } });
+  revalidatePath("/properties");
+}
+
+export async function deleteProperty(propertyId: string) {
+  const organizationId = await requireOrgId();
+  await prisma.property.delete({ where: { id: propertyId, organizationId } });
+  revalidatePath("/properties");
+}
+
+export async function listProperties() {
+  const organizationId = await requireOrgId();
+  return prisma.property.findMany({
+    where: { organizationId },
+    include: { units: true },
+    orderBy: { createdAt: "desc" },
+  });
+}

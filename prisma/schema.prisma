@@ -1,0 +1,406 @@
+// Rental & Tax Invoicing SaaS - Prisma schema
+// Multi-tenant: every business record is scoped by organizationId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Tenancy & Identity
+// ---------------------------------------------------------------------------
+
+enum SubscriptionPlan {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  MANAGER
+  ACCOUNTANT
+  VIEWER
+}
+
+model Organization {
+  id                     String             @id @default(cuid())
+  name                   String
+  nameAr                 String?
+  commercialRegistration String?
+  vatNumber              String? // 15-digit Saudi VAT registration number
+  country                String             @default("SA")
+  city                   String?
+  district               String?
+  street                 String?
+  buildingNumber         String?
+  postalCode             String?
+  additionalNumber       String?
+  phone                  String?
+  email                  String?
+  logoUrl                String?
+  subscriptionPlan       SubscriptionPlan   @default(TRIAL)
+  subscriptionStatus     SubscriptionStatus @default(ACTIVE)
+  trialEndsAt            DateTime?
+  lastInvoiceHash        String? // ZATCA chain: hash of the most recently issued invoice ("PIH" seed)
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+
+  users      User[]
+  properties Property[]
+  renters    Renter[]
+  contracts  Contract[]
+  invoices   Invoice[]
+  payments   Payment[]
+  counters   Counter[]
+  units      Unit[]
+
+  @@map("organizations")
+}
+
+// Atomic per-organization sequence generator (invoice numbers, ICV, contract numbers...)
+model Counter {
+  id             String       @id @default(cuid())
+  organizationId String
+  key            String // e.g. "invoice", "contract"
+  value          Int          @default(0)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, key])
+  @@map("counters")
+}
+
+model User {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  email          String
+  passwordHash   String
+  role           UserRole     @default(VIEWER)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, email])
+  @@index([email])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Properties & Units
+// ---------------------------------------------------------------------------
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  MIXED
+}
+
+enum UnitType {
+  APARTMENT
+  VILLA
+  OFFICE
+  SHOP
+  WAREHOUSE
+  OTHER
+}
+
+enum UnitStatus {
+  VACANT
+  OCCUPIED
+  MAINTENANCE
+}
+
+model Property {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  nameAr         String?
+  propertyType   PropertyType @default(RESIDENTIAL)
+  city           String?
+  district       String?
+  street         String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  units Unit[]
+
+  @@index([organizationId])
+  @@map("properties")
+}
+
+model Unit {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  propertyId     String
+  property       Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  unitNumber     String
+  floor          String?
+  unitType       UnitType     @default(APARTMENT)
+  areaSqm        Decimal?     @db.Decimal(10, 2)
+  bedrooms       Int?
+  bathrooms      Int?
+  status         UnitStatus   @default(VACANT)
+  baseRentAmount Decimal      @db.Decimal(12, 2)
+  vatApplicable  Boolean      @default(false) // residential leasing is VAT-exempt in KSA; commercial is taxable
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  contracts Contract[]
+
+  @@index([organizationId])
+  @@index([propertyId])
+  @@map("units")
+}
+
+// ---------------------------------------------------------------------------
+// Renters (tenants of the properties, i.e. the landlord's customers)
+// ---------------------------------------------------------------------------
+
+enum IdType {
+  NATIONAL_ID
+  IQAMA
+  COMMERCIAL_REGISTRATION
+  PASSPORT
+  GCC_ID
+}
+
+model Renter {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fullName       String
+  fullNameAr     String?
+  idType         IdType       @default(NATIONAL_ID)
+  idNumber       String?
+  vatNumber      String? // populated for B2B renters -> triggers standard tax invoice
+  phone          String?
+  email          String?
+  address        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  contracts Contract[]
+  invoices  Invoice[]
+  payments  Payment[]
+
+  @@index([organizationId])
+  @@map("renters")
+}
+
+// ---------------------------------------------------------------------------
+// Lease contracts & payment schedules
+// ---------------------------------------------------------------------------
+
+enum PaymentFrequency {
+  MONTHLY
+  QUARTERLY
+  SEMI_ANNUAL
+  ANNUAL
+  ONE_TIME
+}
+
+enum ContractStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  TERMINATED
+}
+
+model Contract {
+  id               String           @id @default(cuid())
+  organizationId   String
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contractNumber   String
+  unitId           String
+  unit             Unit             @relation(fields: [unitId], references: [id])
+  renterId         String
+  renter           Renter           @relation(fields: [renterId], references: [id])
+  startDate        DateTime
+  endDate          DateTime
+  rentAmount       Decimal          @db.Decimal(12, 2)
+  paymentFrequency PaymentFrequency @default(ANNUAL)
+  securityDeposit  Decimal?         @db.Decimal(12, 2)
+  vatApplicable    Boolean          @default(false)
+  vatRate          Decimal          @default(15) @db.Decimal(5, 2)
+  status           ContractStatus   @default(DRAFT)
+  notes            String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  paymentSchedules PaymentSchedule[]
+  invoices         Invoice[]
+
+  @@unique([organizationId, contractNumber])
+  @@index([organizationId])
+  @@map("contracts")
+}
+
+enum ScheduleStatus {
+  PENDING
+  INVOICED
+  PAID
+  PARTIALLY_PAID
+  OVERDUE
+  CANCELLED
+}
+
+model PaymentSchedule {
+  id             String         @id @default(cuid())
+  organizationId String
+  contractId     String
+  contract       Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  installmentNo  Int
+  periodStart    DateTime
+  periodEnd      DateTime
+  dueDate        DateTime
+  amount         Decimal        @db.Decimal(12, 2)
+  status         ScheduleStatus @default(PENDING)
+  invoiceId      String?
+  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId])
+  @@index([contractId])
+  @@index([status])
+  @@map("payment_schedules")
+}
+
+// ---------------------------------------------------------------------------
+// Tax invoices (ZATCA-aligned) & payments
+// ---------------------------------------------------------------------------
+
+enum InvoiceDocumentType {
+  TAX_INVOICE
+  CREDIT_NOTE
+  DEBIT_NOTE
+}
+
+// ZATCA invoice subtype: standard (B2B, cleared) vs simplified (B2C, reported)
+enum InvoiceKind {
+  STANDARD
+  SIMPLIFIED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+enum ZatcaSubmissionStatus {
+  NOT_SUBMITTED
+  PENDING
+  CLEARED
+  REPORTED
+  REJECTED
+}
+
+model Invoice {
+  id                  String                @id @default(cuid())
+  organizationId      String
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceNumber       String // human readable, e.g. INV-2026-000123
+  icv                 Int // Invoice Counter Value: strictly increasing per organization, never reused
+  uuid                String                @unique // ZATCA invoice UUID
+  documentType        InvoiceDocumentType   @default(TAX_INVOICE)
+  kind                InvoiceKind           @default(SIMPLIFIED)
+  contractId          String?
+  contract            Contract?             @relation(fields: [contractId], references: [id])
+  renterId            String
+  renter              Renter                @relation(fields: [renterId], references: [id])
+  issueDate           DateTime              @default(now())
+  supplyDate          DateTime              @default(now())
+  dueDate             DateTime?
+  currency            String                @default("SAR")
+  subtotal            Decimal               @db.Decimal(12, 2)
+  vatAmount           Decimal               @db.Decimal(12, 2)
+  totalAmount         Decimal               @db.Decimal(12, 2)
+  paidAmount          Decimal               @default(0) @db.Decimal(12, 2)
+  status              InvoiceStatus         @default(ISSUED)
+  previousInvoiceHash String? // PIH: hash of the prior invoice in the chain (base64 SHA-256)
+  invoiceHash         String? // hash of this invoice's canonical content (base64 SHA-256)
+  qrCodeBase64        String? // ZATCA TLV-encoded QR payload, base64
+  zatcaStatus         ZatcaSubmissionStatus @default(NOT_SUBMITTED)
+  zatcaResponse       Json?
+  notes               String?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  lines            InvoiceLine[]
+  payments         Payment[]
+  paymentSchedules PaymentSchedule[]
+
+  @@unique([organizationId, invoiceNumber])
+  @@unique([organizationId, icv])
+  @@index([organizationId])
+  @@index([renterId])
+  @@map("invoices")
+}
+
+model InvoiceLine {
+  id            String    @id @default(cuid())
+  invoiceId     String
+  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description   String
+  descriptionAr String?
+  periodStart   DateTime?
+  periodEnd     DateTime?
+  quantity      Decimal   @default(1) @db.Decimal(10, 2)
+  unitPrice     Decimal   @db.Decimal(12, 2)
+  discount      Decimal   @default(0) @db.Decimal(12, 2)
+  vatRate       Decimal   @default(15) @db.Decimal(5, 2)
+  vatAmount     Decimal   @db.Decimal(12, 2)
+  lineTotal     Decimal   @db.Decimal(12, 2)
+
+  @@map("invoice_lines")
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+  ONLINE
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  organizationId  String
+  organization    Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoiceId       String
+  invoice         Invoice       @relation(fields: [invoiceId], references: [id])
+  renterId        String
+  renter          Renter        @relation(fields: [renterId], references: [id])
+  receiptNumber   String
+  amount          Decimal       @db.Decimal(12, 2)
+  paymentDate     DateTime      @default(now())
+  method          PaymentMethod @default(BANK_TRANSFER)
+  referenceNumber String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  @@unique([organizationId, receiptNumber])
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@map("payments")
+}
