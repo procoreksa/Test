@@ -37,6 +37,8 @@ export const ar: Dictionary = {
     settings: "إعدادات المنشأة",
     signOut: "تسجيل الخروج",
     brandTagline: "Property Management",
+    openMenu: "فتح القائمة",
+    closeMenu: "إغلاق القائمة",
   },
   login: {
     title: "PRO CORE",
@@ -295,6 +297,9 @@ export const ar: Dictionary = {
   settings: {
     title: "إعدادات المنشأة",
     subtitle: "هذه البيانات تظهر على كل فاتورة ضريبية صادرة، وتُستخدم في رمز QR وملف XML (UBL)",
+    fieldLogo: "شعار المنشأة",
+    logoHint: "يظهر في الشريط الجانبي وعلى الفواتير الضريبية. الحد الأقصى 1 ميجابايت (PNG أو JPG)",
+    changeLogo: "تغيير الشعار",
     fieldNameEn: "اسم المنشأة (بالإنجليزية)",
     fieldNameAr: "اسم المنشأة (بالعربية)",
     fieldCommercialRegistration: "السجل التجاري",
@@ -325,6 +330,8 @@ export const ar: Dictionary = {
     contractEndAfterStart: "تاريخ نهاية العقد يجب أن يكون بعد تاريخ البداية",
     invoiceAlreadyIssued: "تم إصدار فاتورة لهذه الدفعة بالفعل",
     paymentExceedsRemaining: (remaining) => `قيمة الدفعة تتجاوز المبلغ المتبقي (${remaining})`,
+    logoTooLarge: "حجم الشعار كبير جدًا — الحد الأقصى 1 ميجابايت",
+    logoInvalidType: "صيغة الملف غير مدعومة — استخدم صورة PNG أو JPG",
   },
   zatca: {
     notConfigured:

@@ -37,6 +37,8 @@ export const en: Dictionary = {
     settings: "Organization Settings",
     signOut: "Sign out",
     brandTagline: "Property Management",
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
   },
   login: {
     title: "PRO CORE",
@@ -295,6 +297,9 @@ export const en: Dictionary = {
   settings: {
     title: "Organization Settings",
     subtitle: "This data appears on every issued tax invoice, and is used in the QR code and the XML (UBL) file",
+    fieldLogo: "Organization Logo",
+    logoHint: "Appears in the sidebar and on tax invoices. Max 1MB (PNG or JPG)",
+    changeLogo: "Change Logo",
     fieldNameEn: "Organization Name (English)",
     fieldNameAr: "Organization Name (Arabic)",
     fieldCommercialRegistration: "Commercial Registration",
@@ -325,6 +330,8 @@ export const en: Dictionary = {
     contractEndAfterStart: "Contract end date must be after the start date",
     invoiceAlreadyIssued: "An invoice has already been issued for this installment",
     paymentExceedsRemaining: (remaining) => `Payment amount exceeds the remaining balance (${remaining})`,
+    logoTooLarge: "The logo file is too large — 1MB maximum",
+    logoInvalidType: "Unsupported file format — please use a PNG or JPG image",
   },
   zatca: {
     notConfigured:

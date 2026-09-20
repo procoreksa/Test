@@ -37,15 +37,25 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 print:shadow-none print:border-0">
         <div className="flex items-start justify-between border-b border-slate-100 pb-6 mb-6">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">{invoice.organization.name}</h1>
-            {invoice.organization.nameAr && <p className="text-slate-500">{invoice.organization.nameAr}</p>}
-            <p className="text-xs text-slate-400 mt-1">
-              {t.invoiceDetail.vatNumberLabel}: {invoice.organization.vatNumber ?? t.common.none}
-            </p>
-            <p className="text-xs text-slate-400">
-              {[invoice.organization.district, invoice.organization.city].filter(Boolean).join(locale === "ar" ? "، " : ", ")}
-            </p>
+          <div className="flex items-start gap-4">
+            {invoice.organization.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={invoice.organization.logoUrl}
+                alt=""
+                className="w-14 h-14 rounded-lg object-contain border border-slate-100 shrink-0"
+              />
+            )}
+            <div>
+              <h1 className="text-xl font-bold text-slate-900">{invoice.organization.name}</h1>
+              {invoice.organization.nameAr && <p className="text-slate-500">{invoice.organization.nameAr}</p>}
+              <p className="text-xs text-slate-400 mt-1">
+                {t.invoiceDetail.vatNumberLabel}: {invoice.organization.vatNumber ?? t.common.none}
+              </p>
+              <p className="text-xs text-slate-400">
+                {[invoice.organization.district, invoice.organization.city].filter(Boolean).join(locale === "ar" ? "، " : ", ")}
+              </p>
+            </div>
           </div>
           <div className="text-left">
             <p className="text-lg font-bold text-brand-gold-dark">

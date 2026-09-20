@@ -42,6 +42,8 @@ export interface Dictionary {
     settings: string;
     signOut: string;
     brandTagline: string;
+    openMenu: string;
+    closeMenu: string;
   };
   login: {
     title: string;
@@ -299,6 +301,9 @@ export interface Dictionary {
   settings: {
     title: string;
     subtitle: string;
+    fieldLogo: string;
+    logoHint: string;
+    changeLogo: string;
     fieldNameEn: string;
     fieldNameAr: string;
     fieldCommercialRegistration: string;
@@ -328,6 +333,8 @@ export interface Dictionary {
     contractEndAfterStart: string;
     invoiceAlreadyIssued: string;
     paymentExceedsRemaining: (remaining: string) => string;
+    logoTooLarge: string;
+    logoInvalidType: string;
   };
   zatca: {
     notConfigured: string;

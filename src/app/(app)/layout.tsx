@@ -1,15 +1,17 @@
-import Image from "next/image";
 import { requireSession } from "@/lib/session";
 import { signOut } from "@/lib/auth";
+import { getOrganization } from "@/lib/actions/organization";
 import { NavLink } from "@/components/nav-link";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { MobileSidebarShell } from "@/components/mobile-sidebar-shell";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
-  const locale = await getLocale();
+  const [locale, org] = await Promise.all([getLocale(), getOrganization()]);
   const t = getDictionary(locale);
+  const logoSrc = org.logoUrl || "/logo.jpg";
 
   const navItems = [
     { href: "/dashboard", label: t.nav.dashboard, icon: "📊" },
@@ -24,12 +26,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/settings", label: t.nav.settings, icon: "⚙️" },
   ];
 
+  const brandMark = (
+    <div className="flex items-center gap-2">
+      <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoSrc} alt="" className="w-full h-full object-cover" />
+      </div>
+      <p className="font-bold text-brand-gold leading-tight tracking-wide text-sm">PRO CORE</p>
+    </div>
+  );
+
   return (
-    <div className="min-h-screen flex">
-      <aside className="no-print hidden md:flex w-64 shrink-0 flex-col bg-brand-black p-4">
+    <div className="min-h-screen flex flex-col md:flex-row">
+      <MobileSidebarShell brand={brandMark} openLabel={t.nav.openMenu} closeLabel={t.nav.closeMenu}>
         <div className="flex items-center gap-2 px-2 mb-4">
-          <div className="w-10 h-10 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0">
-            <Image src="/logo.jpg" alt="Pro Core" width={40} height={40} className="w-full h-full object-cover" />
+          <div className="w-10 h-10 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoSrc} alt="" className="w-full h-full object-cover" />
           </div>
           <div>
             <p className="font-bold text-brand-gold leading-tight tracking-wide">PRO CORE</p>
@@ -41,7 +54,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <LanguageSwitcher locale={locale} labels={t.languageSwitcher} tone="dark" />
         </div>
 
-        <nav className="flex-1 space-y-1">
+        <nav className="flex-1 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <NavLink key={item.href} {...item} />
           ))}
@@ -63,7 +76,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </button>
           </form>
         </div>
-      </aside>
+      </MobileSidebarShell>
 
       <main className="flex-1 min-w-0">
         <div className="p-4 md:p-8 max-w-7xl mx-auto">{children}</div>

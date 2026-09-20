@@ -13,6 +13,26 @@ export default async function SettingsPage() {
       </div>
 
       <form action={updateOrganization} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="md:col-span-2 flex items-center gap-4">
+          <div className="w-16 h-16 rounded-lg border border-slate-200 overflow-hidden bg-slate-50 flex items-center justify-center shrink-0">
+            {org.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={org.logoUrl} alt="" className="w-full h-full object-contain" />
+            ) : (
+              <span className="text-slate-300 text-2xl">🏢</span>
+            )}
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t.settings.fieldLogo}</label>
+            <input
+              name="logo"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="w-full text-sm file:me-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-sm file:font-medium hover:file:bg-slate-200"
+            />
+            <p className="text-xs text-slate-400 mt-1">{t.settings.logoHint}</p>
+          </div>
+        </div>
         <Field label={t.settings.fieldNameEn} name="name" defaultValue={org.name} required />
         <Field label={t.settings.fieldNameAr} name="nameAr" defaultValue={org.nameAr ?? ""} />
         <Field label={t.settings.fieldCommercialRegistration} name="commercialRegistration" defaultValue={org.commercialRegistration ?? ""} />
