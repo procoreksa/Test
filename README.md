@@ -87,6 +87,50 @@ npm run lint        # فحص الكود
 npm run db:studio   # واجهة Prisma Studio لتصفح البيانات
 ```
 
+## النشر على الإنترنت (Vercel + Neon)
+
+هذا هو المسار المُوصى به للنشر بدون سيرفر خاص بك — مجاني للبدء، ولا يتطلب مشاركة أي
+باسورد استضافة مع أحد.
+
+### 1) قاعدة البيانات (Neon)
+
+1. افتح [neon.tech](https://neon.tech) وسجّل دخول بحساب GitHub.
+2. أنشئ **Project** جديد (اختر أقرب Region لك).
+3. من صفحة الـ Dashboard، افتح **Connection Details** وخذ نسختين من رابط الاتصال:
+   - **Pooled connection** (فيه `-pooler` في الاسم) → هتحطه في متغير `DATABASE_URL`.
+   - **Direct connection** (بدون `-pooler`) → هتحطه في متغير `DIRECT_URL`.
+
+### 2) نشر التطبيق (Vercel)
+
+1. افتح [vercel.com](https://vercel.com) وسجّل دخول بنفس حساب GitHub.
+2. **Add New → Project**، واختر مستودع `procoreksa/Test`.
+3. تأكد إن الفرع المُختار هو `claude/saas-rental-collections-system-920d12` (أو الفرع
+   الرئيسي بعد ما تدمج التغييرات فيه).
+4. في خطوة **Environment Variables** ضيف:
+
+   | المتغير | القيمة |
+   |---|---|
+   | `DATABASE_URL` | رابط Neon Pooled |
+   | `DIRECT_URL` | رابط Neon Direct |
+   | `AUTH_SECRET` | قيمة عشوائية طويلة (نفّذ `openssl rand -base64 32` وحط الناتج) |
+
+   **لا تضيف** `NEXTAUTH_URL` — Vercel بيظبطها تلقائيًا.
+5. اضغط **Deploy** وانتظر (أول مرة بتشمل تشغيل الـ migrations تلقائيًا لإن أمر البناء
+   `prisma generate && prisma migrate deploy && next build`).
+6. بعد ما ينجح الـ Deploy، هتاخد رابط زي `your-project.vercel.app`.
+
+### 3) تعبئة بيانات تجريبية (مرة واحدة فقط)
+
+من جهازك، بعد ما تظبط `.env` محليًا برابطي Neon (بدل المحليين):
+
+```bash
+npm run db:seed
+```
+
+⚠️ ملحوظة: أمر البناء بينفّذ `prisma migrate deploy` على كل Deploy جديد (آمن — بيطبّق بس
+الـ migrations الجديدة ولا يمسح بيانات)، لكن الـ Seed تنفّذه يدويًا مرة واحدة بس عشان متعملش
+بيانات تجريبية مكررة.
+
 ## هيكل المشروع (أهم المسارات)
 
 ```
