@@ -23,7 +23,7 @@ export default async function RentersPage() {
       <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
         <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
           إضافة مستأجر جديد
-          <span className="text-teal-600 group-open:rotate-45 transition-transform text-xl">+</span>
+          <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
         </summary>
         <form action={createRenter} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="الاسم الكامل" name="fullName" required />
@@ -46,7 +46,7 @@ export default async function RentersPage() {
             <Field label="العنوان" name="address" />
           </div>
           <div className="md:col-span-3">
-            <button className="bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-5 py-2.5 font-semibold">
+            <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
               حفظ المستأجر
             </button>
           </div>
@@ -73,7 +73,7 @@ export default async function RentersPage() {
                 <td className="px-5 py-3 text-slate-500">{r.idNumber ?? "—"}</td>
                 <td className="px-5 py-3">
                   {r.vatNumber ? (
-                    <span className="px-2 py-1 rounded-full bg-teal-50 text-teal-700 text-xs font-medium">
+                    <span className="px-2 py-1 rounded-full bg-brand-gold-tint text-brand-gold-dark text-xs font-medium">
                       {r.vatNumber}
                     </span>
                   ) : (
@@ -125,7 +125,7 @@ function Field({
         name={name}
         type={type}
         required={required}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-gold"
       />
     </div>
   );

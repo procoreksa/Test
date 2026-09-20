@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { signIn } from "@/lib/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
@@ -26,14 +27,17 @@ export default async function LoginPage({
   const { error } = await searchParams;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-100 to-slate-200 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-200">
+    <div className="min-h-screen flex items-center justify-center bg-brand-black px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border border-brand-gold/20">
         <div className="text-center mb-8">
-          <div className="mx-auto w-14 h-14 rounded-xl bg-teal-600 text-white flex items-center justify-center text-2xl font-bold mb-3">
-            ع
+          <div className="mx-auto w-16 h-16 rounded-full overflow-hidden ring-2 ring-brand-gold mb-4">
+            <Image src="/logo.jpg" alt="Pro Core" width={64} height={64} className="w-full h-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">تسجيل الدخول</h1>
-          <p className="text-slate-500 text-sm mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 tracking-wide">PRO CORE</h1>
+          <p className="text-brand-gold-dark text-xs font-medium tracking-[0.2em] uppercase mt-0.5">
+            Managing Value. Building Growth.
+          </p>
+          <p className="text-slate-500 text-sm mt-3">
             منصة إدارة الإيجارات والتحصيلات والفواتير الضريبية
           </p>
         </div>
@@ -54,7 +58,7 @@ export default async function LoginPage({
               type="email"
               required
               defaultValue="admin@demo-realestate.sa"
-              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-gold"
               placeholder="you@company.com"
             />
           </div>
@@ -67,13 +71,13 @@ export default async function LoginPage({
               type="password"
               required
               defaultValue="Passw0rd!"
-              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-gold"
               placeholder="••••••••"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-lg py-2.5 transition-colors"
+            className="w-full bg-brand-gold hover:bg-brand-gold-dark text-brand-black font-semibold rounded-lg py-2.5 transition-colors"
           >
             دخول
           </button>

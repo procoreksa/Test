@@ -25,7 +25,7 @@ export default async function SettingsPage() {
         <Field label="رقم الجوال" name="phone" defaultValue={org.phone ?? ""} />
         <Field label="البريد الإلكتروني" name="email" type="email" defaultValue={org.email ?? ""} />
         <div className="md:col-span-2">
-          <button className="bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-5 py-2.5 font-semibold">
+          <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
             حفظ الإعدادات
           </button>
         </div>
@@ -65,7 +65,7 @@ function Field({
         type={type}
         required={required}
         defaultValue={defaultValue}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-gold"
       />
     </div>
   );

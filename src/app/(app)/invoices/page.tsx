@@ -57,7 +57,7 @@ export default async function InvoicesPage() {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-left">
-                  <Link href={`/invoices/${inv.id}`} className="text-teal-600 hover:underline text-xs font-medium">
+                  <Link href={`/invoices/${inv.id}`} className="text-brand-gold-dark hover:underline text-xs font-medium">
                     عرض الفاتورة
                   </Link>
                 </td>

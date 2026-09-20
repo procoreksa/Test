@@ -23,8 +23,8 @@ export function CollectionsChart({ data }: { data: Point[] }) {
             contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 13 }}
           />
           <Legend wrapperStyle={{ fontSize: 12 }} />
-          <Bar dataKey="invoiced" name="مفوتر" fill="#0d9488" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="collected" name="محصّل" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="invoiced" name="مفوتر" fill="#3f3f46" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="collected" name="محصّل" fill="#d4af37" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

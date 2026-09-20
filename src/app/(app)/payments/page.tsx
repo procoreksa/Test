@@ -40,7 +40,7 @@ export default async function PaymentsPage() {
                 <td className="px-5 py-3 font-medium text-slate-800">{p.receiptNumber}</td>
                 <td className="px-5 py-3">{p.renter.fullNameAr || p.renter.fullName}</td>
                 <td className="px-5 py-3">
-                  <Link href={`/invoices/${p.invoiceId}`} className="text-teal-600 hover:underline">
+                  <Link href={`/invoices/${p.invoiceId}`} className="text-brand-gold-dark hover:underline">
                     {p.invoice.invoiceNumber}
                   </Link>
                 </td>

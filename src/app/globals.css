@@ -3,12 +3,26 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+
+  /* Pro Core brand palette (from the logo: gold ring on black) */
+  --brand-black: #0b0b0d;
+  --brand-black-soft: #17171b;
+  --brand-black-line: #2a2a2f;
+  --brand-gold: #d4af37;
+  --brand-gold-dark: #b8912b;
+  --brand-gold-tint: #fbf3d9;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-cairo);
+  --color-brand-black: var(--brand-black);
+  --color-brand-black-soft: var(--brand-black-soft);
+  --color-brand-black-line: var(--brand-black-line);
+  --color-brand-gold: var(--brand-gold);
+  --color-brand-gold-dark: var(--brand-gold-dark);
+  --color-brand-gold-tint: var(--brand-gold-tint);
 }
 
 body {

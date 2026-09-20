@@ -54,7 +54,7 @@ export default async function CollectionsPage() {
                 </td>
                 <td className="px-5 py-3 text-left">
                   {s.invoiceId ? (
-                    <Link href={`/invoices/${s.invoiceId}`} className="text-teal-600 hover:underline text-xs">
+                    <Link href={`/invoices/${s.invoiceId}`} className="text-brand-gold-dark hover:underline text-xs">
                       عرض الفاتورة
                     </Link>
                   ) : (s.status === "PENDING" || s.status === "OVERDUE") ? (
@@ -64,7 +64,7 @@ export default async function CollectionsPage() {
                         await issueInvoiceForSchedule(s.id);
                       }}
                     >
-                      <button className="text-teal-600 hover:underline text-xs font-medium">إصدار فاتورة ضريبية</button>
+                      <button className="text-brand-gold-dark hover:underline text-xs font-medium">إصدار فاتورة ضريبية</button>
                     </form>
                   ) : null}
                 </td>

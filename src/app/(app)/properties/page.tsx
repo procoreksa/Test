@@ -21,7 +21,7 @@ export default async function PropertiesPage() {
       <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
         <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
           إضافة عقار جديد
-          <span className="text-teal-600 group-open:rotate-45 transition-transform text-xl">+</span>
+          <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
         </summary>
         <form action={createProperty} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field label="اسم العقار (بالإنجليزية)" name="name" required />
@@ -38,7 +38,7 @@ export default async function PropertiesPage() {
           <Field label="الحي" name="district" />
           <Field label="الشارع" name="street" />
           <div className="md:col-span-2">
-            <button className="bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-5 py-2.5 font-semibold">
+            <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
               حفظ العقار
             </button>
           </div>
@@ -99,7 +99,7 @@ function Field({ label, name, required }: { label: string; name: string; require
       <input
         name={name}
         required={required}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-gold"
       />
     </div>
   );

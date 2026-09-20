@@ -54,7 +54,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </p>
           </div>
           <div className="text-left">
-            <p className="text-lg font-bold text-teal-700">
+            <p className="text-lg font-bold text-brand-gold-dark">
               {invoice.kind === "SIMPLIFIED" ? "فاتورة ضريبية مبسّطة" : "فاتورة ضريبية"}
             </p>
             <p className="text-sm text-slate-500">{invoice.invoiceNumber}</p>
@@ -181,7 +181,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
               <input name="referenceNumber" className="w-full rounded-lg border border-slate-300 px-3 py-2" />
             </div>
             <div className="flex items-end">
-              <button className="w-full bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-4 py-2 font-semibold">
+              <button className="w-full bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-4 py-2 font-semibold">
                 تسجيل الدفعة
               </button>
             </div>

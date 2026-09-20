@@ -46,7 +46,7 @@ export default async function DashboardPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold text-slate-800">دفعات متأخرة</h2>
-            <Link href="/collections" className="text-sm text-teal-600 hover:underline">
+            <Link href="/collections" className="text-sm text-brand-gold-dark hover:underline">
               عرض الكل
             </Link>
           </div>
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
 
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
         <h2 className="font-semibold text-slate-800 mb-1">صافي ضريبة القيمة المضافة المُحصّلة</h2>
-        <p className="text-3xl font-bold text-teal-700">{sar.format(stats.totalVat)}</p>
+        <p className="text-3xl font-bold text-brand-gold-dark">{sar.format(stats.totalVat)}</p>
         <p className="text-xs text-slate-400 mt-1">إجمالي ضريبة القيمة المضافة على كل الفواتير الصادرة (15%)</p>
       </div>
     </div>

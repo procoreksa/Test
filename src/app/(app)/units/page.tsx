@@ -31,7 +31,7 @@ export default async function UnitsPage() {
       <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
         <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
           إضافة وحدة جديدة
-          <span className="text-teal-600 group-open:rotate-45 transition-transform text-xl">+</span>
+          <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
         </summary>
         <form action={createUnit} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -65,7 +65,7 @@ export default async function UnitsPage() {
             خاضعة لضريبة القيمة المضافة (تجاري)
           </label>
           <div className="md:col-span-3">
-            <button className="bg-teal-600 hover:bg-teal-700 text-white rounded-lg px-5 py-2.5 font-semibold">
+            <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
               حفظ الوحدة
             </button>
           </div>
@@ -145,7 +145,7 @@ function Field({
         type={type}
         step={step}
         required={required}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-brand-gold"
       />
     </div>
   );

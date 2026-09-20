@@ -8,8 +8,8 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "عقاري | نظام إدارة الإيجارات والفواتير الضريبية",
-  description: "منصة SaaS لإدارة العقارات والوحدات والمستأجرين ومتابعة التحصيلات وإصدار الفواتير الضريبية المتوافقة مع فاتورة (ZATCA)",
+  title: "Pro Core Property Management",
+  description: "منصة Pro Core لإدارة العقارات والوحدات والمستأجرين ومتابعة التحصيلات وإصدار الفواتير الضريبية المتوافقة مع فاتورة (ZATCA)",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

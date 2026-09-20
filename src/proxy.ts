@@ -18,5 +18,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // Exclude API routes, Next internals, and any static file under /public
+  // (anything with a file extension, e.g. /logo.jpg, /icon.jpg) — those
+  // must be reachable unauthenticated, including by Next's own image
+  // optimizer, which otherwise gets a login-page redirect instead of the
+  // image and fails with "isn't a valid image".
+  matcher: ["/((?!api|_next/static|_next/image|.*\\..*).*)"],
 };
