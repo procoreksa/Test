@@ -131,6 +131,24 @@ npm run db:seed
 الـ migrations الجديدة ولا يمسح بيانات)، لكن الـ Seed تنفّذه يدويًا مرة واحدة بس عشان متعملش
 بيانات تجريبية مكررة.
 
+## بديل: النشر على Render.com (لو Vercel معملش معاك)
+
+نفس فكرة Neon لقاعدة البيانات، لكن التطبيق نفسه بيتنشر كـ **Web Service** حقيقي بدل
+Serverless Functions:
+
+1. افتح [render.com](https://render.com) وسجّل دخول بحساب GitHub.
+2. **New → Web Service**، واختر مستودع `procoreksa/Test` والفرع
+   `claude/saas-rental-collections-system-920d12`.
+3. الإعدادات:
+   - **Build Command**: `npm install && npm run build`
+   - **Start Command**: `npm run start`
+4. في **Environment Variables** ضيف نفس الثلاثة: `DATABASE_URL`، `DIRECT_URL`، `AUTH_SECRET`
+   (بنفس القيم من Neon اللي شرحناها فوق).
+5. اضغط **Create Web Service**. هتاخد رابط زي `your-app.onrender.com`.
+
+الطبقة المجانية على Render بتنام بعد فترة عدم استخدام وتاخد ثواني تصحى تاني — طبيعي، مش
+عطل.
+
 ## هيكل المشروع (أهم المسارات)
 
 ```

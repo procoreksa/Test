@@ -26,6 +26,11 @@ interface AppJwt {
 export const { handlers, signIn, signOut, auth } = NextAuth({
   session: { strategy: "jwt" },
   pages: { signIn: "/login" },
+  // Needed on any host that sits behind its own reverse proxy (Render,
+  // Railway, Netlify, a VPS behind Nginx...). Vercel auto-trusts via its
+  // own VERCEL env var, but other platforms don't, so this is set
+  // unconditionally to keep the app portable across hosts.
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
