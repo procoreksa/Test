@@ -25,7 +25,7 @@ export async function listCollections() {
     where: { organizationId },
     include: {
       contract: { include: { unit: { include: { property: true } }, renter: true } },
-      invoice: true,
+      invoiceLines: { include: { invoice: { select: { id: true, status: true } } }, distinct: ["invoiceId"] },
     },
     orderBy: { dueDate: "asc" },
   });

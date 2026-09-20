@@ -3,11 +3,12 @@
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
+import { getScheduleRemaining } from "@/lib/schedule-status";
 import { differenceInCalendarDays, format } from "date-fns";
 
 export interface LedgerEntry {
   date: Date;
-  type: "INVOICE" | "PAYMENT";
+  type: "INVOICE" | "PAYMENT" | "DUE";
   reference: string;
   contractNumber?: string;
   debit: number;
@@ -15,9 +16,33 @@ export interface LedgerEntry {
   balance: number;
 }
 
+/** Not-yet-invoiced amount of a schedule installment, shown as a future/current due entry dated by its due date. */
+async function buildDueEntries(
+  schedules: Array<{ id: string; dueDate: Date; installmentNo: number; status: string; contractNumber?: string }>
+) {
+  const entries: Omit<LedgerEntry, "balance">[] = [];
+  for (const s of schedules) {
+    if (s.status === "CANCELLED" || s.status === "PAID") continue;
+    const remaining = await getScheduleRemaining(prisma, s.id);
+    const remainingTotal = remaining.rent + remaining.commission + remaining.cleaning + remaining.securityDeposit;
+    if (remainingTotal > 0.01) {
+      entries.push({
+        date: s.dueDate,
+        type: "DUE",
+        reference: `#${s.installmentNo}`,
+        contractNumber: s.contractNumber,
+        debit: remainingTotal,
+        credit: 0,
+      });
+    }
+  }
+  return entries;
+}
+
 function buildLedger(
   invoices: Array<{ issueDate: Date; invoiceNumber: string; totalAmount: unknown; contractNumber?: string }>,
-  payments: Array<{ paymentDate: Date; receiptNumber: string; amount: unknown; contractNumber?: string }>
+  payments: Array<{ paymentDate: Date; receiptNumber: string; amount: unknown; contractNumber?: string }>,
+  dueEntries: Omit<LedgerEntry, "balance">[] = []
 ): LedgerEntry[] {
   const entries: Omit<LedgerEntry, "balance">[] = [
     ...invoices.map((inv) => ({
@@ -36,6 +61,7 @@ function buildLedger(
       debit: 0,
       credit: Number(p.amount),
     })),
+    ...dueEntries,
   ].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   let balance = 0;
@@ -67,7 +93,7 @@ export async function getRenterStatement(renterId: string) {
   const organizationId = await requireOrgId();
   const renter = await prisma.renter.findUniqueOrThrow({ where: { id: renterId, organizationId } });
 
-  const [invoices, payments] = await Promise.all([
+  const [invoices, payments, schedules] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId, renterId, status: { not: "CANCELLED" } },
       include: { contract: true },
@@ -78,11 +104,21 @@ export async function getRenterStatement(renterId: string) {
       include: { invoice: { include: { contract: true } } },
       orderBy: { paymentDate: "asc" },
     }),
+    prisma.paymentSchedule.findMany({
+      where: { organizationId, contract: { renterId } },
+      include: { contract: { select: { contractNumber: true } } },
+      orderBy: { dueDate: "asc" },
+    }),
   ]);
+
+  const dueEntries = await buildDueEntries(
+    schedules.map((s) => ({ ...s, contractNumber: s.contract.contractNumber }))
+  );
 
   const ledger = buildLedger(
     invoices.map((inv) => ({ ...inv, contractNumber: inv.contract?.contractNumber })),
-    payments.map((p) => ({ ...p, contractNumber: p.invoice.contract?.contractNumber }))
+    payments.map((p) => ({ ...p, contractNumber: p.invoice.contract?.contractNumber })),
+    dueEntries
   );
 
   return { renter, ledger };
@@ -99,7 +135,7 @@ export async function getUnitStatement(unitId: string) {
   const contractIds = contracts.map((c) => c.id);
   const contractNumberById = new Map(contracts.map((c) => [c.id, c.contractNumber]));
 
-  const [invoices, payments] = await Promise.all([
+  const [invoices, payments, schedules] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId, contractId: { in: contractIds }, status: { not: "CANCELLED" } },
       orderBy: { issueDate: "asc" },
@@ -109,14 +145,23 @@ export async function getUnitStatement(unitId: string) {
       include: { invoice: true },
       orderBy: { paymentDate: "asc" },
     }),
+    prisma.paymentSchedule.findMany({
+      where: { organizationId, contractId: { in: contractIds } },
+      orderBy: { dueDate: "asc" },
+    }),
   ]);
+
+  const dueEntries = await buildDueEntries(
+    schedules.map((s) => ({ ...s, contractNumber: contractNumberById.get(s.contractId) }))
+  );
 
   const ledger = buildLedger(
     invoices.map((inv) => ({ ...inv, contractNumber: inv.contractId ? contractNumberById.get(inv.contractId) : undefined })),
     payments.map((p) => ({
       ...p,
       contractNumber: p.invoice.contractId ? contractNumberById.get(p.invoice.contractId) : undefined,
-    }))
+    })),
+    dueEntries
   );
 
   return { unit, ledger };
@@ -165,7 +210,7 @@ export async function getCollectionsReport(from: Date, to: Date) {
   const organizationId = await requireOrgId();
   const payments = await prisma.payment.findMany({
     where: { organizationId, paymentDate: { gte: from, lte: to } },
-    include: { renter: true },
+    include: { renter: true, invoice: { include: { contract: { include: { unit: true } } } } },
     orderBy: { paymentDate: "asc" },
   });
   const total = payments.reduce((sum, p) => sum + Number(p.amount), 0);

@@ -225,6 +225,7 @@ enum ContractStatus {
   ACTIVE
   EXPIRED
   TERMINATED
+  RENEWED // superseded by a follow-on contract for the same unit/renter
 }
 
 // How the one-off commission/cleaning fees attach to the payment schedule:
@@ -273,6 +274,7 @@ model Contract {
 
 enum ScheduleStatus {
   PENDING
+  PARTIALLY_INVOICED // some (but not all) of its components have been invoiced
   INVOICED
   PAID
   PARTIALLY_PAID
@@ -281,23 +283,24 @@ enum ScheduleStatus {
 }
 
 model PaymentSchedule {
-  id               String         @id @default(cuid())
-  organizationId   String
-  contractId       String
-  contract         Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  installmentNo    Int
-  periodStart      DateTime
-  periodEnd        DateTime
-  dueDate          DateTime
-  rentAmount       Decimal        @default(0) @db.Decimal(12, 2)
-  commissionAmount Decimal        @default(0) @db.Decimal(12, 2)
-  cleaningAmount   Decimal        @default(0) @db.Decimal(12, 2)
-  amount           Decimal        @db.Decimal(12, 2)
-  status           ScheduleStatus @default(PENDING)
-  invoiceId        String?
-  invoice          Invoice?       @relation(fields: [invoiceId], references: [id])
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id                    String         @id @default(cuid())
+  organizationId        String
+  contractId            String
+  contract              Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  installmentNo         Int
+  periodStart           DateTime
+  periodEnd             DateTime
+  dueDate               DateTime
+  rentAmount            Decimal        @default(0) @db.Decimal(12, 2)
+  commissionAmount      Decimal        @default(0) @db.Decimal(12, 2)
+  cleaningAmount        Decimal        @default(0) @db.Decimal(12, 2)
+  securityDepositAmount Decimal        @default(0) @db.Decimal(12, 2)
+  amount                Decimal        @db.Decimal(12, 2)
+  status                ScheduleStatus @default(PENDING)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  invoiceLines InvoiceLine[]
 
   @@index([organizationId])
   @@index([contractId])
@@ -369,9 +372,8 @@ model Invoice {
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
-  lines            InvoiceLine[]
-  payments         Payment[]
-  paymentSchedules PaymentSchedule[]
+  lines    InvoiceLine[]
+  payments Payment[]
 
   @@unique([organizationId, invoiceNumber])
   @@unique([organizationId, icv])
@@ -380,21 +382,40 @@ model Invoice {
   @@map("invoices")
 }
 
-model InvoiceLine {
-  id            String    @id @default(cuid())
-  invoiceId     String
-  invoice       Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description   String
-  descriptionAr String?
-  periodStart   DateTime?
-  periodEnd     DateTime?
-  quantity      Decimal   @default(1) @db.Decimal(10, 2)
-  unitPrice     Decimal   @db.Decimal(12, 2)
-  discount      Decimal   @default(0) @db.Decimal(12, 2)
-  vatRate       Decimal   @default(15) @db.Decimal(5, 2)
-  vatAmount     Decimal   @db.Decimal(12, 2)
-  lineTotal     Decimal   @db.Decimal(12, 2)
+enum InvoiceLineKind {
+  RENT
+  COMMISSION
+  CLEANING
+  SECURITY_DEPOSIT
+  OTHER
+}
 
+model InvoiceLine {
+  id                String          @id @default(cuid())
+  invoiceId         String
+  invoice           Invoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  // Which schedule installment this line bills, and which component of it -
+  // lets one schedule be invoiced across several separate invoices (e.g.
+  // rent now, commission later), and lets the schedule's fulfilled status
+  // be computed by summing lines per kind. Null for lines not tied to a
+  // schedule (shouldn't happen via the current UI, but kept optional for
+  // flexibility).
+  paymentScheduleId String?
+  kind              InvoiceLineKind @default(OTHER)
+  description       String
+  descriptionAr     String?
+  periodStart       DateTime?
+  periodEnd         DateTime?
+  quantity          Decimal         @default(1) @db.Decimal(10, 2)
+  unitPrice         Decimal         @db.Decimal(12, 2)
+  discount          Decimal         @default(0) @db.Decimal(12, 2)
+  vatRate           Decimal         @default(15) @db.Decimal(5, 2)
+  vatAmount         Decimal         @db.Decimal(12, 2)
+  lineTotal         Decimal         @db.Decimal(12, 2)
+
+  paymentSchedule PaymentSchedule? @relation(fields: [paymentScheduleId], references: [id])
+
+  @@index([paymentScheduleId])
   @@map("invoice_lines")
 }
 

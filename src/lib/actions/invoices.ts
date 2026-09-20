@@ -4,24 +4,63 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { issueInvoice } from "@/lib/invoicing";
+import { getScheduleRemaining, recomputeScheduleStatus } from "@/lib/schedule-status";
 import { format } from "date-fns";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import type { LineInput } from "@/lib/zatca/vat";
+import type { InvoiceLineKind } from "@prisma/client";
 
 const EXTRA_CHARGE_VAT_RATE = 15; // Commission/cleaning are always-taxable services, independent of the rent's VAT treatment.
 
-export async function issueInvoiceForSchedule(scheduleId: string) {
-  const organizationId = await requireOrgId();
-  const t = getDictionary(await getLocale());
+export interface BillableComponent {
+  kind: InvoiceLineKind;
+  amount: number;
+}
 
-  const schedule = await prisma.paymentSchedule.findUniqueOrThrow({
+/** Which components of a schedule still have something left to invoice, and how much. */
+export async function getScheduleBillableComponents(scheduleId: string): Promise<{
+  schedule: Awaited<ReturnType<typeof loadScheduleWithContext>>;
+  components: BillableComponent[];
+}> {
+  const organizationId = await requireOrgId();
+  const schedule = await loadScheduleWithContext(scheduleId, organizationId);
+  const remaining = await getScheduleRemaining(prisma, scheduleId);
+
+  const components: BillableComponent[] = [];
+  if (remaining.rent > 0) components.push({ kind: "RENT", amount: remaining.rent });
+  if (remaining.commission > 0) components.push({ kind: "COMMISSION", amount: remaining.commission });
+  if (remaining.cleaning > 0) components.push({ kind: "CLEANING", amount: remaining.cleaning });
+  if (remaining.securityDeposit > 0) components.push({ kind: "SECURITY_DEPOSIT", amount: remaining.securityDeposit });
+
+  return { schedule, components };
+}
+
+function loadScheduleWithContext(scheduleId: string, organizationId: string) {
+  return prisma.paymentSchedule.findUniqueOrThrow({
     where: { id: scheduleId, organizationId },
     include: { contract: { include: { unit: { include: { property: true } }, renter: true } } },
   });
+}
 
-  if (schedule.status === "INVOICED" || schedule.status === "PAID") {
-    throw new Error(t.validation.invoiceAlreadyIssued);
+export async function issueInvoiceForSchedule(formData: FormData) {
+  const organizationId = await requireOrgId();
+  const t = getDictionary(await getLocale());
+  const scheduleId = String(formData.get("scheduleId"));
+  const selectedKinds = formData.getAll("kind").map(String) as InvoiceLineKind[];
+
+  if (selectedKinds.length === 0) {
+    throw new Error(t.validation.selectAtLeastOneComponent);
   }
+
+  const schedule = await loadScheduleWithContext(scheduleId, organizationId);
+  const remaining = await getScheduleRemaining(prisma, scheduleId);
+  const remainingByKind: Record<InvoiceLineKind, number> = {
+    RENT: remaining.rent,
+    COMMISSION: remaining.commission,
+    CLEANING: remaining.cleaning,
+    SECURITY_DEPOSIT: remaining.securityDeposit,
+    OTHER: 0,
+  };
 
   const { contract } = schedule;
   const propertyName = contract.unit.property.name;
@@ -29,45 +68,63 @@ export async function issueInvoiceForSchedule(scheduleId: string) {
   const unitNumber = contract.unit.unitNumber;
   const periodLabel = `${format(schedule.periodStart, "yyyy-MM-dd")} – ${format(schedule.periodEnd, "yyyy-MM-dd")}`;
 
-  const lines: Array<LineInput & { description: string; descriptionAr: string; periodStart?: Date; periodEnd?: Date }> = [];
+  const lines: Array<LineInput & { description: string; descriptionAr: string; periodStart?: Date; periodEnd?: Date; kind: InvoiceLineKind }> = [];
 
-  if (Number(schedule.rentAmount) > 0) {
-    lines.push({
-      description: `Rent - ${propertyName} / Unit ${unitNumber} (${periodLabel})`,
-      descriptionAr: `إيجار - ${propertyNameAr} / وحدة ${unitNumber} (${periodLabel})`,
-      periodStart: schedule.periodStart,
-      periodEnd: schedule.periodEnd,
-      quantity: 1,
-      unitPrice: Number(schedule.rentAmount),
-      vatRate: contract.vatApplicable ? Number(contract.vatRate) : 0,
-    });
+  for (const kind of selectedKinds) {
+    const amount = remainingByKind[kind];
+    if (!amount || amount <= 0) continue;
+
+    if (kind === "RENT") {
+      lines.push({
+        description: `Rent - ${propertyName} / Unit ${unitNumber} (${periodLabel})`,
+        descriptionAr: `إيجار - ${propertyNameAr} / وحدة ${unitNumber} (${periodLabel})`,
+        periodStart: schedule.periodStart,
+        periodEnd: schedule.periodEnd,
+        quantity: 1,
+        unitPrice: amount,
+        vatRate: contract.vatApplicable ? Number(contract.vatRate) : 0,
+        kind,
+      });
+    } else if (kind === "COMMISSION") {
+      lines.push({
+        description: `Rental Commission - ${propertyName} / Unit ${unitNumber}`,
+        descriptionAr: `عمولة إيجار - ${propertyNameAr} / وحدة ${unitNumber}`,
+        quantity: 1,
+        unitPrice: amount,
+        vatRate: EXTRA_CHARGE_VAT_RATE,
+        kind,
+      });
+    } else if (kind === "CLEANING") {
+      lines.push({
+        description: `Home Cleaning Package - ${propertyName} / Unit ${unitNumber}`,
+        descriptionAr: `باقة تنظيف منزلي - ${propertyNameAr} / وحدة ${unitNumber}`,
+        quantity: 1,
+        unitPrice: amount,
+        vatRate: EXTRA_CHARGE_VAT_RATE,
+        kind,
+      });
+    } else if (kind === "SECURITY_DEPOSIT") {
+      // A refundable deposit is not consideration for a taxable supply.
+      lines.push({
+        description: `Security Deposit - ${propertyName} / Unit ${unitNumber}`,
+        descriptionAr: `مبلغ تأمين - ${propertyNameAr} / وحدة ${unitNumber}`,
+        quantity: 1,
+        unitPrice: amount,
+        vatRate: 0,
+        kind,
+      });
+    }
   }
 
-  if (Number(schedule.commissionAmount) > 0) {
-    lines.push({
-      description: `Rental Commission - ${propertyName} / Unit ${unitNumber}`,
-      descriptionAr: `عمولة إيجار - ${propertyNameAr} / وحدة ${unitNumber}`,
-      quantity: 1,
-      unitPrice: Number(schedule.commissionAmount),
-      vatRate: EXTRA_CHARGE_VAT_RATE,
-    });
-  }
-
-  if (Number(schedule.cleaningAmount) > 0) {
-    lines.push({
-      description: `Home Cleaning Package - ${propertyName} / Unit ${unitNumber}`,
-      descriptionAr: `باقة تنظيف منزلي - ${propertyNameAr} / وحدة ${unitNumber}`,
-      quantity: 1,
-      unitPrice: Number(schedule.cleaningAmount),
-      vatRate: EXTRA_CHARGE_VAT_RATE,
-    });
+  if (lines.length === 0) {
+    throw new Error(t.validation.invoiceAlreadyIssued);
   }
 
   const invoice = await issueInvoice({
     organizationId,
     renterId: contract.renterId,
     contractId: contract.id,
-    paymentScheduleIds: [schedule.id],
+    paymentScheduleId: schedule.id,
     dueDate: schedule.dueDate,
     lines,
   });
@@ -106,11 +163,12 @@ export async function cancelInvoice(invoiceId: string) {
     const invoice = await tx.invoice.update({
       where: { id: invoiceId, organizationId },
       data: { status: "CANCELLED" },
+      include: { lines: { select: { paymentScheduleId: true } } },
     });
-    await tx.paymentSchedule.updateMany({
-      where: { invoiceId: invoice.id },
-      data: { status: "PENDING", invoiceId: null },
-    });
+    const scheduleIds = Array.from(new Set(invoice.lines.map((l) => l.paymentScheduleId).filter((id): id is string => !!id)));
+    for (const scheduleId of scheduleIds) {
+      await recomputeScheduleStatus(tx, scheduleId);
+    }
   });
   revalidatePath("/invoices");
   revalidatePath("/collections");

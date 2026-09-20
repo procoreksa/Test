@@ -62,7 +62,11 @@ export default async function RenterStatementReportPage({
                 <tr key={idx}>
                   <td className="py-2 text-slate-500">{dateFmt.format(entry.date)}</td>
                   <td className="py-2">
-                    {entry.type === "INVOICE" ? t.reports.renterStatement.invoiceEntry : t.reports.renterStatement.paymentEntry}
+                    {entry.type === "INVOICE"
+                      ? t.reports.renterStatement.invoiceEntry
+                      : entry.type === "PAYMENT"
+                        ? t.reports.renterStatement.paymentEntry
+                        : t.reports.renterStatement.dueEntry}
                   </td>
                   <td className="py-2 text-slate-500">{entry.reference}</td>
                   <td className="py-2">{entry.debit > 0 ? sar.format(entry.debit) : "—"}</td>

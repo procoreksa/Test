@@ -6,19 +6,29 @@ import { defaultExpiringRange } from "@/lib/report-dates";
 export default async function ExpiringContractsReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; q?: string }>;
 }) {
   const params = await searchParams;
   const defaults = defaultExpiringRange();
   const from = params.from || defaults.from;
   const to = params.to || defaults.to;
+  const q = params.q;
 
-  const [contracts, locale] = await Promise.all([
+  const [allContracts, locale] = await Promise.all([
     getExpiringContractsReport(new Date(from), new Date(to)),
     getLocale(),
   ]);
   const t = getDictionary(locale);
   const dateFmt = shortDateFormatter(locale);
+  const query = (q ?? "").trim().toLowerCase();
+  const contracts = query
+    ? allContracts.filter(
+        (c) =>
+          c.renter.fullName.toLowerCase().includes(query) ||
+          (c.renter.fullNameAr ?? "").toLowerCase().includes(query) ||
+          c.unit.unitNumber.toLowerCase().includes(query)
+      )
+    : allContracts;
 
   return (
     <div className="space-y-6">
@@ -40,6 +50,18 @@ export default async function ExpiringContractsReportPage({
         <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
           {t.reports.filterApply}
         </button>
+      </form>
+
+      <form method="get" className="max-w-sm no-print">
+        <input type="hidden" name="from" value={from} />
+        <input type="hidden" name="to" value={to} />
+        <input
+          type="search"
+          name="q"
+          defaultValue={q ?? ""}
+          placeholder={t.reports.searchPlaceholder}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
       </form>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

@@ -206,7 +206,7 @@ export async function seedDemoData() {
       organizationId: org.id,
       renterId: individualRenter.id,
       contractId: residentialContract.id,
-      paymentScheduleIds: [firstSchedule.id],
+      paymentScheduleId: firstSchedule.id,
       dueDate: firstSchedule.dueDate,
       lines: [
         {
@@ -217,6 +217,7 @@ export async function seedDemoData() {
           quantity: 1,
           unitPrice: 3500,
           vatRate: 0,
+          kind: "RENT",
         },
       ],
     });

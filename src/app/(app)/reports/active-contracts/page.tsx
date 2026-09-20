@@ -2,11 +2,24 @@ import { getActiveContractsReport } from "@/lib/actions/reports";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ReportHeader } from "@/components/report-header";
 
-export default async function ActiveContractsReportPage() {
-  const [contracts, locale] = await Promise.all([getActiveContractsReport(), getLocale()]);
+export default async function ActiveContractsReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const [allContracts, locale, { q }] = await Promise.all([getActiveContractsReport(), getLocale(), searchParams]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
   const dateFmt = shortDateFormatter(locale);
+  const query = (q ?? "").trim().toLowerCase();
+  const contracts = query
+    ? allContracts.filter(
+        (c) =>
+          c.renter.fullName.toLowerCase().includes(query) ||
+          (c.renter.fullNameAr ?? "").toLowerCase().includes(query) ||
+          c.unit.unitNumber.toLowerCase().includes(query)
+      )
+    : allContracts;
 
   return (
     <div className="space-y-6">
@@ -15,6 +28,16 @@ export default async function ActiveContractsReportPage() {
       <div>
         <h1 className="text-2xl font-bold text-slate-900">{t.reports.activeContracts.title}</h1>
       </div>
+
+      <form method="get" className="max-w-sm no-print">
+        <input
+          type="search"
+          name="q"
+          defaultValue={q ?? ""}
+          placeholder={t.reports.searchPlaceholder}
+          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+      </form>
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm">

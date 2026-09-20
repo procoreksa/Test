@@ -77,6 +77,66 @@ export default async function DashboardPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold text-slate-800">{t.dashboard.expiringPanelTitle}</h2>
+            <Link href="/contracts" className="text-sm text-brand-gold-dark hover:underline">
+              {t.dashboard.viewContracts}
+            </Link>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">{t.dashboard.expiringHint(90)}</p>
+          {stats.expiringContracts.length === 0 ? (
+            <p className="text-sm text-slate-400">{t.dashboard.noExpiring}</p>
+          ) : (
+            <ul className="space-y-3">
+              {stats.expiringContracts.map((c) => (
+                <li key={c.id} className="flex items-center justify-between text-sm border-b border-slate-100 pb-2 last:border-0">
+                  <div>
+                    <p className="font-medium text-slate-800">
+                      {pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}
+                    </p>
+                    <p className="text-slate-400 text-xs">
+                      {pickLocalized(locale, c.unit.property.nameAr, c.unit.property.name)} / {c.unit.unitNumber}
+                    </p>
+                  </div>
+                  <span className="text-amber-600 font-semibold text-xs">{t.dashboard.expiresOn(dateFmt.format(c.endDate))}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="font-semibold text-slate-800">{t.dashboard.unclosedPanelTitle}</h2>
+            <Link href="/contracts" className="text-sm text-brand-gold-dark hover:underline">
+              {t.dashboard.viewContracts}
+            </Link>
+          </div>
+          <p className="text-xs text-slate-400 mb-4">{t.dashboard.unclosedHint}</p>
+          {stats.unclosedContracts.length === 0 ? (
+            <p className="text-sm text-slate-400">{t.dashboard.noUnclosed}</p>
+          ) : (
+            <ul className="space-y-3">
+              {stats.unclosedContracts.map((c) => (
+                <li key={c.id} className="flex items-center justify-between text-sm border-b border-slate-100 pb-2 last:border-0">
+                  <div>
+                    <p className="font-medium text-slate-800">
+                      {pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}
+                    </p>
+                    <p className="text-slate-400 text-xs">
+                      {pickLocalized(locale, c.unit.property.nameAr, c.unit.property.name)} / {c.unit.unitNumber}
+                    </p>
+                  </div>
+                  <span className="text-red-600 font-semibold text-xs">{t.dashboard.endedOn(dateFmt.format(c.endDate))}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
         <h2 className="font-semibold text-slate-800 mb-1">{t.dashboard.vatTitle}</h2>
         <p className="text-3xl font-bold text-brand-gold-dark">{sar.format(stats.totalVat)}</p>

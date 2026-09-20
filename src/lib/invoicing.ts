@@ -4,14 +4,24 @@ import { nextCounterValue, formatInvoiceNumber } from "@/lib/numbering";
 import { computeInvoiceTotals, type LineInput } from "@/lib/zatca/vat";
 import { buildZatcaQrBase64 } from "@/lib/zatca/qr";
 import { hashInvoicePayload, GENESIS_HASH } from "@/lib/zatca/hash";
-import type { InvoiceKind } from "@prisma/client";
+import { recomputeScheduleStatus } from "@/lib/schedule-status";
+import type { InvoiceKind, InvoiceLineKind } from "@prisma/client";
 
 export interface IssueInvoiceInput {
   organizationId: string;
   renterId: string;
   contractId?: string | null;
-  paymentScheduleIds?: string[];
-  lines: Array<LineInput & { description: string; descriptionAr?: string; periodStart?: Date; periodEnd?: Date }>;
+  /** All lines in one invoice must belong to the same schedule (or none). */
+  paymentScheduleId?: string | null;
+  lines: Array<
+    LineInput & {
+      description: string;
+      descriptionAr?: string;
+      periodStart?: Date;
+      periodEnd?: Date;
+      kind?: InvoiceLineKind;
+    }
+  >;
   dueDate?: Date;
   notes?: string;
 }
@@ -79,6 +89,8 @@ export async function issueInvoice(input: IssueInvoiceInput) {
             descriptionAr: input.lines[idx].descriptionAr,
             periodStart: input.lines[idx].periodStart,
             periodEnd: input.lines[idx].periodEnd,
+            paymentScheduleId: input.paymentScheduleId ?? null,
+            kind: input.lines[idx].kind ?? "OTHER",
             quantity: line.quantity,
             unitPrice: line.unitPrice,
             discount: line.discount ?? 0,
@@ -96,11 +108,8 @@ export async function issueInvoice(input: IssueInvoiceInput) {
       data: { lastInvoiceHash: invoiceHash },
     });
 
-    if (input.paymentScheduleIds?.length) {
-      await tx.paymentSchedule.updateMany({
-        where: { id: { in: input.paymentScheduleIds }, organizationId },
-        data: { status: "INVOICED", invoiceId: invoice.id },
-      });
+    if (input.paymentScheduleId) {
+      await recomputeScheduleStatus(tx, input.paymentScheduleId);
     }
 
     return invoice;

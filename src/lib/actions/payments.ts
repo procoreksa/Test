@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { nextCounterValue, formatReceiptNumber } from "@/lib/numbering";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
+import { recomputeScheduleStatus } from "@/lib/schedule-status";
 
 function paymentSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -34,6 +35,7 @@ export async function recordPayment(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUniqueOrThrow({
       where: { id: parsed.invoiceId, organizationId },
+      include: { lines: { select: { paymentScheduleId: true } } },
     });
 
     const remaining = Number(invoice.totalAmount) - Number(invoice.paidAmount);
@@ -66,10 +68,12 @@ export async function recordPayment(formData: FormData) {
       data: { paidAmount: newPaidAmount, status: newStatus },
     });
 
-    await tx.paymentSchedule.updateMany({
-      where: { invoiceId: invoice.id },
-      data: { status: newStatus === "PAID" ? "PAID" : "PARTIALLY_PAID" },
-    });
+    const scheduleIds = Array.from(
+      new Set(invoice.lines.map((l) => l.paymentScheduleId).filter((id): id is string => !!id))
+    );
+    for (const scheduleId of scheduleIds) {
+      await recomputeScheduleStatus(tx, scheduleId);
+    }
   });
 
   revalidatePath("/invoices");

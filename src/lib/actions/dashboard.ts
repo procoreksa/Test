@@ -3,21 +3,46 @@
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
-import { subMonths, format, startOfMonth, endOfMonth } from "date-fns";
+import { subMonths, format, startOfMonth, endOfMonth, addDays } from "date-fns";
+
+const EXPIRING_WINDOW_DAYS = 90;
 
 export async function getDashboardStats() {
   await syncOverdueStatuses();
   const organizationId = await requireOrgId();
+  const now = new Date();
 
-  const [unitsTotal, unitsOccupied, contractsActive, invoices, overdueSchedules] = await Promise.all([
+  const [
+    unitsTotal,
+    unitsOccupied,
+    contractsActive,
+    invoices,
+    overdueCount,
+    overdueSchedules,
+    expiringContracts,
+    unclosedContracts,
+  ] = await Promise.all([
     prisma.unit.count({ where: { organizationId } }),
     prisma.unit.count({ where: { organizationId, status: "OCCUPIED" } }),
     prisma.contract.count({ where: { organizationId, status: "ACTIVE" } }),
     prisma.invoice.findMany({ where: { organizationId }, select: { totalAmount: true, paidAmount: true, vatAmount: true, status: true, issueDate: true } }),
+    prisma.paymentSchedule.count({ where: { organizationId, status: "OVERDUE" } }),
     prisma.paymentSchedule.findMany({
       where: { organizationId, status: "OVERDUE" },
       include: { contract: { include: { renter: true, unit: true } } },
       orderBy: { dueDate: "asc" },
+      take: 10,
+    }),
+    prisma.contract.findMany({
+      where: { organizationId, status: "ACTIVE", endDate: { gte: now, lte: addDays(now, EXPIRING_WINDOW_DAYS) } },
+      include: { renter: true, unit: { include: { property: true } } },
+      orderBy: { endDate: "asc" },
+      take: 10,
+    }),
+    prisma.contract.findMany({
+      where: { organizationId, status: "ACTIVE", endDate: { lt: now } },
+      include: { renter: true, unit: { include: { property: true } } },
+      orderBy: { endDate: "asc" },
       take: 10,
     }),
   ]);
@@ -49,8 +74,10 @@ export async function getDashboardStats() {
     totalCollected,
     totalOutstanding,
     totalVat,
-    overdueCount: overdueSchedules.length,
+    overdueCount,
     overdueSchedules,
+    expiringContracts,
+    unclosedContracts,
     monthlySeries: months,
   };
 }

@@ -18,12 +18,20 @@ export interface GeneratedInstallment {
   rentAmount: number;
   commissionAmount: number;
   cleaningAmount: number;
+  securityDepositAmount: number;
   amount: number;
 }
 
 type ScheduleContract = Pick<
   Contract,
-  "startDate" | "endDate" | "rentAmount" | "paymentFrequency" | "commissionAmount" | "cleaningAmount" | "extraChargesMode"
+  | "startDate"
+  | "endDate"
+  | "rentAmount"
+  | "paymentFrequency"
+  | "commissionAmount"
+  | "cleaningAmount"
+  | "extraChargesMode"
+  | "securityDeposit"
 >;
 
 /**
@@ -33,33 +41,59 @@ type ScheduleContract = Pick<
  *
  * The one-off commission/cleaning fees are attached per `extraChargesMode`:
  * SPLIT divides each evenly across every rent installment; ONE_TIME appends
- * a single extra installment (rent = 0) due on the contract start date.
+ * a single extra installment (rent = 0) due on the contract start date. The
+ * security deposit, if any, is always its own separate one-time installment
+ * (never split) since it's a distinct refundable amount, not a service fee.
  */
 export function generateSchedule(contract: ScheduleContract): GeneratedInstallment[] {
   const rentAmount = Number(contract.rentAmount);
   const commissionTotal = Number(contract.commissionAmount ?? 0);
   const cleaningTotal = Number(contract.cleaningAmount ?? 0);
+  const depositTotal = Number(contract.securityDeposit ?? 0);
 
   const rentInstallments = buildRentInstallments(contract, rentAmount);
 
-  if (contract.extraChargesMode === "SPLIT" && rentInstallments.length > 0 && (commissionTotal > 0 || cleaningTotal > 0)) {
-    return splitExtraCharges(rentInstallments, commissionTotal, cleaningTotal);
+  const installments =
+    contract.extraChargesMode === "SPLIT" && rentInstallments.length > 0 && (commissionTotal > 0 || cleaningTotal > 0)
+      ? splitExtraCharges(rentInstallments, commissionTotal, cleaningTotal)
+      : commissionTotal > 0 || cleaningTotal > 0
+        ? [
+            ...rentInstallments,
+            blankInstallment(rentInstallments.length + 1, contract.startDate, {
+              commissionAmount: commissionTotal,
+              cleaningAmount: cleaningTotal,
+            }),
+          ]
+        : rentInstallments;
+
+  if (depositTotal > 0) {
+    installments.push(
+      blankInstallment(installments.length + 1, contract.startDate, { securityDepositAmount: depositTotal })
+    );
   }
 
-  if (commissionTotal > 0 || cleaningTotal > 0) {
-    rentInstallments.push({
-      installmentNo: rentInstallments.length + 1,
-      periodStart: contract.startDate,
-      periodEnd: contract.startDate,
-      dueDate: contract.startDate,
-      rentAmount: 0,
-      commissionAmount: commissionTotal,
-      cleaningAmount: cleaningTotal,
-      amount: round2(commissionTotal + cleaningTotal),
-    });
-  }
+  return installments;
+}
 
-  return rentInstallments;
+function blankInstallment(
+  installmentNo: number,
+  date: Date,
+  amounts: Partial<Pick<GeneratedInstallment, "commissionAmount" | "cleaningAmount" | "securityDepositAmount">>
+): GeneratedInstallment {
+  const commissionAmount = amounts.commissionAmount ?? 0;
+  const cleaningAmount = amounts.cleaningAmount ?? 0;
+  const securityDepositAmount = amounts.securityDepositAmount ?? 0;
+  return {
+    installmentNo,
+    periodStart: date,
+    periodEnd: date,
+    dueDate: date,
+    rentAmount: 0,
+    commissionAmount,
+    cleaningAmount,
+    securityDepositAmount,
+    amount: round2(commissionAmount + cleaningAmount + securityDepositAmount),
+  };
 }
 
 function buildRentInstallments(
@@ -76,6 +110,7 @@ function buildRentInstallments(
         rentAmount,
         commissionAmount: 0,
         cleaningAmount: 0,
+        securityDepositAmount: 0,
         amount: rentAmount,
       },
     ];
@@ -96,6 +131,7 @@ function buildRentInstallments(
       rentAmount,
       commissionAmount: 0,
       cleaningAmount: 0,
+      securityDepositAmount: 0,
       amount: rentAmount,
     });
     periodStart = periodEnd;

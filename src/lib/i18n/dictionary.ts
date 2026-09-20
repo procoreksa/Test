@@ -74,6 +74,15 @@ export interface Dictionary {
     dueOn: (date: string) => string;
     vatTitle: string;
     vatHint: string;
+    expiringPanelTitle: string;
+    expiringHint: (days: number) => string;
+    noExpiring: string;
+    expiresOn: (date: string) => string;
+    unclosedPanelTitle: string;
+    unclosedHint: string;
+    noUnclosed: string;
+    endedOn: (date: string) => string;
+    viewContracts: string;
   };
   propertyType: {
     RESIDENTIAL: string;
@@ -112,9 +121,11 @@ export interface Dictionary {
     ACTIVE: string;
     EXPIRED: string;
     TERMINATED: string;
+    RENEWED: string;
   };
   scheduleStatus: {
     PENDING: string;
+    PARTIALLY_INVOICED: string;
     INVOICED: string;
     PAID: string;
     PARTIALLY_PAID: string;
@@ -231,8 +242,17 @@ export interface Dictionary {
     colStatus: string;
     extraFeesBadge: string;
     terminate: string;
+    renew: string;
     empty: string;
     unitOptionLabel: (property: string, unitNumber: string) => string;
+    renewPage: {
+      title: string;
+      subtitle: (contractNumber: string) => string;
+      unitLabel: string;
+      renterLabel: string;
+      back: string;
+      submit: string;
+    };
   };
   collections: {
     title: string;
@@ -245,7 +265,21 @@ export interface Dictionary {
     colStatus: string;
     viewInvoice: string;
     issueInvoice: string;
+    fullyInvoiced: string;
     empty: string;
+    searchPlaceholder: string;
+    issuePage: {
+      title: string;
+      subtitle: (renter: string, unit: string) => string;
+      dueOn: (date: string) => string;
+      componentRent: string;
+      componentCommission: string;
+      componentCleaning: string;
+      componentSecurityDeposit: string;
+      noComponents: string;
+      back: string;
+      submit: string;
+    };
   };
   invoices: {
     title: string;
@@ -332,6 +366,7 @@ export interface Dictionary {
     installmentAmountPositive: string;
     contractEndAfterStart: string;
     invoiceAlreadyIssued: string;
+    selectAtLeastOneComponent: string;
     paymentExceedsRemaining: (remaining: string) => string;
     logoTooLarge: string;
     logoInvalidType: string;
@@ -350,6 +385,7 @@ export interface Dictionary {
     filterRenter: string;
     filterUnit: string;
     selectPlaceholder: string;
+    searchPlaceholder: string;
     grandTotal: string;
     cards: {
       renterStatement: { title: string; description: string };
@@ -370,6 +406,7 @@ export interface Dictionary {
       colBalance: string;
       invoiceEntry: string;
       paymentEntry: string;
+      dueEntry: string;
       balanceDue: string;
       noSelection: string;
       empty: string;

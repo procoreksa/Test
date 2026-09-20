@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listContracts, createContract, terminateContract } from "@/lib/actions/contracts";
 import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
@@ -8,6 +9,7 @@ const statusTone: Record<string, string> = {
   ACTIVE: "bg-emerald-100 text-emerald-700",
   EXPIRED: "bg-slate-100 text-slate-500",
   TERMINATED: "bg-red-100 text-red-700",
+  RENEWED: "bg-blue-100 text-blue-700",
 };
 
 export default async function ContractsPage() {
@@ -131,16 +133,24 @@ export default async function ContractsPage() {
                     {t.contractStatus[c.status]}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-left">
+                <td className="px-5 py-3 text-left space-y-1">
                   {c.status === "ACTIVE" && (
-                    <form
-                      action={async () => {
-                        "use server";
-                        await terminateContract(c.id);
-                      }}
-                    >
-                      <button className="text-red-500 hover:underline text-xs">{t.contracts.terminate}</button>
-                    </form>
+                    <>
+                      <Link
+                        href={`/contracts/${c.id}/renew`}
+                        className="block text-brand-gold-dark hover:underline text-xs font-medium"
+                      >
+                        {t.contracts.renew}
+                      </Link>
+                      <form
+                        action={async () => {
+                          "use server";
+                          await terminateContract(c.id);
+                        }}
+                      >
+                        <button className="text-red-500 hover:underline text-xs">{t.contracts.terminate}</button>
+                      </form>
+                    </>
                   )}
                 </td>
               </tr>
