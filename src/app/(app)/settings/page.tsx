@@ -1,44 +1,39 @@
 import { getOrganization, updateOrganization } from "@/lib/actions/organization";
+import { getLocale, getDictionary } from "@/lib/i18n";
 
 export default async function SettingsPage() {
-  const org = await getOrganization();
+  const [org, locale] = await Promise.all([getOrganization(), getLocale()]);
+  const t = getDictionary(locale);
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">إعدادات المنشأة</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          هذه البيانات تظهر على كل فاتورة ضريبية صادرة، وتُستخدم في رمز QR وملف XML (UBL)
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.settings.title}</h1>
+        <p className="text-slate-500 text-sm mt-1">{t.settings.subtitle}</p>
       </div>
 
       <form action={updateOrganization} className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Field label="اسم المنشأة (بالإنجليزية)" name="name" defaultValue={org.name} required />
-        <Field label="اسم المنشأة (بالعربية)" name="nameAr" defaultValue={org.nameAr ?? ""} />
-        <Field label="السجل التجاري" name="commercialRegistration" defaultValue={org.commercialRegistration ?? ""} />
-        <Field label="الرقم الضريبي (15 رقمًا)" name="vatNumber" defaultValue={org.vatNumber ?? ""} />
-        <Field label="المدينة" name="city" defaultValue={org.city ?? ""} />
-        <Field label="الحي" name="district" defaultValue={org.district ?? ""} />
-        <Field label="الشارع" name="street" defaultValue={org.street ?? ""} />
-        <Field label="رقم المبنى" name="buildingNumber" defaultValue={org.buildingNumber ?? ""} />
-        <Field label="الرمز البريدي" name="postalCode" defaultValue={org.postalCode ?? ""} />
-        <Field label="رقم الجوال" name="phone" defaultValue={org.phone ?? ""} />
-        <Field label="البريد الإلكتروني" name="email" type="email" defaultValue={org.email ?? ""} />
+        <Field label={t.settings.fieldNameEn} name="name" defaultValue={org.name} required />
+        <Field label={t.settings.fieldNameAr} name="nameAr" defaultValue={org.nameAr ?? ""} />
+        <Field label={t.settings.fieldCommercialRegistration} name="commercialRegistration" defaultValue={org.commercialRegistration ?? ""} />
+        <Field label={t.settings.fieldVatNumber} name="vatNumber" defaultValue={org.vatNumber ?? ""} />
+        <Field label={t.settings.fieldCity} name="city" defaultValue={org.city ?? ""} />
+        <Field label={t.settings.fieldDistrict} name="district" defaultValue={org.district ?? ""} />
+        <Field label={t.settings.fieldStreet} name="street" defaultValue={org.street ?? ""} />
+        <Field label={t.settings.fieldBuildingNumber} name="buildingNumber" defaultValue={org.buildingNumber ?? ""} />
+        <Field label={t.settings.fieldPostalCode} name="postalCode" defaultValue={org.postalCode ?? ""} />
+        <Field label={t.settings.fieldPhone} name="phone" defaultValue={org.phone ?? ""} />
+        <Field label={t.settings.fieldEmail} name="email" type="email" defaultValue={org.email ?? ""} />
         <div className="md:col-span-2">
           <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
-            حفظ الإعدادات
+            {t.settings.save}
           </button>
         </div>
       </form>
 
       <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-4 text-sm">
-        <p className="font-semibold mb-1">حول الربط مع فاتورة (ZATCA)</p>
-        <p>
-          يقوم النظام حاليًا بتوليد رقم تسلسلي (ICV)، ومعرف فريد (UUID)، وسلسلة تجزئة (PIH) لكل فاتورة، إضافة إلى
-          رمز QR بصيغة TLV (المرحلة الأولى) وملف XML بمعيار UBL 2.1. لإتمام الربط الفعلي مع بوابة فاتورة (المرحلة
-          الثانية) يلزم استخراج شهادة CSID من بوابة الهيئة وتوقيع الفاتورة إلكترونيًا، ثم ضبط متغيرات البيئة
-          الخاصة بـ ZATCA في إعدادات الخادم.
-        </p>
+        <p className="font-semibold mb-1">{t.settings.zatcaNoteTitle}</p>
+        <p>{t.settings.zatcaNoteBody}</p>
       </div>
     </div>
   );

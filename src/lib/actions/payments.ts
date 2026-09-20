@@ -5,19 +5,24 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { nextCounterValue, formatReceiptNumber } from "@/lib/numbering";
+import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 
-const paymentSchema = z.object({
-  invoiceId: z.string().min(1),
-  amount: z.coerce.number().positive("قيمة الدفعة يجب أن تكون أكبر من صفر"),
-  method: z.enum(["CASH", "BANK_TRANSFER", "CHEQUE", "CARD", "ONLINE"]),
-  paymentDate: z.coerce.date().optional(),
-  referenceNumber: z.string().optional(),
-  notes: z.string().optional(),
-});
+function paymentSchema(t: ReturnType<typeof getDictionary>) {
+  return z.object({
+    invoiceId: z.string().min(1),
+    amount: z.coerce.number().positive(t.validation.installmentAmountPositive),
+    method: z.enum(["CASH", "BANK_TRANSFER", "CHEQUE", "CARD", "ONLINE"]),
+    paymentDate: z.coerce.date().optional(),
+    referenceNumber: z.string().optional(),
+    notes: z.string().optional(),
+  });
+}
 
 export async function recordPayment(formData: FormData) {
   const organizationId = await requireOrgId();
-  const parsed = paymentSchema.parse({
+  const locale = await getLocale();
+  const t = getDictionary(locale);
+  const parsed = paymentSchema(t).parse({
     invoiceId: formData.get("invoiceId"),
     amount: formData.get("amount"),
     method: formData.get("method"),
@@ -33,7 +38,7 @@ export async function recordPayment(formData: FormData) {
 
     const remaining = Number(invoice.totalAmount) - Number(invoice.paidAmount);
     if (parsed.amount > remaining + 0.01) {
-      throw new Error(`قيمة الدفعة تتجاوز المبلغ المتبقي (${remaining.toFixed(2)})`);
+      throw new Error(t.validation.paymentExceedsRemaining(currencyFormatter(locale).format(remaining)));
     }
 
     const seq = await nextCounterValue(tx, organizationId, "receipt");

@@ -6,22 +6,26 @@ import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { nextCounterValue, formatContractNumber } from "@/lib/numbering";
 import { generateSchedule } from "@/lib/schedule";
+import { getLocale, getDictionary } from "@/lib/i18n";
 
-const contractSchema = z.object({
-  unitId: z.string().min(1),
-  renterId: z.string().min(1),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date(),
-  rentAmount: z.coerce.number().positive("قيمة الدفعة يجب أن تكون أكبر من صفر"),
-  paymentFrequency: z.enum(["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL", "ONE_TIME"]),
-  securityDeposit: z.coerce.number().optional(),
-  vatApplicable: z.coerce.boolean().optional(),
-  notes: z.string().optional(),
-});
+function contractSchema(t: ReturnType<typeof getDictionary>) {
+  return z.object({
+    unitId: z.string().min(1),
+    renterId: z.string().min(1),
+    startDate: z.coerce.date(),
+    endDate: z.coerce.date(),
+    rentAmount: z.coerce.number().positive(t.validation.installmentAmountPositive),
+    paymentFrequency: z.enum(["MONTHLY", "QUARTERLY", "SEMI_ANNUAL", "ANNUAL", "ONE_TIME"]),
+    securityDeposit: z.coerce.number().optional(),
+    vatApplicable: z.coerce.boolean().optional(),
+    notes: z.string().optional(),
+  });
+}
 
 export async function createContract(formData: FormData) {
   const organizationId = await requireOrgId();
-  const parsed = contractSchema.parse({
+  const t = getDictionary(await getLocale());
+  const parsed = contractSchema(t).parse({
     unitId: formData.get("unitId"),
     renterId: formData.get("renterId"),
     startDate: formData.get("startDate"),
@@ -34,7 +38,7 @@ export async function createContract(formData: FormData) {
   });
 
   if (parsed.endDate <= parsed.startDate) {
-    throw new Error("تاريخ نهاية العقد يجب أن يكون بعد تاريخ البداية");
+    throw new Error(t.validation.contractEndAfterStart);
   }
 
   await prisma.$transaction(async (tx) => {

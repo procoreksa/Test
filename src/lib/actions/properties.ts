@@ -4,19 +4,23 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
+import { getLocale, getDictionary } from "@/lib/i18n";
 
-const propertySchema = z.object({
-  name: z.string().min(1, "الاسم مطلوب"),
-  nameAr: z.string().optional(),
-  propertyType: z.enum(["RESIDENTIAL", "COMMERCIAL", "MIXED"]),
-  city: z.string().optional(),
-  district: z.string().optional(),
-  street: z.string().optional(),
-});
+function propertySchema(t: ReturnType<typeof getDictionary>) {
+  return z.object({
+    name: z.string().min(1, t.validation.nameRequired),
+    nameAr: z.string().optional(),
+    propertyType: z.enum(["RESIDENTIAL", "COMMERCIAL", "MIXED"]),
+    city: z.string().optional(),
+    district: z.string().optional(),
+    street: z.string().optional(),
+  });
+}
 
 export async function createProperty(formData: FormData) {
   const organizationId = await requireOrgId();
-  const parsed = propertySchema.parse({
+  const t = getDictionary(await getLocale());
+  const parsed = propertySchema(t).parse({
     name: formData.get("name"),
     nameAr: formData.get("nameAr") || undefined,
     propertyType: formData.get("propertyType"),

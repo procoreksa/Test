@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { issueInvoice } from "@/lib/invoicing";
 import { format } from "date-fns";
+import { getLocale, getDictionary } from "@/lib/i18n";
 
 export async function issueInvoiceForSchedule(scheduleId: string) {
   const organizationId = await requireOrgId();
+  const t = getDictionary(await getLocale());
 
   const schedule = await prisma.paymentSchedule.findUniqueOrThrow({
     where: { id: scheduleId, organizationId },
@@ -15,7 +17,7 @@ export async function issueInvoiceForSchedule(scheduleId: string) {
   });
 
   if (schedule.status === "INVOICED" || schedule.status === "PAID") {
-    throw new Error("تم إصدار فاتورة لهذه الدفعة بالفعل");
+    throw new Error(t.validation.invoiceAlreadyIssued);
   }
 
   const { contract } = schedule;

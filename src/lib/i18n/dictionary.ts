@@ -1,0 +1,330 @@
+/**
+ * Every user-facing string in the app lives here, in both languages.
+ * `Dictionary` is the single source of truth: TypeScript will refuse to
+ * compile ar.ts or en.ts if either one is missing a key the other has, or
+ * has an extra one — so a future addition that only ships one language
+ * simply won't build. When adding a new page/feature, add its strings to
+ * this interface first, then fill in both dictionaries/ar.ts and en.ts.
+ */
+export interface Dictionary {
+  meta: {
+    title: string;
+    description: string;
+  };
+  common: {
+    save: string;
+    delete: string;
+    cancel: string;
+    view: string;
+    edit: string;
+    optional: string;
+    none: string;
+    yes: string;
+    no: string;
+  };
+  roles: {
+    OWNER: string;
+    ADMIN: string;
+    MANAGER: string;
+    ACCOUNTANT: string;
+    VIEWER: string;
+  };
+  nav: {
+    dashboard: string;
+    properties: string;
+    units: string;
+    renters: string;
+    contracts: string;
+    collections: string;
+    invoices: string;
+    payments: string;
+    settings: string;
+    signOut: string;
+    brandTagline: string;
+  };
+  login: {
+    title: string;
+    tagline: string;
+    subtitle: string;
+    error: string;
+    email: string;
+    password: string;
+    submit: string;
+    seedHint: string;
+  };
+  dashboard: {
+    title: string;
+    subtitle: string;
+    occupancyRate: string;
+    occupancyHint: (occupied: number, total: number) => string;
+    activeContracts: string;
+    totalCollected: string;
+    totalCollectedHint: (total: string) => string;
+    overdueAmount: string;
+    overdueHint: (count: number) => string;
+    chartTitle: string;
+    chartInvoiced: string;
+    chartCollected: string;
+    overduePanelTitle: string;
+    viewAll: string;
+    noOverdue: string;
+    dueOn: (date: string) => string;
+    vatTitle: string;
+    vatHint: string;
+  };
+  propertyType: {
+    RESIDENTIAL: string;
+    COMMERCIAL: string;
+    MIXED: string;
+  };
+  unitType: {
+    APARTMENT: string;
+    VILLA: string;
+    OFFICE: string;
+    SHOP: string;
+    WAREHOUSE: string;
+    OTHER: string;
+  };
+  unitStatus: {
+    VACANT: string;
+    OCCUPIED: string;
+    MAINTENANCE: string;
+  };
+  idType: {
+    NATIONAL_ID: string;
+    IQAMA: string;
+    COMMERCIAL_REGISTRATION: string;
+    PASSPORT: string;
+    GCC_ID: string;
+  };
+  paymentFrequency: {
+    MONTHLY: string;
+    QUARTERLY: string;
+    SEMI_ANNUAL: string;
+    ANNUAL: string;
+    ONE_TIME: string;
+  };
+  contractStatus: {
+    DRAFT: string;
+    ACTIVE: string;
+    EXPIRED: string;
+    TERMINATED: string;
+  };
+  scheduleStatus: {
+    PENDING: string;
+    INVOICED: string;
+    PAID: string;
+    PARTIALLY_PAID: string;
+    OVERDUE: string;
+    CANCELLED: string;
+  };
+  invoiceStatus: {
+    DRAFT: string;
+    ISSUED: string;
+    PARTIALLY_PAID: string;
+    PAID: string;
+    OVERDUE: string;
+    CANCELLED: string;
+  };
+  invoiceKind: {
+    STANDARD: string;
+    SIMPLIFIED: string;
+  };
+  paymentMethod: {
+    CASH: string;
+    BANK_TRANSFER: string;
+    CHEQUE: string;
+    CARD: string;
+    ONLINE: string;
+  };
+  properties: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldNameEn: string;
+    fieldNameAr: string;
+    fieldType: string;
+    fieldCity: string;
+    fieldDistrict: string;
+    fieldStreet: string;
+    save: string;
+    colProperty: string;
+    colType: string;
+    colLocation: string;
+    colUnitsCount: string;
+    delete: string;
+    empty: string;
+  };
+  units: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldProperty: string;
+    fieldUnitNumber: string;
+    fieldFloor: string;
+    fieldUnitType: string;
+    fieldArea: string;
+    fieldBedrooms: string;
+    fieldBathrooms: string;
+    fieldBaseRent: string;
+    fieldVatApplicable: string;
+    save: string;
+    colUnit: string;
+    colProperty: string;
+    colType: string;
+    colBaseRent: string;
+    colStatus: string;
+    colCurrentRenter: string;
+    delete: string;
+    empty: string;
+  };
+  renters: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldFullName: string;
+    fieldFullNameAr: string;
+    fieldIdType: string;
+    fieldIdNumber: string;
+    fieldVatNumber: string;
+    fieldPhone: string;
+    fieldEmail: string;
+    fieldAddress: string;
+    save: string;
+    colName: string;
+    colIdType: string;
+    colIdNumber: string;
+    colVatNumber: string;
+    individualBadge: string;
+    colContact: string;
+    delete: string;
+    empty: string;
+  };
+  contracts: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldUnit: string;
+    fieldRenter: string;
+    fieldFrequency: string;
+    fieldStartDate: string;
+    fieldEndDate: string;
+    fieldRentAmount: string;
+    fieldSecurityDeposit: string;
+    fieldVatApplicable: string;
+    fieldNotes: string;
+    save: string;
+    colContractNumber: string;
+    colUnit: string;
+    colRenter: string;
+    colTerm: string;
+    colInstallment: string;
+    colStatus: string;
+    terminate: string;
+    empty: string;
+    unitOptionLabel: (property: string, unitNumber: string) => string;
+  };
+  collections: {
+    title: string;
+    subtitle: string;
+    colRenter: string;
+    colUnit: string;
+    colInstallment: string;
+    colDueDate: string;
+    colAmount: string;
+    colStatus: string;
+    viewInvoice: string;
+    issueInvoice: string;
+    empty: string;
+  };
+  invoices: {
+    title: string;
+    subtitle: string;
+    colInvoiceNumber: string;
+    colKind: string;
+    colCustomer: string;
+    colIssueDate: string;
+    colTotal: string;
+    colStatus: string;
+    viewInvoice: string;
+    empty: string;
+  };
+  invoiceDetail: {
+    back: string;
+    downloadXml: string;
+    vatNumberLabel: string;
+    taxInvoiceSimplified: string;
+    taxInvoiceStandard: string;
+    customer: string;
+    contractLine: (contractNumber: string, unitNumber: string, property: string) => string;
+    qrCaption: string;
+    colDescription: string;
+    colQuantity: string;
+    colUnitPrice: string;
+    colVat: string;
+    colTotal: string;
+    subtotal: string;
+    vatAmount: string;
+    totalDue: string;
+    paidAmount: string;
+    remaining: string;
+    zatcaStatusLabel: string;
+    recordPaymentTitle: string;
+    fieldAmount: string;
+    fieldMethod: string;
+    fieldReference: string;
+    recordPaymentSubmit: string;
+    paymentsHistoryTitle: string;
+    cancelInvoice: string;
+  };
+  payments: {
+    title: string;
+    subtitle: string;
+    colReceiptNumber: string;
+    colRenter: string;
+    colInvoice: string;
+    colMethod: string;
+    colDate: string;
+    colAmount: string;
+    empty: string;
+  };
+  settings: {
+    title: string;
+    subtitle: string;
+    fieldNameEn: string;
+    fieldNameAr: string;
+    fieldCommercialRegistration: string;
+    fieldVatNumber: string;
+    fieldCity: string;
+    fieldDistrict: string;
+    fieldStreet: string;
+    fieldBuildingNumber: string;
+    fieldPostalCode: string;
+    fieldPhone: string;
+    fieldEmail: string;
+    save: string;
+    zatcaNoteTitle: string;
+    zatcaNoteBody: string;
+  };
+  printButton: string;
+  languageSwitcher: {
+    label: string;
+    ar: string;
+    en: string;
+  };
+  validation: {
+    nameRequired: string;
+    unitNumberRequired: string;
+    rentAmountPositive: string;
+    installmentAmountPositive: string;
+    contractEndAfterStart: string;
+    invoiceAlreadyIssued: string;
+    paymentExceedsRemaining: (remaining: string) => string;
+  };
+  zatca: {
+    notConfigured: string;
+    pendingIntegration: string;
+  };
+}
+
+export type { Locale } from "./config";

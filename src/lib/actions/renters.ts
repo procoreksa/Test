@@ -4,21 +4,25 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
+import { getLocale, getDictionary } from "@/lib/i18n";
 
-const renterSchema = z.object({
-  fullName: z.string().min(1, "الاسم مطلوب"),
-  fullNameAr: z.string().optional(),
-  idType: z.enum(["NATIONAL_ID", "IQAMA", "COMMERCIAL_REGISTRATION", "PASSPORT", "GCC_ID"]),
-  idNumber: z.string().optional(),
-  vatNumber: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  address: z.string().optional(),
-});
+function renterSchema(t: ReturnType<typeof getDictionary>) {
+  return z.object({
+    fullName: z.string().min(1, t.validation.nameRequired),
+    fullNameAr: z.string().optional(),
+    idType: z.enum(["NATIONAL_ID", "IQAMA", "COMMERCIAL_REGISTRATION", "PASSPORT", "GCC_ID"]),
+    idNumber: z.string().optional(),
+    vatNumber: z.string().optional(),
+    phone: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    address: z.string().optional(),
+  });
+}
 
 export async function createRenter(formData: FormData) {
   const organizationId = await requireOrgId();
-  const parsed = renterSchema.parse({
+  const t = getDictionary(await getLocale());
+  const parsed = renterSchema(t).parse({
     fullName: formData.get("fullName"),
     fullNameAr: formData.get("fullNameAr") || undefined,
     idType: formData.get("idType"),

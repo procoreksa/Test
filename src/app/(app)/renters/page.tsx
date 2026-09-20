@@ -1,53 +1,45 @@
 import { listRenters, createRenter, deleteRenter } from "@/lib/actions/renters";
-
-const idTypeLabel: Record<string, string> = {
-  NATIONAL_ID: "هوية وطنية",
-  IQAMA: "إقامة",
-  COMMERCIAL_REGISTRATION: "سجل تجاري",
-  PASSPORT: "جواز سفر",
-  GCC_ID: "بطاقة خليجية",
-};
+import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
 
 export default async function RentersPage() {
-  const renters = await listRenters();
+  const [renters, locale] = await Promise.all([listRenters(), getLocale()]);
+  const t = getDictionary(locale);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">المستأجرون</h1>
-        <p className="text-slate-500 text-sm mt-1">
-          بيانات المستأجرين — أضف الرقم الضريبي فقط للمستأجرين من الشركات (B2B) لإصدار فاتورة ضريبية قياسية
-        </p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.renters.title}</h1>
+        <p className="text-slate-500 text-sm mt-1">{t.renters.subtitle}</p>
       </div>
 
       <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
         <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
-          إضافة مستأجر جديد
+          {t.renters.addNew}
           <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
         </summary>
         <form action={createRenter} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label="الاسم الكامل" name="fullName" required />
-          <Field label="الاسم بالعربية" name="fullNameAr" />
+          <Field label={t.renters.fieldFullName} name="fullName" required />
+          <Field label={t.renters.fieldFullNameAr} name="fullNameAr" />
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">نوع الهوية</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t.renters.fieldIdType}</label>
             <select name="idType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-              {Object.entries(idTypeLabel).map(([value, label]) => (
+              {(Object.keys(t.idType) as Array<keyof typeof t.idType>).map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t.idType[value]}
                 </option>
               ))}
             </select>
           </div>
-          <Field label="رقم الهوية" name="idNumber" />
-          <Field label="الرقم الضريبي (اختياري - لعملاء الشركات)" name="vatNumber" />
-          <Field label="رقم الجوال" name="phone" />
-          <Field label="البريد الإلكتروني" name="email" type="email" />
+          <Field label={t.renters.fieldIdNumber} name="idNumber" />
+          <Field label={t.renters.fieldVatNumber} name="vatNumber" />
+          <Field label={t.renters.fieldPhone} name="phone" />
+          <Field label={t.renters.fieldEmail} name="email" type="email" />
           <div className="md:col-span-2">
-            <Field label="العنوان" name="address" />
+            <Field label={t.renters.fieldAddress} name="address" />
           </div>
           <div className="md:col-span-3">
             <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
-              حفظ المستأجر
+              {t.renters.save}
             </button>
           </div>
         </form>
@@ -57,30 +49,30 @@ export default async function RentersPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>
-              <th className="px-5 py-3 font-medium">الاسم</th>
-              <th className="px-5 py-3 font-medium">نوع الهوية</th>
-              <th className="px-5 py-3 font-medium">رقم الهوية</th>
-              <th className="px-5 py-3 font-medium">الرقم الضريبي</th>
-              <th className="px-5 py-3 font-medium">التواصل</th>
+              <th className="px-5 py-3 font-medium">{t.renters.colName}</th>
+              <th className="px-5 py-3 font-medium">{t.renters.colIdType}</th>
+              <th className="px-5 py-3 font-medium">{t.renters.colIdNumber}</th>
+              <th className="px-5 py-3 font-medium">{t.renters.colVatNumber}</th>
+              <th className="px-5 py-3 font-medium">{t.renters.colContact}</th>
               <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {renters.map((r) => (
               <tr key={r.id}>
-                <td className="px-5 py-3 font-medium text-slate-800">{r.fullNameAr || r.fullName}</td>
-                <td className="px-5 py-3">{idTypeLabel[r.idType]}</td>
-                <td className="px-5 py-3 text-slate-500">{r.idNumber ?? "—"}</td>
+                <td className="px-5 py-3 font-medium text-slate-800">{pickLocalized(locale, r.fullNameAr, r.fullName)}</td>
+                <td className="px-5 py-3">{t.idType[r.idType]}</td>
+                <td className="px-5 py-3 text-slate-500">{r.idNumber ?? t.common.none}</td>
                 <td className="px-5 py-3">
                   {r.vatNumber ? (
                     <span className="px-2 py-1 rounded-full bg-brand-gold-tint text-brand-gold-dark text-xs font-medium">
                       {r.vatNumber}
                     </span>
                   ) : (
-                    <span className="text-slate-400 text-xs">فرد (فاتورة مبسّطة)</span>
+                    <span className="text-slate-400 text-xs">{t.renters.individualBadge}</span>
                   )}
                 </td>
-                <td className="px-5 py-3 text-slate-500">{r.phone || r.email || "—"}</td>
+                <td className="px-5 py-3 text-slate-500">{r.phone || r.email || t.common.none}</td>
                 <td className="px-5 py-3 text-left">
                   <form
                     action={async () => {
@@ -88,7 +80,7 @@ export default async function RentersPage() {
                       await deleteRenter(r.id);
                     }}
                   >
-                    <button className="text-red-500 hover:underline text-xs">حذف</button>
+                    <button className="text-red-500 hover:underline text-xs">{t.renters.delete}</button>
                   </form>
                 </td>
               </tr>
@@ -96,7 +88,7 @@ export default async function RentersPage() {
             {renters.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
-                  لا يوجد مستأجرون بعد
+                  {t.renters.empty}
                 </td>
               </tr>
             )}

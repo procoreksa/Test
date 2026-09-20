@@ -1,72 +1,64 @@
 import { listUnits, createUnit, deleteUnit } from "@/lib/actions/units";
 import { listProperties } from "@/lib/actions/properties";
+import { getLocale, getDictionary, currencyFormatter, pickLocalized } from "@/lib/i18n";
 
-const unitTypeLabel: Record<string, string> = {
-  APARTMENT: "شقة",
-  VILLA: "فيلا",
-  OFFICE: "مكتب",
-  SHOP: "محل",
-  WAREHOUSE: "مستودع",
-  OTHER: "أخرى",
+const statusTone: Record<string, string> = {
+  VACANT: "bg-slate-100 text-slate-600",
+  OCCUPIED: "bg-emerald-100 text-emerald-700",
+  MAINTENANCE: "bg-amber-100 text-amber-700",
 };
-
-const statusLabel: Record<string, { label: string; className: string }> = {
-  VACANT: { label: "شاغرة", className: "bg-slate-100 text-slate-600" },
-  OCCUPIED: { label: "مؤجرة", className: "bg-emerald-100 text-emerald-700" },
-  MAINTENANCE: { label: "صيانة", className: "bg-amber-100 text-amber-700" },
-};
-
-const sar = new Intl.NumberFormat("ar-SA", { style: "currency", currency: "SAR" });
 
 export default async function UnitsPage() {
-  const [units, properties] = await Promise.all([listUnits(), listProperties()]);
+  const [units, properties, locale] = await Promise.all([listUnits(), listProperties(), getLocale()]);
+  const t = getDictionary(locale);
+  const sar = currencyFormatter(locale);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">الوحدات</h1>
-        <p className="text-slate-500 text-sm mt-1">إدارة الوحدات العقارية وحالتها الإيجارية</p>
+        <h1 className="text-2xl font-bold text-slate-900">{t.units.title}</h1>
+        <p className="text-slate-500 text-sm mt-1">{t.units.subtitle}</p>
       </div>
 
       <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
         <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
-          إضافة وحدة جديدة
+          {t.units.addNew}
           <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
         </summary>
         <form action={createUnit} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">العقار</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t.units.fieldProperty}</label>
             <select name="propertyId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
               {properties.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nameAr || p.name}
+                  {pickLocalized(locale, p.nameAr, p.name)}
                 </option>
               ))}
             </select>
           </div>
-          <Field label="رقم الوحدة" name="unitNumber" required />
-          <Field label="الطابق" name="floor" />
+          <Field label={t.units.fieldUnitNumber} name="unitNumber" required />
+          <Field label={t.units.fieldFloor} name="floor" />
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">نوع الوحدة</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t.units.fieldUnitType}</label>
             <select name="unitType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-              {Object.entries(unitTypeLabel).map(([value, label]) => (
+              {(Object.keys(t.unitType) as Array<keyof typeof t.unitType>).map((value) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t.unitType[value]}
                 </option>
               ))}
             </select>
           </div>
-          <Field label="المساحة (م²)" name="areaSqm" type="number" step="0.01" />
-          <Field label="عدد الغرف" name="bedrooms" type="number" />
-          <Field label="عدد الحمامات" name="bathrooms" type="number" />
-          <Field label="قيمة الإيجار الأساسية (ريال)" name="baseRentAmount" type="number" step="0.01" required />
+          <Field label={t.units.fieldArea} name="areaSqm" type="number" step="0.01" />
+          <Field label={t.units.fieldBedrooms} name="bedrooms" type="number" />
+          <Field label={t.units.fieldBathrooms} name="bathrooms" type="number" />
+          <Field label={t.units.fieldBaseRent} name="baseRentAmount" type="number" step="0.01" required />
           <label className="flex items-center gap-2 mt-6 text-sm text-slate-600">
             <input type="checkbox" name="vatApplicable" className="rounded border-slate-300" />
-            خاضعة لضريبة القيمة المضافة (تجاري)
+            {t.units.fieldVatApplicable}
           </label>
           <div className="md:col-span-3">
             <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
-              حفظ الوحدة
+              {t.units.save}
             </button>
           </div>
         </form>
@@ -76,12 +68,12 @@ export default async function UnitsPage() {
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>
-              <th className="px-5 py-3 font-medium">الوحدة</th>
-              <th className="px-5 py-3 font-medium">العقار</th>
-              <th className="px-5 py-3 font-medium">النوع</th>
-              <th className="px-5 py-3 font-medium">الإيجار الأساسي</th>
-              <th className="px-5 py-3 font-medium">الحالة</th>
-              <th className="px-5 py-3 font-medium">المستأجر الحالي</th>
+              <th className="px-5 py-3 font-medium">{t.units.colUnit}</th>
+              <th className="px-5 py-3 font-medium">{t.units.colProperty}</th>
+              <th className="px-5 py-3 font-medium">{t.units.colType}</th>
+              <th className="px-5 py-3 font-medium">{t.units.colBaseRent}</th>
+              <th className="px-5 py-3 font-medium">{t.units.colStatus}</th>
+              <th className="px-5 py-3 font-medium">{t.units.colCurrentRenter}</th>
               <th className="px-5 py-3 font-medium"></th>
             </tr>
           </thead>
@@ -89,15 +81,17 @@ export default async function UnitsPage() {
             {units.map((u) => (
               <tr key={u.id}>
                 <td className="px-5 py-3 font-medium text-slate-800">{u.unitNumber}</td>
-                <td className="px-5 py-3 text-slate-500">{u.property.nameAr || u.property.name}</td>
-                <td className="px-5 py-3">{unitTypeLabel[u.unitType]}</td>
+                <td className="px-5 py-3 text-slate-500">{pickLocalized(locale, u.property.nameAr, u.property.name)}</td>
+                <td className="px-5 py-3">{t.unitType[u.unitType]}</td>
                 <td className="px-5 py-3">{sar.format(Number(u.baseRentAmount))}</td>
                 <td className="px-5 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusLabel[u.status].className}`}>
-                    {statusLabel[u.status].label}
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[u.status]}`}>
+                    {t.unitStatus[u.status]}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-slate-500">{u.contracts[0]?.renter.fullName ?? "—"}</td>
+                <td className="px-5 py-3 text-slate-500">
+                  {u.contracts[0] ? pickLocalized(locale, u.contracts[0].renter.fullNameAr, u.contracts[0].renter.fullName) : t.common.none}
+                </td>
                 <td className="px-5 py-3 text-left">
                   <form
                     action={async () => {
@@ -105,7 +99,7 @@ export default async function UnitsPage() {
                       await deleteUnit(u.id);
                     }}
                   >
-                    <button className="text-red-500 hover:underline text-xs">حذف</button>
+                    <button className="text-red-500 hover:underline text-xs">{t.units.delete}</button>
                   </form>
                 </td>
               </tr>
@@ -113,7 +107,7 @@ export default async function UnitsPage() {
             {units.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                  لا يوجد وحدات بعد
+                  {t.units.empty}
                 </td>
               </tr>
             )}

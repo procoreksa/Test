@@ -17,6 +17,8 @@
  * has a real integration seam to plug into later.
  */
 
+import { getLocale, getDictionary } from "@/lib/i18n";
+
 export interface ZatcaSubmissionResult {
   status: "PENDING" | "CLEARED" | "REPORTED" | "REJECTED";
   message: string;
@@ -24,20 +26,14 @@ export interface ZatcaSubmissionResult {
 }
 
 export async function submitToZatca(_signedXml: string): Promise<ZatcaSubmissionResult> {
+  const t = getDictionary(await getLocale());
   const configured = Boolean(process.env.ZATCA_API_BASE_URL && process.env.ZATCA_ONBOARDING_OTP);
 
   if (!configured) {
-    return {
-      status: "PENDING",
-      message:
-        "ZATCA غير مُفعَّل بعد لهذه المنشأة. استكمل إجراءات الربط (Onboarding) من إعدادات المنظمة قبل الإرسال الفعلي.",
-    };
+    return { status: "PENDING", message: t.zatca.notConfigured };
   }
 
   // Real call would POST the signed XML/JSON to ZATCA's clearance or
   // reporting endpoint here, using the org's CSID for mutual TLS.
-  return {
-    status: "PENDING",
-    message: "تم تجهيز الفاتورة للإرسال، لكن الربط الفعلي مع بوابة فاتورة لم يُستكمل بعد.",
-  };
+  return { status: "PENDING", message: t.zatca.pendingIntegration };
 }

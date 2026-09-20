@@ -39,7 +39,7 @@ export async function seedDemoData() {
     update: {},
     create: {
       organizationId: org.id,
-      name: "مدير النظام",
+      name: "Yousef Al-Harbi",
       email: "admin@demo-realestate.sa",
       passwordHash,
       role: "OWNER",
