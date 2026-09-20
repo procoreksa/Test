@@ -38,6 +38,7 @@ export interface Dictionary {
     collections: string;
     invoices: string;
     payments: string;
+    reports: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -211,6 +212,12 @@ export interface Dictionary {
     fieldEndDate: string;
     fieldRentAmount: string;
     fieldSecurityDeposit: string;
+    fieldCommission: string;
+    fieldCleaning: string;
+    fieldExtraChargesMode: string;
+    extraChargesModeOneTime: string;
+    extraChargesModeSplit: string;
+    extraChargesHint: string;
     fieldVatApplicable: string;
     fieldNotes: string;
     save: string;
@@ -220,6 +227,7 @@ export interface Dictionary {
     colTerm: string;
     colInstallment: string;
     colStatus: string;
+    extraFeesBadge: string;
     terminate: string;
     empty: string;
     unitOptionLabel: (property: string, unitNumber: string) => string;
@@ -324,6 +332,102 @@ export interface Dictionary {
   zatca: {
     notConfigured: string;
     pendingIntegration: string;
+  };
+  reports: {
+    title: string;
+    subtitle: string;
+    backToReports: string;
+    filterFrom: string;
+    filterTo: string;
+    filterApply: string;
+    filterRenter: string;
+    filterUnit: string;
+    selectPlaceholder: string;
+    grandTotal: string;
+    cards: {
+      renterStatement: { title: string; description: string };
+      unitStatement: { title: string; description: string };
+      overdue: { title: string; description: string };
+      activeContracts: { title: string; description: string };
+      expiringContracts: { title: string; description: string };
+      collections: { title: string; description: string };
+      vat: { title: string; description: string };
+    };
+    renterStatement: {
+      title: string;
+      colDate: string;
+      colType: string;
+      colReference: string;
+      colDebit: string;
+      colCredit: string;
+      colBalance: string;
+      invoiceEntry: string;
+      paymentEntry: string;
+      balanceDue: string;
+      noSelection: string;
+      empty: string;
+    };
+    unitStatement: {
+      title: string;
+      colDate: string;
+      colType: string;
+      colReference: string;
+      colContract: string;
+      colDebit: string;
+      colCredit: string;
+      colBalance: string;
+      noSelection: string;
+      empty: string;
+    };
+    overdue: {
+      title: string;
+      colRenter: string;
+      colUnit: string;
+      colDueDate: string;
+      colDaysOverdue: string;
+      colAmount: string;
+      totalLabel: string;
+      empty: string;
+    };
+    activeContracts: {
+      title: string;
+      colContractNumber: string;
+      colRenter: string;
+      colUnit: string;
+      colStart: string;
+      colEnd: string;
+      colRentAmount: string;
+      colFrequency: string;
+      empty: string;
+    };
+    expiringContracts: {
+      title: string;
+      colContractNumber: string;
+      colRenter: string;
+      colUnit: string;
+      colEndDate: string;
+      colDaysLeft: string;
+      empty: string;
+    };
+    collectionsReport: {
+      title: string;
+      colDate: string;
+      colReceiptNumber: string;
+      colRenter: string;
+      colMethod: string;
+      colAmount: string;
+      totalLabel: string;
+      empty: string;
+    };
+    vatReport: {
+      title: string;
+      colPeriod: string;
+      colInvoiceCount: string;
+      colSubtotal: string;
+      colVat: string;
+      colTotal: string;
+      empty: string;
+    };
   };
 }
 

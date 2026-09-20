@@ -69,10 +69,20 @@ export default async function ContractsPage() {
           <Field label={t.contracts.fieldEndDate} name="endDate" type="date" required />
           <Field label={t.contracts.fieldRentAmount} name="rentAmount" type="number" step="0.01" required />
           <Field label={t.contracts.fieldSecurityDeposit} name="securityDeposit" type="number" step="0.01" />
+          <Field label={t.contracts.fieldCommission} name="commissionAmount" type="number" step="0.01" />
+          <Field label={t.contracts.fieldCleaning} name="cleaningAmount" type="number" step="0.01" />
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldExtraChargesMode}</label>
+            <select name="extraChargesMode" className="w-full rounded-lg border border-slate-300 px-3 py-2">
+              <option value="ONE_TIME">{t.contracts.extraChargesModeOneTime}</option>
+              <option value="SPLIT">{t.contracts.extraChargesModeSplit}</option>
+            </select>
+          </div>
           <label className="flex items-center gap-2 mt-6 text-sm text-slate-600">
             <input type="checkbox" name="vatApplicable" className="rounded border-slate-300" />
             {t.contracts.fieldVatApplicable}
           </label>
+          <p className="md:col-span-3 text-xs text-slate-400 -mt-2">{t.contracts.extraChargesHint}</p>
           <div className="md:col-span-3">
             <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldNotes}</label>
             <textarea name="notes" rows={2} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
@@ -112,6 +122,9 @@ export default async function ContractsPage() {
                 <td className="px-5 py-3">
                   {sar.format(Number(c.rentAmount))}{" "}
                   <span className="text-slate-400 text-xs">/ {t.paymentFrequency[c.paymentFrequency]}</span>
+                  {(Number(c.commissionAmount ?? 0) > 0 || Number(c.cleaningAmount ?? 0) > 0) && (
+                    <span className="block text-brand-gold-dark text-[11px] font-medium">{t.contracts.extraFeesBadge}</span>
+                  )}
                 </td>
                 <td className="px-5 py-3">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[c.status]}`}>

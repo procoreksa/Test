@@ -227,6 +227,14 @@ enum ContractStatus {
   TERMINATED
 }
 
+// How the one-off commission/cleaning fees attach to the payment schedule:
+// spread evenly across every rent installment, or billed once as its own
+// installment due on the contract start date.
+enum ExtraChargesMode {
+  ONE_TIME
+  SPLIT
+}
+
 model Contract {
   id               String           @id @default(cuid())
   organizationId   String
@@ -241,6 +249,13 @@ model Contract {
   rentAmount       Decimal          @db.Decimal(12, 2)
   paymentFrequency PaymentFrequency @default(ANNUAL)
   securityDeposit  Decimal?         @db.Decimal(12, 2)
+  // Rental agency commission and home-cleaning package: both are optional
+  // flat fees on top of rent. Unlike rent (which follows vatApplicable/
+  // vatRate and can be VAT-exempt for residential leases), these are
+  // distinct services and are always taxed at the standard VAT rate.
+  commissionAmount Decimal?         @db.Decimal(12, 2)
+  cleaningAmount   Decimal?         @db.Decimal(12, 2)
+  extraChargesMode ExtraChargesMode @default(ONE_TIME)
   vatApplicable    Boolean          @default(false)
   vatRate          Decimal          @default(15) @db.Decimal(5, 2)
   status           ContractStatus   @default(DRAFT)
@@ -266,20 +281,23 @@ enum ScheduleStatus {
 }
 
 model PaymentSchedule {
-  id             String         @id @default(cuid())
-  organizationId String
-  contractId     String
-  contract       Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  installmentNo  Int
-  periodStart    DateTime
-  periodEnd      DateTime
-  dueDate        DateTime
-  amount         Decimal        @db.Decimal(12, 2)
-  status         ScheduleStatus @default(PENDING)
-  invoiceId      String?
-  invoice        Invoice?       @relation(fields: [invoiceId], references: [id])
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id               String         @id @default(cuid())
+  organizationId   String
+  contractId       String
+  contract         Contract       @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  installmentNo    Int
+  periodStart      DateTime
+  periodEnd        DateTime
+  dueDate          DateTime
+  rentAmount       Decimal        @default(0) @db.Decimal(12, 2)
+  commissionAmount Decimal        @default(0) @db.Decimal(12, 2)
+  cleaningAmount   Decimal        @default(0) @db.Decimal(12, 2)
+  amount           Decimal        @db.Decimal(12, 2)
+  status           ScheduleStatus @default(PENDING)
+  invoiceId        String?
+  invoice          Invoice?       @relation(fields: [invoiceId], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 
   @@index([organizationId])
   @@index([contractId])

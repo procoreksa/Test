@@ -166,6 +166,9 @@ export async function seedDemoData() {
         periodStart: i.periodStart,
         periodEnd: i.periodEnd,
         dueDate: i.dueDate,
+        rentAmount: i.rentAmount,
+        commissionAmount: i.commissionAmount,
+        cleaningAmount: i.cleaningAmount,
         amount: i.amount,
       })),
     });

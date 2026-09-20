@@ -6,6 +6,9 @@ import { requireOrgId } from "@/lib/session";
 import { issueInvoice } from "@/lib/invoicing";
 import { format } from "date-fns";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import type { LineInput } from "@/lib/zatca/vat";
+
+const EXTRA_CHARGE_VAT_RATE = 15; // Commission/cleaning are always-taxable services, independent of the rent's VAT treatment.
 
 export async function issueInvoiceForSchedule(scheduleId: string) {
   const organizationId = await requireOrgId();
@@ -21,7 +24,44 @@ export async function issueInvoiceForSchedule(scheduleId: string) {
   }
 
   const { contract } = schedule;
-  const periodLabel = `${format(schedule.periodStart, "yyyy-MM-dd")} إلى ${format(schedule.periodEnd, "yyyy-MM-dd")}`;
+  const propertyName = contract.unit.property.name;
+  const propertyNameAr = contract.unit.property.nameAr ?? contract.unit.property.name;
+  const unitNumber = contract.unit.unitNumber;
+  const periodLabel = `${format(schedule.periodStart, "yyyy-MM-dd")} – ${format(schedule.periodEnd, "yyyy-MM-dd")}`;
+
+  const lines: Array<LineInput & { description: string; descriptionAr: string; periodStart?: Date; periodEnd?: Date }> = [];
+
+  if (Number(schedule.rentAmount) > 0) {
+    lines.push({
+      description: `Rent - ${propertyName} / Unit ${unitNumber} (${periodLabel})`,
+      descriptionAr: `إيجار - ${propertyNameAr} / وحدة ${unitNumber} (${periodLabel})`,
+      periodStart: schedule.periodStart,
+      periodEnd: schedule.periodEnd,
+      quantity: 1,
+      unitPrice: Number(schedule.rentAmount),
+      vatRate: contract.vatApplicable ? Number(contract.vatRate) : 0,
+    });
+  }
+
+  if (Number(schedule.commissionAmount) > 0) {
+    lines.push({
+      description: `Rental Commission - ${propertyName} / Unit ${unitNumber}`,
+      descriptionAr: `عمولة إيجار - ${propertyNameAr} / وحدة ${unitNumber}`,
+      quantity: 1,
+      unitPrice: Number(schedule.commissionAmount),
+      vatRate: EXTRA_CHARGE_VAT_RATE,
+    });
+  }
+
+  if (Number(schedule.cleaningAmount) > 0) {
+    lines.push({
+      description: `Home Cleaning Package - ${propertyName} / Unit ${unitNumber}`,
+      descriptionAr: `باقة تنظيف منزلي - ${propertyNameAr} / وحدة ${unitNumber}`,
+      quantity: 1,
+      unitPrice: Number(schedule.cleaningAmount),
+      vatRate: EXTRA_CHARGE_VAT_RATE,
+    });
+  }
 
   const invoice = await issueInvoice({
     organizationId,
@@ -29,17 +69,7 @@ export async function issueInvoiceForSchedule(scheduleId: string) {
     contractId: contract.id,
     paymentScheduleIds: [schedule.id],
     dueDate: schedule.dueDate,
-    lines: [
-      {
-        description: `Rent - ${contract.unit.property.name} / Unit ${contract.unit.unitNumber} (${periodLabel})`,
-        descriptionAr: `إيجار - ${contract.unit.property.nameAr ?? contract.unit.property.name} / وحدة ${contract.unit.unitNumber} (${periodLabel})`,
-        periodStart: schedule.periodStart,
-        periodEnd: schedule.periodEnd,
-        quantity: 1,
-        unitPrice: Number(schedule.amount),
-        vatRate: contract.vatApplicable ? Number(contract.vatRate) : 0,
-      },
-    ],
+    lines,
   });
 
   revalidatePath("/invoices");
