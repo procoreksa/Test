@@ -148,7 +148,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
         <div
           dir="ltr"
-          className="mt-8 pt-4 border-t border-dashed border-slate-200 text-[10px] text-slate-400 space-y-0.5 font-mono text-left"
+          className="no-print mt-8 pt-4 border-t border-dashed border-slate-200 text-[10px] text-slate-400 space-y-0.5 font-mono text-left"
         >
           <p>UUID: {invoice.uuid}</p>
           <p>ICV: {invoice.icv}</p>
