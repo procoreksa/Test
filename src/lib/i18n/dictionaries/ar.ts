@@ -215,6 +215,8 @@ export const ar: Dictionary = {
     addNew: "عقد إيجار جديد",
     fieldUnit: "الوحدة",
     fieldRenter: "المستأجر",
+    addNewUnitToggle: "+ إضافة وحدة جديدة بدلاً من اختيار وحدة موجودة",
+    addNewRenterToggle: "+ إضافة مستأجر جديد بدلاً من اختيار مستأجر موجود",
     fieldFrequency: "دورية السداد",
     fieldStartDate: "تاريخ بداية العقد",
     fieldEndDate: "تاريخ نهاية العقد",

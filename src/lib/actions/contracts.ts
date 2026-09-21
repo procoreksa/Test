@@ -38,25 +38,84 @@ function readContractFields(formData: FormData) {
   };
 }
 
+function inlineUnitSchema(t: ReturnType<typeof getDictionary>) {
+  return z.object({
+    propertyId: z.string().min(1),
+    unitNumber: z.string().min(1, t.validation.unitNumberRequired),
+    unitType: z.enum(["APARTMENT", "VILLA", "OFFICE", "SHOP", "WAREHOUSE", "OTHER"]),
+    baseRentAmount: z.coerce.number().positive(t.validation.rentAmountPositive),
+    vatApplicable: z.coerce.boolean().optional(),
+  });
+}
+
+function inlineRenterSchema(t: ReturnType<typeof getDictionary>) {
+  return z.object({
+    fullName: z.string().min(1, t.validation.nameRequired),
+    fullNameAr: z.string().optional(),
+    idType: z.enum(["NATIONAL_ID", "IQAMA", "COMMERCIAL_REGISTRATION", "PASSPORT", "GCC_ID"]),
+    idNumber: z.string().optional(),
+    phone: z.string().optional(),
+  });
+}
+
 export async function createContract(formData: FormData) {
   const organizationId = await requireOrgId();
   const t = getDictionary(await getLocale());
-  const parsed = contractFieldsSchema(t)
-    .extend({ unitId: z.string().min(1), renterId: z.string().min(1) })
-    .parse({ ...readContractFields(formData), unitId: formData.get("unitId"), renterId: formData.get("renterId") });
+  const contractFields = contractFieldsSchema(t).parse(readContractFields(formData));
 
-  if (parsed.endDate <= parsed.startDate) {
+  if (contractFields.endDate <= contractFields.startDate) {
     throw new Error(t.validation.contractEndAfterStart);
   }
 
   await prisma.$transaction(async (tx) => {
-    const unit = await tx.unit.findUniqueOrThrow({ where: { id: parsed.unitId, organizationId } });
-    const vatApplicable = parsed.vatApplicable ?? unit.vatApplicable;
-    await createContractWithSchedule(tx, organizationId, { ...parsed, vatApplicable });
+    let unitId: string;
+    if (formData.get("createNewUnit") === "true") {
+      const newUnit = inlineUnitSchema(t).parse({
+        propertyId: formData.get("newUnitPropertyId"),
+        unitNumber: formData.get("newUnitNumber"),
+        unitType: formData.get("newUnitType"),
+        baseRentAmount: formData.get("newUnitBaseRentAmount"),
+        vatApplicable: formData.get("newUnitVatApplicable") === "on",
+      });
+      const property = await tx.property.findUniqueOrThrow({ where: { id: newUnit.propertyId, organizationId } });
+      const created = await tx.unit.create({
+        data: {
+          organizationId,
+          propertyId: newUnit.propertyId,
+          unitNumber: newUnit.unitNumber,
+          unitType: newUnit.unitType,
+          baseRentAmount: newUnit.baseRentAmount,
+          vatApplicable: newUnit.vatApplicable ?? property.propertyType === "COMMERCIAL",
+        },
+      });
+      unitId = created.id;
+    } else {
+      unitId = z.string().min(1).parse(formData.get("unitId"));
+    }
+
+    let renterId: string;
+    if (formData.get("createNewRenter") === "true") {
+      const newRenter = inlineRenterSchema(t).parse({
+        fullName: formData.get("newRenterFullName"),
+        fullNameAr: formData.get("newRenterFullNameAr") || undefined,
+        idType: formData.get("newRenterIdType"),
+        idNumber: formData.get("newRenterIdNumber") || undefined,
+        phone: formData.get("newRenterPhone") || undefined,
+      });
+      const created = await tx.renter.create({ data: { ...newRenter, organizationId } });
+      renterId = created.id;
+    } else {
+      renterId = z.string().min(1).parse(formData.get("renterId"));
+    }
+
+    const unit = await tx.unit.findUniqueOrThrow({ where: { id: unitId, organizationId } });
+    const vatApplicable = contractFields.vatApplicable ?? unit.vatApplicable;
+    await createContractWithSchedule(tx, organizationId, { ...contractFields, unitId, renterId, vatApplicable });
   });
 
   revalidatePath("/contracts");
   revalidatePath("/units");
+  revalidatePath("/renters");
   revalidatePath("/dashboard");
 }
 

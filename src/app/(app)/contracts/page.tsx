@@ -2,7 +2,9 @@ import Link from "next/link";
 import { listContracts, createContract, terminateContract } from "@/lib/actions/contracts";
 import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
+import { listProperties } from "@/lib/actions/properties";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
+import { ToggleNewEntity } from "@/components/toggle-new-entity";
 
 const statusTone: Record<string, string> = {
   DRAFT: "bg-slate-100 text-slate-600",
@@ -13,10 +15,11 @@ const statusTone: Record<string, string> = {
 };
 
 export default async function ContractsPage() {
-  const [contracts, units, renters, locale] = await Promise.all([
+  const [contracts, units, renters, properties, locale] = await Promise.all([
     listContracts(),
     listUnits(),
     listRenters(),
+    listProperties(),
     getLocale(),
   ]);
   const t = getDictionary(locale);
@@ -37,26 +40,86 @@ export default async function ContractsPage() {
           <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
         </summary>
         <form action={createContract} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldUnit}</label>
-            <select name="unitId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
-              {availableUnits.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {t.contracts.unitOptionLabel(pickLocalized(locale, u.property.nameAr, u.property.name), u.unitNumber)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldRenter}</label>
-            <select name="renterId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
-              {renters.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {pickLocalized(locale, r.fullNameAr, r.fullName)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ToggleNewEntity
+            flagName="createNewUnit"
+            toggleLabel={t.contracts.addNewUnitToggle}
+            existing={
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldUnit}</label>
+                <select name="unitId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                  {availableUnits.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {t.contracts.unitOptionLabel(pickLocalized(locale, u.property.nameAr, u.property.name), u.unitNumber)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            }
+            newFields={
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t.units.fieldProperty}</label>
+                  <select name="newUnitPropertyId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    {properties.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {pickLocalized(locale, p.nameAr, p.name)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Field label={t.units.fieldUnitNumber} name="newUnitNumber" required />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t.units.fieldUnitType}</label>
+                  <select name="newUnitType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    {(Object.keys(t.unitType) as Array<keyof typeof t.unitType>).map((value) => (
+                      <option key={value} value={value}>
+                        {t.unitType[value]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Field label={t.units.fieldBaseRent} name="newUnitBaseRentAmount" type="number" step="0.01" required />
+                <label className="flex items-center gap-2 mt-6 text-sm text-slate-600">
+                  <input type="checkbox" name="newUnitVatApplicable" className="rounded border-slate-300" />
+                  {t.units.fieldVatApplicable}
+                </label>
+              </>
+            }
+          />
+          <ToggleNewEntity
+            flagName="createNewRenter"
+            toggleLabel={t.contracts.addNewRenterToggle}
+            existing={
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldRenter}</label>
+                <select name="renterId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                  {renters.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {pickLocalized(locale, r.fullNameAr, r.fullName)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            }
+            newFields={
+              <>
+                <Field label={t.renters.fieldFullName} name="newRenterFullName" required />
+                <Field label={t.renters.fieldFullNameAr} name="newRenterFullNameAr" />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t.renters.fieldIdType}</label>
+                  <select name="newRenterIdType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                    {(Object.keys(t.idType) as Array<keyof typeof t.idType>).map((value) => (
+                      <option key={value} value={value}>
+                        {t.idType[value]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <Field label={t.renters.fieldIdNumber} name="newRenterIdNumber" />
+                <Field label={t.renters.fieldPhone} name="newRenterPhone" />
+              </>
+            }
+          />
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">{t.contracts.fieldFrequency}</label>
             <select name="paymentFrequency" className="w-full rounded-lg border border-slate-300 px-3 py-2">

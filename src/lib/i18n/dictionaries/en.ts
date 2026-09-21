@@ -215,6 +215,8 @@ export const en: Dictionary = {
     addNew: "New Lease Contract",
     fieldUnit: "Unit",
     fieldRenter: "Renter",
+    addNewUnitToggle: "+ Add a new unit instead of picking an existing one",
+    addNewRenterToggle: "+ Add a new renter instead of picking an existing one",
     fieldFrequency: "Payment Frequency",
     fieldStartDate: "Contract Start Date",
     fieldEndDate: "Contract End Date",

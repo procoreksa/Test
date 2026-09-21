@@ -220,6 +220,8 @@ export interface Dictionary {
     addNew: string;
     fieldUnit: string;
     fieldRenter: string;
+    addNewUnitToggle: string;
+    addNewRenterToggle: string;
     fieldFrequency: string;
     fieldStartDate: string;
     fieldEndDate: string;
