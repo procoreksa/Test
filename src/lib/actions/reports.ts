@@ -3,12 +3,13 @@
 import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
-import { getScheduleRemaining } from "@/lib/schedule-status";
 import { differenceInCalendarDays, format } from "date-fns";
+import type { InvoiceLineKind } from "@prisma/client";
 
 export interface LedgerEntry {
   date: Date;
-  type: "INVOICE" | "PAYMENT" | "DUE";
+  type: "INVOICE" | "PAYMENT";
+  kind?: InvoiceLineKind;
   reference: string;
   contractNumber?: string;
   debit: number;
@@ -16,56 +17,34 @@ export interface LedgerEntry {
   balance: number;
 }
 
-/** Not-yet-invoiced amount of a schedule installment, shown as a future/current due entry dated by its due date. */
-async function buildDueEntries(
-  schedules: Array<{ id: string; dueDate: Date; installmentNo: number; status: string; contractNumber?: string }>
-) {
-  const entries: Omit<LedgerEntry, "balance">[] = [];
-  for (const s of schedules) {
-    if (s.status === "CANCELLED" || s.status === "PAID") continue;
-    const remaining = await getScheduleRemaining(prisma, s.id);
-    const remainingTotal = remaining.rent + remaining.commission + remaining.cleaning + remaining.securityDeposit;
-    if (remainingTotal > 0.01) {
-      entries.push({
-        date: s.dueDate,
-        type: "DUE",
-        reference: `#${s.installmentNo}`,
-        contractNumber: s.contractNumber,
-        debit: remainingTotal,
-        credit: 0,
-      });
-    }
-  }
-  return entries;
-}
-
-function buildLedger(
-  invoices: Array<{ issueDate: Date; invoiceNumber: string; totalAmount: unknown; contractNumber?: string }>,
-  payments: Array<{ paymentDate: Date; receiptNumber: string; amount: unknown; contractNumber?: string }>,
-  dueEntries: Omit<LedgerEntry, "balance">[] = []
-): LedgerEntry[] {
-  const entries: Omit<LedgerEntry, "balance">[] = [
-    ...invoices.map((inv) => ({
-      date: inv.issueDate,
+/** One row per invoice line (dated by the invoice's due date) so each amount is broken down by what it's for. */
+function buildInvoiceLineEntries(
+  invoices: Array<{
+    dueDate: Date | null;
+    issueDate: Date;
+    invoiceNumber: string;
+    contractNumber?: string;
+    lines: Array<{ kind: InvoiceLineKind; lineTotal: unknown }>;
+  }>
+): Omit<LedgerEntry, "balance">[] {
+  return invoices.flatMap((inv) =>
+    inv.lines.map((line) => ({
+      date: inv.dueDate ?? inv.issueDate,
       type: "INVOICE" as const,
+      kind: line.kind,
       reference: inv.invoiceNumber,
       contractNumber: inv.contractNumber,
-      debit: Number(inv.totalAmount),
+      debit: Number(line.lineTotal),
       credit: 0,
-    })),
-    ...payments.map((p) => ({
-      date: p.paymentDate,
-      type: "PAYMENT" as const,
-      reference: p.receiptNumber,
-      contractNumber: p.contractNumber,
-      debit: 0,
-      credit: Number(p.amount),
-    })),
-    ...dueEntries,
-  ].sort((a, b) => a.date.getTime() - b.date.getTime());
+    }))
+  );
+}
+
+function buildLedger(entries: Omit<LedgerEntry, "balance">[]): LedgerEntry[] {
+  const sorted = [...entries].sort((a, b) => a.date.getTime() - b.date.getTime());
 
   let balance = 0;
-  return entries.map((e) => {
+  return sorted.map((e) => {
     balance += e.debit - e.credit;
     return { ...e, balance };
   });
@@ -93,10 +72,10 @@ export async function getRenterStatement(renterId: string) {
   const organizationId = await requireOrgId();
   const renter = await prisma.renter.findUniqueOrThrow({ where: { id: renterId, organizationId } });
 
-  const [invoices, payments, schedules] = await Promise.all([
+  const [invoices, payments] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId, renterId, status: { not: "CANCELLED" } },
-      include: { contract: true },
+      include: { contract: true, lines: true },
       orderBy: { issueDate: "asc" },
     }),
     prisma.payment.findMany({
@@ -104,22 +83,19 @@ export async function getRenterStatement(renterId: string) {
       include: { invoice: { include: { contract: true } } },
       orderBy: { paymentDate: "asc" },
     }),
-    prisma.paymentSchedule.findMany({
-      where: { organizationId, contract: { renterId } },
-      include: { contract: { select: { contractNumber: true } } },
-      orderBy: { dueDate: "asc" },
-    }),
   ]);
 
-  const dueEntries = await buildDueEntries(
-    schedules.map((s) => ({ ...s, contractNumber: s.contract.contractNumber }))
-  );
-
-  const ledger = buildLedger(
-    invoices.map((inv) => ({ ...inv, contractNumber: inv.contract?.contractNumber })),
-    payments.map((p) => ({ ...p, contractNumber: p.invoice.contract?.contractNumber })),
-    dueEntries
-  );
+  const ledger = buildLedger([
+    ...buildInvoiceLineEntries(invoices.map((inv) => ({ ...inv, contractNumber: inv.contract?.contractNumber }))),
+    ...payments.map((p) => ({
+      date: p.paymentDate,
+      type: "PAYMENT" as const,
+      reference: p.receiptNumber,
+      contractNumber: p.invoice.contract?.contractNumber,
+      debit: 0,
+      credit: Number(p.amount),
+    })),
+  ]);
 
   return { renter, ledger };
 }
@@ -135,9 +111,10 @@ export async function getUnitStatement(unitId: string) {
   const contractIds = contracts.map((c) => c.id);
   const contractNumberById = new Map(contracts.map((c) => [c.id, c.contractNumber]));
 
-  const [invoices, payments, schedules] = await Promise.all([
+  const [invoices, payments] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId, contractId: { in: contractIds }, status: { not: "CANCELLED" } },
+      include: { lines: true },
       orderBy: { issueDate: "asc" },
     }),
     prisma.payment.findMany({
@@ -145,24 +122,21 @@ export async function getUnitStatement(unitId: string) {
       include: { invoice: true },
       orderBy: { paymentDate: "asc" },
     }),
-    prisma.paymentSchedule.findMany({
-      where: { organizationId, contractId: { in: contractIds } },
-      orderBy: { dueDate: "asc" },
-    }),
   ]);
 
-  const dueEntries = await buildDueEntries(
-    schedules.map((s) => ({ ...s, contractNumber: contractNumberById.get(s.contractId) }))
-  );
-
-  const ledger = buildLedger(
-    invoices.map((inv) => ({ ...inv, contractNumber: inv.contractId ? contractNumberById.get(inv.contractId) : undefined })),
-    payments.map((p) => ({
-      ...p,
+  const ledger = buildLedger([
+    ...buildInvoiceLineEntries(
+      invoices.map((inv) => ({ ...inv, contractNumber: inv.contractId ? contractNumberById.get(inv.contractId) : undefined }))
+    ),
+    ...payments.map((p) => ({
+      date: p.paymentDate,
+      type: "PAYMENT" as const,
+      reference: p.receiptNumber,
       contractNumber: p.invoice.contractId ? contractNumberById.get(p.invoice.contractId) : undefined,
+      debit: 0,
+      credit: Number(p.amount),
     })),
-    dueEntries
-  );
+  ]);
 
   return { unit, ledger };
 }

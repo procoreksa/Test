@@ -406,7 +406,10 @@ export interface Dictionary {
       colBalance: string;
       invoiceEntry: string;
       paymentEntry: string;
-      dueEntry: string;
+      rentEntry: string;
+      commissionEntry: string;
+      cleaningEntry: string;
+      depositEntry: string;
       balanceDue: string;
       noSelection: string;
       empty: string;

@@ -1,6 +1,22 @@
-import { listRenterOptions, getRenterStatement } from "@/lib/actions/reports";
+import { listRenterOptions, getRenterStatement, type LedgerEntry } from "@/lib/actions/reports";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ReportHeader } from "@/components/report-header";
+
+function entryLabel(entry: LedgerEntry, t: ReturnType<typeof getDictionary>) {
+  if (entry.type === "PAYMENT") return t.reports.renterStatement.paymentEntry;
+  switch (entry.kind) {
+    case "RENT":
+      return t.reports.renterStatement.rentEntry;
+    case "COMMISSION":
+      return t.reports.renterStatement.commissionEntry;
+    case "CLEANING":
+      return t.reports.renterStatement.cleaningEntry;
+    case "SECURITY_DEPOSIT":
+      return t.reports.renterStatement.depositEntry;
+    default:
+      return t.reports.renterStatement.invoiceEntry;
+  }
+}
 
 export default async function RenterStatementReportPage({
   searchParams,
@@ -61,13 +77,7 @@ export default async function RenterStatementReportPage({
               {data.ledger.map((entry, idx) => (
                 <tr key={idx}>
                   <td className="py-2 text-slate-500">{dateFmt.format(entry.date)}</td>
-                  <td className="py-2">
-                    {entry.type === "INVOICE"
-                      ? t.reports.renterStatement.invoiceEntry
-                      : entry.type === "PAYMENT"
-                        ? t.reports.renterStatement.paymentEntry
-                        : t.reports.renterStatement.dueEntry}
-                  </td>
+                  <td className="py-2">{entryLabel(entry, t)}</td>
                   <td className="py-2 text-slate-500">{entry.reference}</td>
                   <td className="py-2">{entry.debit > 0 ? sar.format(entry.debit) : "—"}</td>
                   <td className="py-2 text-emerald-600">{entry.credit > 0 ? sar.format(entry.credit) : "—"}</td>
