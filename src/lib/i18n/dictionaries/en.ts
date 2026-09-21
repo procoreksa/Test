@@ -384,6 +384,7 @@ export const en: Dictionary = {
     filterUnit: "Unit",
     selectPlaceholder: "Select...",
     searchPlaceholder: "Search by unit number or renter name",
+    noResults: "No matching results",
     grandTotal: "Grand total",
     cards: {
       renterStatement: { title: "Renter Statement", description: "All invoices, payments, and the outstanding balance for a specific renter" },

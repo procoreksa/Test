@@ -386,6 +386,7 @@ export interface Dictionary {
     filterUnit: string;
     selectPlaceholder: string;
     searchPlaceholder: string;
+    noResults: string;
     grandTotal: string;
     cards: {
       renterStatement: { title: string; description: string };

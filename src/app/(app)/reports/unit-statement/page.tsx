@@ -1,6 +1,7 @@
 import { listUnitOptions, getUnitStatement, type LedgerEntry } from "@/lib/actions/reports";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ReportHeader } from "@/components/report-header";
+import { SearchableSelect } from "@/components/searchable-select";
 
 function entryLabel(entry: LedgerEntry, t: ReturnType<typeof getDictionary>) {
   if (entry.type === "PAYMENT") return t.reports.renterStatement.paymentEntry;
@@ -29,6 +30,7 @@ export default async function UnitStatementReportPage({
   const dateFmt = shortDateFormatter(locale);
 
   const data = unitId ? await getUnitStatement(unitId) : null;
+  const selectedUnit = units.find((u) => u.id === unitId);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -41,16 +43,22 @@ export default async function UnitStatementReportPage({
       <form method="get" className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-end gap-4 no-print">
         <div className="flex-1">
           <label className="block text-sm font-medium text-slate-700 mb-1">{t.reports.filterUnit}</label>
-          <select name="unitId" defaultValue={unitId ?? ""} className="w-full rounded-lg border border-slate-300 px-3 py-2">
-            <option value="" disabled>
-              {t.reports.selectPlaceholder}
-            </option>
-            {units.map((u) => (
-              <option key={u.id} value={u.id}>
-                {pickLocalized(locale, u.property.nameAr, u.property.name)} / {u.unitNumber}
-              </option>
-            ))}
-          </select>
+          <SearchableSelect
+            name="unitId"
+            placeholder={t.reports.searchPlaceholder}
+            noResultsText={t.reports.noResults}
+            defaultValue={unitId}
+            defaultLabel={
+              selectedUnit
+                ? `${pickLocalized(locale, selectedUnit.property.nameAr, selectedUnit.property.name)} / ${selectedUnit.unitNumber}`
+                : undefined
+            }
+            options={units.map((u) => ({
+              id: u.id,
+              label: `${pickLocalized(locale, u.property.nameAr, u.property.name)} / ${u.unitNumber}`,
+              searchText: `${u.unitNumber} ${u.property.name} ${u.property.nameAr ?? ""}`,
+            }))}
+          />
         </div>
         <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
           {t.reports.filterApply}

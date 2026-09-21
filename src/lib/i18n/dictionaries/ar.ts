@@ -384,6 +384,7 @@ export const ar: Dictionary = {
     filterUnit: "الوحدة",
     selectPlaceholder: "اختر...",
     searchPlaceholder: "بحث برقم الوحدة أو اسم المستأجر",
+    noResults: "لا توجد نتائج مطابقة",
     grandTotal: "الإجمالي الكلي",
     cards: {
       renterStatement: { title: "كشف حساب مستأجر", description: "كل الفواتير والمدفوعات والرصيد المستحق لمستأجر معيّن" },
