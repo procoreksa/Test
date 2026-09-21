@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireOrgId } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
 import { differenceInCalendarDays, format } from "date-fns";
-import type { InvoiceLineKind } from "@prisma/client";
+import type { InvoiceLineKind, PaymentFrequency } from "@prisma/client";
 
 export interface LedgerEntry {
   date: Date;
@@ -15,6 +15,46 @@ export interface LedgerEntry {
   debit: number;
   credit: number;
   balance: number;
+}
+
+const INSTALLMENTS_PER_YEAR: Record<PaymentFrequency, number> = {
+  MONTHLY: 12,
+  QUARTERLY: 4,
+  SEMI_ANNUAL: 2,
+  ANNUAL: 1,
+  ONE_TIME: 1,
+};
+
+export interface StatementContractInfo {
+  contractNumber: string;
+  startDate: Date;
+  endDate: Date;
+  annualRent: number;
+  renterName?: string;
+  renterNameAr?: string | null;
+}
+
+function toStatementContractInfo(contract: {
+  contractNumber: string;
+  startDate: Date;
+  endDate: Date;
+  rentAmount: unknown;
+  paymentFrequency: PaymentFrequency;
+  renter?: { fullName: string; fullNameAr: string | null };
+}): StatementContractInfo {
+  return {
+    contractNumber: contract.contractNumber,
+    startDate: contract.startDate,
+    endDate: contract.endDate,
+    annualRent: Number(contract.rentAmount) * INSTALLMENTS_PER_YEAR[contract.paymentFrequency],
+    renterName: contract.renter?.fullName,
+    renterNameAr: contract.renter?.fullNameAr,
+  };
+}
+
+/** The contract to summarize on a statement's header: the active one, or the most recently started otherwise. */
+function pickCurrentContract<T extends { status: string; startDate: Date }>(contracts: T[]): T | null {
+  return contracts.find((c) => c.status === "ACTIVE") ?? contracts[0] ?? null;
 }
 
 /** One row per invoice line (dated by the invoice's due date) so each amount is broken down by what it's for. */
@@ -72,7 +112,7 @@ export async function getRenterStatement(renterId: string) {
   const organizationId = await requireOrgId();
   const renter = await prisma.renter.findUniqueOrThrow({ where: { id: renterId, organizationId } });
 
-  const [invoices, payments] = await Promise.all([
+  const [invoices, payments, contracts, organization] = await Promise.all([
     prisma.invoice.findMany({
       where: { organizationId, renterId, status: { not: "CANCELLED" } },
       include: { contract: true, lines: true },
@@ -83,6 +123,8 @@ export async function getRenterStatement(renterId: string) {
       include: { invoice: { include: { contract: true } } },
       orderBy: { paymentDate: "asc" },
     }),
+    prisma.contract.findMany({ where: { organizationId, renterId }, orderBy: { startDate: "desc" } }),
+    prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, nameAr: true, logoUrl: true } }),
   ]);
 
   const ledger = buildLedger([
@@ -97,7 +139,10 @@ export async function getRenterStatement(renterId: string) {
     })),
   ]);
 
-  return { renter, ledger };
+  const current = pickCurrentContract(contracts);
+  const currentContract = current ? toStatementContractInfo(current) : null;
+
+  return { renter, ledger, organization, currentContract };
 }
 
 export async function getUnitStatement(unitId: string) {
@@ -107,7 +152,14 @@ export async function getUnitStatement(unitId: string) {
     include: { property: true },
   });
 
-  const contracts = await prisma.contract.findMany({ where: { organizationId, unitId }, select: { id: true, contractNumber: true } });
+  const [contracts, organization] = await Promise.all([
+    prisma.contract.findMany({
+      where: { organizationId, unitId },
+      include: { renter: { select: { fullName: true, fullNameAr: true } } },
+      orderBy: { startDate: "desc" },
+    }),
+    prisma.organization.findUniqueOrThrow({ where: { id: organizationId }, select: { name: true, nameAr: true, logoUrl: true } }),
+  ]);
   const contractIds = contracts.map((c) => c.id);
   const contractNumberById = new Map(contracts.map((c) => [c.id, c.contractNumber]));
 
@@ -138,7 +190,10 @@ export async function getUnitStatement(unitId: string) {
     })),
   ]);
 
-  return { unit, ledger };
+  const current = pickCurrentContract(contracts);
+  const currentContract = current ? toStatementContractInfo(current) : null;
+
+  return { unit, ledger, organization, currentContract };
 }
 
 export async function getOverdueReport() {

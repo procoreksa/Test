@@ -69,9 +69,46 @@ export default async function UnitStatementReportPage({
         <p className="text-slate-400 text-sm">{t.reports.unitStatement.noSelection}</p>
       ) : (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-          <h2 className="font-semibold text-slate-800 mb-4">
-            {pickLocalized(locale, data.unit.property.nameAr, data.unit.property.name)} / {data.unit.unitNumber}
-          </h2>
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4 mb-4">
+            <div className="flex items-start gap-3">
+              {data.organization.logoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={data.organization.logoUrl}
+                  alt=""
+                  className="w-12 h-12 rounded-lg object-contain border border-slate-100 shrink-0"
+                />
+              )}
+              <div>
+                <h2 className="font-semibold text-slate-800">
+                  {pickLocalized(locale, data.unit.property.nameAr, data.unit.property.name)} / {data.unit.unitNumber}
+                </h2>
+                <p className="text-xs text-slate-400">{pickLocalized(locale, data.organization.nameAr, data.organization.name)}</p>
+              </div>
+            </div>
+            {data.currentContract ? (
+              <div className="text-sm text-slate-600 text-start sm:text-end space-y-0.5">
+                <p>
+                  {t.reports.renterStatement.renterLabel}:{" "}
+                  <span className="font-medium text-slate-800">
+                    {pickLocalized(locale, data.currentContract.renterNameAr, data.currentContract.renterName ?? "")}
+                  </span>
+                </p>
+                <p>
+                  {t.reports.renterStatement.annualRentLabel}:{" "}
+                  <span className="font-medium text-slate-800">{sar.format(data.currentContract.annualRent)}</span>
+                </p>
+                <p>
+                  {t.reports.renterStatement.contractTermLabel}:{" "}
+                  <span className="font-medium text-slate-800">
+                    {dateFmt.format(data.currentContract.startDate)} – {dateFmt.format(data.currentContract.endDate)}
+                  </span>
+                </p>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-400">{t.reports.renterStatement.noActiveContract}</p>
+            )}
+          </div>
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-slate-500">
               <tr>
@@ -105,6 +142,12 @@ export default async function UnitStatementReportPage({
               )}
             </tbody>
           </table>
+          <div className="flex justify-end mt-4 pt-4 border-t border-slate-200">
+            <div className="flex justify-between w-64 font-bold">
+              <span>{t.reports.unitStatement.balanceDue}</span>
+              <span>{sar.format(data.ledger.length > 0 ? data.ledger[data.ledger.length - 1].balance : 0)}</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

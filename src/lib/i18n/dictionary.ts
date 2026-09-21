@@ -412,6 +412,10 @@ export interface Dictionary {
       cleaningEntry: string;
       depositEntry: string;
       balanceDue: string;
+      renterLabel: string;
+      annualRentLabel: string;
+      contractTermLabel: string;
+      noActiveContract: string;
       noSelection: string;
       empty: string;
     };
@@ -424,6 +428,7 @@ export interface Dictionary {
       colDebit: string;
       colCredit: string;
       colBalance: string;
+      balanceDue: string;
       noSelection: string;
       empty: string;
     };
