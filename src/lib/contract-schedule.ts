@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient, PaymentFrequency, ExtraChargesMode } from "@prisma/client";
+import type { Contract, Prisma, PrismaClient, PaymentFrequency, ExtraChargesMode } from "@prisma/client";
 import { nextCounterValue, formatContractNumber } from "@/lib/numbering";
 import { generateSchedule } from "@/lib/schedule";
 
@@ -49,6 +49,19 @@ export async function createContractWithSchedule(tx: Tx, organizationId: string,
     },
   });
 
+  await generateAndCreateSchedule(tx, organizationId, contract);
+  await tx.unit.update({ where: { id: input.unitId }, data: { status: "OCCUPIED" } });
+
+  return contract;
+}
+
+type ScheduleSourceContract = Pick<
+  Contract,
+  "id" | "startDate" | "endDate" | "rentAmount" | "paymentFrequency" | "commissionAmount" | "cleaningAmount" | "extraChargesMode" | "securityDeposit"
+>;
+
+/** (Re)generates a contract's payment schedule rows. Caller is responsible for removing any prior rows first. */
+export async function generateAndCreateSchedule(tx: Tx, organizationId: string, contract: ScheduleSourceContract) {
   const installments = generateSchedule(contract);
   await tx.paymentSchedule.createMany({
     data: installments.map((i) => ({
@@ -65,8 +78,4 @@ export async function createContractWithSchedule(tx: Tx, organizationId: string,
       amount: i.amount,
     })),
   });
-
-  await tx.unit.update({ where: { id: input.unitId }, data: { status: "OCCUPIED" } });
-
-  return contract;
 }

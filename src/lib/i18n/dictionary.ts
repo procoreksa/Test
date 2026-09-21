@@ -243,6 +243,7 @@ export interface Dictionary {
     extraFeesBadge: string;
     terminate: string;
     renew: string;
+    edit: string;
     empty: string;
     unitOptionLabel: (property: string, unitNumber: string) => string;
     renewPage: {
@@ -252,6 +253,13 @@ export interface Dictionary {
       renterLabel: string;
       back: string;
       submit: string;
+    };
+    editPage: {
+      title: string;
+      subtitle: (contractNumber: string) => string;
+      back: string;
+      submit: string;
+      lockedNotice: string;
     };
   };
   collections: {
@@ -367,6 +375,7 @@ export interface Dictionary {
     contractEndAfterStart: string;
     invoiceAlreadyIssued: string;
     selectAtLeastOneComponent: string;
+    unitAlreadyOccupied: string;
     paymentExceedsRemaining: (remaining: string) => string;
     logoTooLarge: string;
     logoInvalidType: string;

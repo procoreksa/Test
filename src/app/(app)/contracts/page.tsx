@@ -134,6 +134,11 @@ export default async function ContractsPage() {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-left space-y-1">
+                  {c.status !== "TERMINATED" && c.status !== "RENEWED" && (
+                    <Link href={`/contracts/${c.id}/edit`} className="block text-brand-gold-dark hover:underline text-xs font-medium">
+                      {t.contracts.edit}
+                    </Link>
+                  )}
                   {c.status === "ACTIVE" && (
                     <>
                       <Link

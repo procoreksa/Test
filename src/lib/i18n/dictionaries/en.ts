@@ -238,6 +238,7 @@ export const en: Dictionary = {
     extraFeesBadge: "+ extra fees",
     terminate: "Terminate",
     renew: "Renew",
+    edit: "Edit",
     empty: "No contracts yet",
     unitOptionLabel: (property, unitNumber) => `${property} - Unit ${unitNumber}`,
     renewPage: {
@@ -247,6 +248,13 @@ export const en: Dictionary = {
       renterLabel: "Renter",
       back: "← Back to contracts",
       submit: "Renew Contract & Generate Schedule",
+    },
+    editPage: {
+      title: "Edit Contract",
+      subtitle: (contractNumber) => `Editing contract ${contractNumber}`,
+      back: "← Back to contracts",
+      submit: "Save Changes",
+      lockedNotice: "Invoices have already been issued for this contract, so the unit, renter, amounts, dates and payment schedule can no longer be changed — only notes and VAT applicability remain editable",
     },
   },
   collections: {
@@ -364,6 +372,7 @@ export const en: Dictionary = {
     contractEndAfterStart: "Contract end date must be after the start date",
     invoiceAlreadyIssued: "An invoice has already been issued for this installment",
     selectAtLeastOneComponent: "Please select at least one amount to include in the invoice",
+    unitAlreadyOccupied: "This unit is already occupied under another contract",
     paymentExceedsRemaining: (remaining) => `Payment amount exceeds the remaining balance (${remaining})`,
     logoTooLarge: "The logo file is too large — 1MB maximum",
     logoInvalidType: "Unsupported file format — please use a PNG or JPG image",
