@@ -6,6 +6,7 @@ import { listRenters } from "@/lib/actions/renters";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 export default async function EditContractPage({
   params,
@@ -20,7 +21,7 @@ export default async function EditContractPage({
   ]);
   const t = getDictionary(locale);
 
-  const propertyName = pickLocalized(locale, contract.unit.property.nameAr, contract.unit.property.name);
+  const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
 
   if (!can("contract.update", role)) {
@@ -107,7 +108,7 @@ async function EditableContractFields({
         <select name="unitId" defaultValue={contract.unitId} required className="w-full rounded-lg border border-slate-300 px-3 py-2">
           {selectableUnits.map((u) => (
             <option key={u.id} value={u.id}>
-              {t.contracts.unitOptionLabel(pickLocalized(locale, u.property.nameAr, u.property.name), u.unitNumber)}
+              {t.contracts.unitOptionLabel(unitLocationLabel(locale, u), u.unitNumber)}
             </option>
           ))}
         </select>

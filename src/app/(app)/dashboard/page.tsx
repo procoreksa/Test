@@ -3,6 +3,7 @@ import { getDashboardStats } from "@/lib/actions/dashboard";
 import { StatCard } from "@/components/stat-card";
 import { CollectionsChart } from "@/components/charts/collections-chart";
 import { getLocale, getDictionary, currencyFormatter, monthDateFormatter, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 export default async function DashboardPage() {
   const [stats, locale] = await Promise.all([getDashboardStats(), getLocale()]);
@@ -97,7 +98,7 @@ export default async function DashboardPage() {
                       {pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}
                     </p>
                     <p className="text-slate-400 text-xs">
-                      {pickLocalized(locale, c.unit.property.nameAr, c.unit.property.name)} / {c.unit.unitNumber}
+                      {unitLocationLabel(locale, c.unit)} / {c.unit.unitNumber}
                     </p>
                   </div>
                   <span className="text-amber-600 font-semibold text-xs">{t.dashboard.expiresOn(dateFmt.format(c.endDate))}</span>
@@ -126,7 +127,7 @@ export default async function DashboardPage() {
                       {pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}
                     </p>
                     <p className="text-slate-400 text-xs">
-                      {pickLocalized(locale, c.unit.property.nameAr, c.unit.property.name)} / {c.unit.unitNumber}
+                      {unitLocationLabel(locale, c.unit)} / {c.unit.unitNumber}
                     </p>
                   </div>
                   <span className="text-red-600 font-semibold text-xs">{t.dashboard.endedOn(dateFmt.format(c.endDate))}</span>
@@ -141,6 +142,34 @@ export default async function DashboardPage() {
         <h2 className="font-semibold text-slate-800 mb-1">{t.dashboard.vatTitle}</h2>
         <p className="text-3xl font-bold text-brand-gold-dark">{sar.format(stats.totalVat)}</p>
         <p className="text-xs text-slate-400 mt-1">{t.dashboard.vatHint}</p>
+      </div>
+
+      <div>
+        <h2 className="font-semibold text-slate-800 mb-4">{t.dashboard.hierarchyPanelTitle}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label={t.dashboard.totalCompounds} value={String(stats.totalCompounds)} />
+          <StatCard label={t.dashboard.totalBuildings} value={String(stats.totalBuildings)} />
+          <StatCard label={t.dashboard.totalFloors} value={String(stats.totalFloors)} />
+          <StatCard label={t.dashboard.totalUnitsCount} value={String(stats.unitsTotal)} />
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+        <h2 className="font-semibold text-slate-800 mb-4">{t.dashboard.occupancyByCompoundTitle}</h2>
+        {stats.occupancyByCompound.length === 0 ? (
+          <p className="text-sm text-slate-400">{t.dashboard.occupancyByCompoundEmpty}</p>
+        ) : (
+          <ul className="space-y-3">
+            {stats.occupancyByCompound.map((c) => (
+              <li key={c.compoundId} className="flex items-center justify-between text-sm border-b border-slate-100 pb-2 last:border-0">
+                <span className="font-medium text-slate-800">{pickLocalized(locale, c.arabicName, c.name)}</span>
+                <span className="text-slate-500 text-xs">
+                  {t.dashboard.occupancyHint(c.occupied, c.total)} · {c.occupancyRate}%
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

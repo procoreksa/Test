@@ -61,6 +61,58 @@ export async function seedDemoData() {
     },
   });
 
+  const compound = await prisma.compound.upsert({
+    where: { id: "demo-compound" },
+    update: {},
+    create: {
+      id: "demo-compound",
+      organizationId: org.id,
+      name: "Al Yasmin Tower",
+      arabicName: "برج الياسمين",
+      city: "الرياض",
+      address: "شارع الأمير سلطان",
+      status: "ACTIVE",
+      totalBuildings: 1,
+      totalUnits: 2,
+    },
+  });
+
+  const building = await prisma.building.upsert({
+    where: { id: "demo-building" },
+    update: {},
+    create: {
+      id: "demo-building",
+      organizationId: org.id,
+      compoundId: compound.id,
+      name: "Main Building",
+      numberOfFloors: 2,
+    },
+  });
+
+  const groundFloor = await prisma.floor.upsert({
+    where: { id: "demo-floor-ground" },
+    update: {},
+    create: {
+      id: "demo-floor-ground",
+      organizationId: org.id,
+      buildingId: building.id,
+      floorNumber: 0,
+      name: "Ground Floor",
+    },
+  });
+
+  const firstFloor = await prisma.floor.upsert({
+    where: { id: "demo-floor-1" },
+    update: {},
+    create: {
+      id: "demo-floor-1",
+      organizationId: org.id,
+      buildingId: building.id,
+      floorNumber: 1,
+      name: "1st Floor",
+    },
+  });
+
   const residentialUnit = await prisma.unit.upsert({
     where: { id: "demo-unit-res" },
     update: {},
@@ -68,8 +120,9 @@ export async function seedDemoData() {
       id: "demo-unit-res",
       organizationId: org.id,
       propertyId: property.id,
+      floorId: firstFloor.id,
       unitNumber: "A-101",
-      floor: "1",
+      floorLabel: "1",
       unitType: "APARTMENT",
       areaSqm: 120,
       bedrooms: 3,
@@ -87,8 +140,9 @@ export async function seedDemoData() {
       id: "demo-unit-com",
       organizationId: org.id,
       propertyId: property.id,
+      floorId: groundFloor.id,
       unitNumber: "G-01",
-      floor: "0",
+      floorLabel: "0",
       unitType: "SHOP",
       areaSqm: 80,
       baseRentAmount: 8000,

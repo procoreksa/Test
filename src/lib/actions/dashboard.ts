@@ -21,6 +21,10 @@ export async function getDashboardStats() {
     overdueSchedules,
     expiringContracts,
     unclosedContracts,
+    totalCompounds,
+    totalBuildings,
+    totalFloors,
+    unitsForOccupancy,
   ] = await Promise.all([
     prisma.unit.count({ where: { organizationId } }),
     prisma.unit.count({ where: { organizationId, status: "OCCUPIED" } }),
@@ -35,17 +39,44 @@ export async function getDashboardStats() {
     }),
     prisma.contract.findMany({
       where: { organizationId, status: "ACTIVE", endDate: { gte: now, lte: addDays(now, EXPIRING_WINDOW_DAYS) } },
-      include: { renter: true, unit: { include: { property: true } } },
+      include: { renter: true, unit: { include: { floor: { include: { building: { include: { compound: true } } } } } } },
       orderBy: { endDate: "asc" },
       take: 10,
     }),
     prisma.contract.findMany({
       where: { organizationId, status: "ACTIVE", endDate: { lt: now } },
-      include: { renter: true, unit: { include: { property: true } } },
+      include: { renter: true, unit: { include: { floor: { include: { building: { include: { compound: true } } } } } } },
       orderBy: { endDate: "asc" },
       take: 10,
     }),
+    prisma.compound.count({ where: { organizationId } }),
+    prisma.building.count({ where: { organizationId } }),
+    prisma.floor.count({ where: { organizationId } }),
+    prisma.unit.findMany({
+      where: { organizationId },
+      select: {
+        status: true,
+        floor: { select: { building: { select: { compound: { select: { id: true, name: true, arabicName: true } } } } } },
+      },
+    }),
   ]);
+
+  const occupancyByCompoundMap = new Map<string, { name: string; arabicName: string | null; occupied: number; total: number }>();
+  for (const u of unitsForOccupancy) {
+    const compound = u.floor.building.compound;
+    const entry = occupancyByCompoundMap.get(compound.id) ?? { name: compound.name, arabicName: compound.arabicName, occupied: 0, total: 0 };
+    entry.total += 1;
+    if (u.status === "OCCUPIED") entry.occupied += 1;
+    occupancyByCompoundMap.set(compound.id, entry);
+  }
+  const occupancyByCompound = Array.from(occupancyByCompoundMap.entries()).map(([compoundId, v]) => ({
+    compoundId,
+    name: v.name,
+    arabicName: v.arabicName,
+    occupied: v.occupied,
+    total: v.total,
+    occupancyRate: v.total > 0 ? Math.round((v.occupied / v.total) * 100) : 0,
+  }));
 
   const totalInvoiced = invoices.reduce((sum, i) => sum + Number(i.totalAmount), 0);
   const totalCollected = invoices.reduce((sum, i) => sum + Number(i.paidAmount), 0);
@@ -79,5 +110,9 @@ export async function getDashboardStats() {
     expiringContracts,
     unclosedContracts,
     monthlySeries: months,
+    totalCompounds,
+    totalBuildings,
+    totalFloors,
+    occupancyByCompound,
   };
 }

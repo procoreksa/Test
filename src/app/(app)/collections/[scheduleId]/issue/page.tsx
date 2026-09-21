@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getScheduleBillableComponents, issueInvoiceForSchedule } from "@/lib/actions/invoices";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
 import type { InvoiceLineKind } from "@prisma/client";
 
 const componentLabelKey: Record<InvoiceLineKind, "componentRent" | "componentCommission" | "componentCleaning" | "componentSecurityDeposit"> = {
@@ -27,7 +28,7 @@ export default async function IssueInvoicePage({
   const dateFmt = shortDateFormatter(locale);
 
   const renterName = pickLocalized(locale, schedule.contract.renter.fullNameAr, schedule.contract.renter.fullName);
-  const propertyName = pickLocalized(locale, schedule.contract.unit.property.nameAr, schedule.contract.unit.property.name);
+  const propertyName = unitLocationLabel(locale, schedule.contract.unit);
   const unitLabel = `${propertyName} / ${schedule.contract.unit.unitNumber}`;
 
   async function submit(formData: FormData) {

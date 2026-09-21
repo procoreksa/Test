@@ -4,6 +4,7 @@ import { getContractById, renewContract } from "@/lib/actions/contracts";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 export default async function RenewContractPage({
   params,
@@ -14,7 +15,7 @@ export default async function RenewContractPage({
   const [contract, locale, role] = await Promise.all([getContractById(id), getLocale(), getCurrentUserRole()]);
   const t = getDictionary(locale);
 
-  const propertyName = pickLocalized(locale, contract.unit.property.nameAr, contract.unit.property.name);
+  const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
   const defaultStart = format(contract.endDate, "yyyy-MM-dd");
   const defaultEnd = format(addYears(contract.endDate, 1), "yyyy-MM-dd");

@@ -32,6 +32,9 @@ export interface Dictionary {
   nav: {
     dashboard: string;
     properties: string;
+    compounds: string;
+    buildings: string;
+    floors: string;
     units: string;
     renters: string;
     contracts: string;
@@ -83,6 +86,19 @@ export interface Dictionary {
     noUnclosed: string;
     endedOn: (date: string) => string;
     viewContracts: string;
+    hierarchyPanelTitle: string;
+    totalCompounds: string;
+    totalBuildings: string;
+    totalFloors: string;
+    totalUnitsCount: string;
+    occupancyByCompoundTitle: string;
+    occupancyByCompoundEmpty: string;
+  };
+  compoundStatus: {
+    PLANNING: string;
+    UNDER_CONSTRUCTION: string;
+    ACTIVE: string;
+    INACTIVE: string;
   };
   propertyType: {
     RESIDENTIAL: string;
@@ -166,6 +182,70 @@ export interface Dictionary {
     colType: string;
     colLocation: string;
     colUnitsCount: string;
+    delete: string;
+    empty: string;
+  };
+  locationPicker: {
+    compound: string;
+    building: string;
+    floor: string;
+  };
+  compounds: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldName: string;
+    fieldArabicName: string;
+    fieldDescription: string;
+    fieldAddress: string;
+    fieldCity: string;
+    fieldLocation: string;
+    fieldLatitude: string;
+    fieldLongitude: string;
+    fieldOwnerName: string;
+    fieldManagerName: string;
+    fieldAmenities: string;
+    fieldStatus: string;
+    save: string;
+    colName: string;
+    colCity: string;
+    colBuildings: string;
+    colFloors: string;
+    colUnits: string;
+    colStatus: string;
+    delete: string;
+    empty: string;
+  };
+  buildings: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldCompound: string;
+    fieldCode: string;
+    fieldName: string;
+    fieldNameAr: string;
+    fieldDescription: string;
+    fieldNumberOfFloors: string;
+    save: string;
+    colName: string;
+    colCompound: string;
+    colFloors: string;
+    delete: string;
+    empty: string;
+  };
+  floors: {
+    title: string;
+    subtitle: string;
+    addNew: string;
+    fieldBuilding: string;
+    fieldFloorNumber: string;
+    fieldName: string;
+    fieldNameAr: string;
+    save: string;
+    colName: string;
+    colBuilding: string;
+    colCompound: string;
+    colUnits: string;
     delete: string;
     empty: string;
   };
@@ -372,6 +452,7 @@ export interface Dictionary {
   validation: {
     nameRequired: string;
     unitNumberRequired: string;
+    floorRequired: string;
     rentAmountPositive: string;
     installmentAmountPositive: string;
     contractEndAfterStart: string;
@@ -408,6 +489,9 @@ export interface Dictionary {
       expiringContracts: { title: string; description: string };
       collections: { title: string; description: string };
       vat: { title: string; description: string };
+      unitsByCompound: { title: string; description: string };
+      buildingsByCompound: { title: string; description: string };
+      vacancyByCompound: { title: string; description: string };
     };
     renterStatement: {
       title: string;
@@ -491,6 +575,30 @@ export interface Dictionary {
       colSubtotal: string;
       colVat: string;
       colTotal: string;
+      empty: string;
+    };
+    unitsByCompound: {
+      title: string;
+      colCompound: string;
+      colBuildings: string;
+      colFloors: string;
+      colUnits: string;
+      empty: string;
+    };
+    buildingsByCompound: {
+      title: string;
+      colCompound: string;
+      colBuilding: string;
+      colFloors: string;
+      colUnits: string;
+      empty: string;
+    };
+    vacancyByCompound: {
+      title: string;
+      colCompound: string;
+      colTotalUnits: string;
+      colVacantUnits: string;
+      colVacancyRate: string;
       empty: string;
     };
   };

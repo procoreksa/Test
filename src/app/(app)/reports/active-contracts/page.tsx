@@ -1,6 +1,7 @@
 import { getActiveContractsReport } from "@/lib/actions/reports";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ReportHeader } from "@/components/report-header";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 export default async function ActiveContractsReportPage({
   searchParams,
@@ -58,7 +59,7 @@ export default async function ActiveContractsReportPage({
                 <td className="px-5 py-3 font-medium text-slate-800">{c.contractNumber}</td>
                 <td className="px-5 py-3">{pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}</td>
                 <td className="px-5 py-3 text-slate-500">
-                  {pickLocalized(locale, c.unit.property.nameAr, c.unit.property.name)} / {c.unit.unitNumber}
+                  {unitLocationLabel(locale, c.unit)} / {c.unit.unitNumber}
                 </td>
                 <td className="px-5 py-3 text-slate-500">{dateFmt.format(c.startDate)}</td>
                 <td className="px-5 py-3 text-slate-500">{dateFmt.format(c.endDate)}</td>

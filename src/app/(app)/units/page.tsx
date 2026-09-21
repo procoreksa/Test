@@ -1,8 +1,10 @@
 import { listUnits, createUnit, deleteUnit } from "@/lib/actions/units";
-import { listProperties } from "@/lib/actions/properties";
+import { getLocationTree } from "@/lib/actions/floors";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
+import { CascadingLocationPicker } from "@/components/cascading-location-picker";
 
 const statusTone: Record<string, string> = {
   VACANT: "bg-slate-100 text-slate-600",
@@ -11,7 +13,7 @@ const statusTone: Record<string, string> = {
 };
 
 export default async function UnitsPage() {
-  const [units, properties, locale, role] = await Promise.all([listUnits(), listProperties(), getLocale(), getCurrentUserRole()]);
+  const [units, locationTree, locale, role] = await Promise.all([listUnits(), getLocationTree(), getLocale(), getCurrentUserRole()]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
   const canCreate = can("unit.create", role);
@@ -31,18 +33,18 @@ export default async function UnitsPage() {
             <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
           </summary>
           <form action={createUnit} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">{t.units.fieldProperty}</label>
-              <select name="propertyId" required className="w-full rounded-lg border border-slate-300 px-3 py-2">
-                {properties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {pickLocalized(locale, p.nameAr, p.name)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <CascadingLocationPicker
+              compounds={locationTree}
+              locale={locale}
+              fieldName="floorId"
+              labels={{
+                compound: t.locationPicker.compound,
+                building: t.locationPicker.building,
+                floor: t.locationPicker.floor,
+              }}
+            />
             <Field label={t.units.fieldUnitNumber} name="unitNumber" required />
-            <Field label={t.units.fieldFloor} name="floor" />
+            <Field label={t.units.fieldFloor} name="floorLabel" />
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">{t.units.fieldUnitType}</label>
               <select name="unitType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
@@ -87,7 +89,7 @@ export default async function UnitsPage() {
             {units.map((u) => (
               <tr key={u.id}>
                 <td className="px-5 py-3 font-medium text-slate-800">{u.unitNumber}</td>
-                <td className="px-5 py-3 text-slate-500">{pickLocalized(locale, u.property.nameAr, u.property.name)}</td>
+                <td className="px-5 py-3 text-slate-500">{unitLocationLabel(locale, u)}</td>
                 <td className="px-5 py-3">{t.unitType[u.unitType]}</td>
                 <td className="px-5 py-3">{sar.format(Number(u.baseRentAmount))}</td>
                 <td className="px-5 py-3">

@@ -2,6 +2,7 @@ import { listUnitOptions, getUnitStatement, type LedgerEntry } from "@/lib/actio
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ReportHeader } from "@/components/report-header";
 import { SearchableSelect } from "@/components/searchable-select";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 function entryLabel(entry: LedgerEntry, t: ReturnType<typeof getDictionary>) {
   if (entry.type === "PAYMENT") return t.reports.renterStatement.paymentEntry;
@@ -48,15 +49,11 @@ export default async function UnitStatementReportPage({
             placeholder={t.reports.searchPlaceholder}
             noResultsText={t.reports.noResults}
             defaultValue={unitId}
-            defaultLabel={
-              selectedUnit
-                ? `${pickLocalized(locale, selectedUnit.property.nameAr, selectedUnit.property.name)} / ${selectedUnit.unitNumber}`
-                : undefined
-            }
+            defaultLabel={selectedUnit ? `${unitLocationLabel(locale, selectedUnit)} / ${selectedUnit.unitNumber}` : undefined}
             options={units.map((u) => ({
               id: u.id,
-              label: `${pickLocalized(locale, u.property.nameAr, u.property.name)} / ${u.unitNumber}`,
-              searchText: `${u.unitNumber} ${u.property.name} ${u.property.nameAr ?? ""}`,
+              label: `${unitLocationLabel(locale, u)} / ${u.unitNumber}`,
+              searchText: `${u.unitNumber} ${u.floor.building.name} ${u.floor.building.nameAr ?? ""} ${u.floor.building.compound.name} ${u.floor.building.compound.arabicName ?? ""}`,
             }))}
           />
         </div>
@@ -81,7 +78,7 @@ export default async function UnitStatementReportPage({
               )}
               <div>
                 <h2 className="font-semibold text-slate-800">
-                  {pickLocalized(locale, data.unit.property.nameAr, data.unit.property.name)} / {data.unit.unitNumber}
+                  {unitLocationLabel(locale, data.unit)} / {data.unit.unitNumber}
                 </h2>
                 <p className="text-xs text-slate-400">{pickLocalized(locale, data.organization.nameAr, data.organization.name)}</p>
               </div>

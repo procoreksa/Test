@@ -1,6 +1,7 @@
 import { getOverdueReport } from "@/lib/actions/reports";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ReportHeader } from "@/components/report-header";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 export default async function OverdueReportPage({
   searchParams,
@@ -60,7 +61,7 @@ export default async function OverdueReportPage({
                   {pickLocalized(locale, s.contract.renter.fullNameAr, s.contract.renter.fullName)}
                 </td>
                 <td className="px-5 py-3 text-slate-500">
-                  {pickLocalized(locale, s.contract.unit.property.nameAr, s.contract.unit.property.name)} / {s.contract.unit.unitNumber}
+                  {unitLocationLabel(locale, s.contract.unit)} / {s.contract.unit.unitNumber}
                 </td>
                 <td className="px-5 py-3 text-slate-500">{dateFmt.format(s.dueDate)}</td>
                 <td className="px-5 py-3 text-red-600 font-medium">{s.daysOverdue}</td>

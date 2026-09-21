@@ -6,11 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 
+const COMMERCIAL_UNIT_TYPES = new Set(["OFFICE", "SHOP", "WAREHOUSE"]);
+
 function unitSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
-    propertyId: z.string().min(1),
+    floorId: z.string().min(1, t.validation.floorRequired),
     unitNumber: z.string().min(1, t.validation.unitNumberRequired),
-    floor: z.string().optional(),
+    floorLabel: z.string().optional(),
     unitType: z.enum(["APARTMENT", "VILLA", "OFFICE", "SHOP", "WAREHOUSE", "OTHER"]),
     areaSqm: z.coerce.number().optional(),
     bedrooms: z.coerce.number().int().optional(),
@@ -24,9 +26,9 @@ export async function createUnit(formData: FormData) {
   const { organizationId } = await requirePermission("unit.create");
   const t = getDictionary(await getLocale());
   const parsed = unitSchema(t).parse({
-    propertyId: formData.get("propertyId"),
+    floorId: formData.get("floorId"),
     unitNumber: formData.get("unitNumber"),
-    floor: formData.get("floor") || undefined,
+    floorLabel: formData.get("floorLabel") || undefined,
     unitType: formData.get("unitType"),
     areaSqm: formData.get("areaSqm") || undefined,
     bedrooms: formData.get("bedrooms") || undefined,
@@ -35,15 +37,15 @@ export async function createUnit(formData: FormData) {
     vatApplicable: formData.get("vatApplicable") === "on",
   });
 
-  const property = await prisma.property.findUniqueOrThrow({
-    where: { id: parsed.propertyId, organizationId },
+  await prisma.floor.findUniqueOrThrow({
+    where: { id: parsed.floorId, organizationId },
   });
 
   await prisma.unit.create({
     data: {
       ...parsed,
       organizationId,
-      vatApplicable: parsed.vatApplicable ?? property.propertyType === "COMMERCIAL",
+      vatApplicable: parsed.vatApplicable ?? COMMERCIAL_UNIT_TYPES.has(parsed.unitType),
     },
   });
   revalidatePath("/properties");
@@ -61,7 +63,10 @@ export async function listUnits() {
   const { organizationId } = await requirePermission("unit.view");
   return prisma.unit.findMany({
     where: { organizationId },
-    include: { property: true, contracts: { where: { status: "ACTIVE" }, include: { renter: true } } },
+    include: {
+      floor: { include: { building: { include: { compound: true } } } },
+      contracts: { where: { status: "ACTIVE" }, include: { renter: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }

@@ -71,6 +71,9 @@ model Organization {
   payments   Payment[]
   counters   Counter[]
   units      Unit[]
+  compounds  Compound[]
+  buildings  Building[]
+  floors     Floor[]
 
   @@map("organizations")
 }
@@ -105,7 +108,16 @@ model User {
 }
 
 // ---------------------------------------------------------------------------
-// Properties & Units
+// Property hierarchy: Compound -> Building -> Floor -> Unit
+//
+// Property/Unit.propertyId are the original (flat) model and are DEPRECATED
+// but kept indefinitely for backward compatibility - existing Properties and
+// the Units created under them keep working unchanged. Every Unit (old and
+// new) has a required `floorId` into the new hierarchy: existing rows were
+// backfilled with one generated Compound/Building/Floor per Property at
+// migration time. New code should read/write the Compound/Building/Floor
+// side; Property/propertyId should be treated as legacy-only.
+// See docs/PROPERTY-HIERARCHY.md for the full migration/deprecation plan.
 // ---------------------------------------------------------------------------
 
 enum PropertyType {
@@ -129,6 +141,7 @@ enum UnitStatus {
   MAINTENANCE
 }
 
+/// @deprecated superseded by Compound (see docs/PROPERTY-HIERARCHY.md) - kept for backward compatibility, not removed.
 model Property {
   id             String       @id @default(cuid())
   organizationId String
@@ -148,14 +161,103 @@ model Property {
   @@map("properties")
 }
 
+enum CompoundStatus {
+  PLANNING
+  UNDER_CONSTRUCTION
+  ACTIVE
+  INACTIVE
+}
+
+model Compound {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  arabicName     String?
+  description    String?
+  address        String?
+  city           String?
+  location       String? // free-text location description (e.g. a landmark), distinct from address/city/lat-lng
+  latitude       Decimal?       @db.Decimal(10, 7)
+  longitude      Decimal?       @db.Decimal(10, 7)
+  ownerName      String?
+  managerName    String?
+  // Denormalized counters, informational only - the app itself always
+  // computes live counts (Prisma _count) for dashboards/reports rather than
+  // trusting these, to avoid drift if a future integration writes here
+  // directly. See docs/PROPERTY-HIERARCHY.md.
+  totalBuildings Int            @default(0)
+  totalUnits     Int            @default(0)
+  amenities      String?
+  status         CompoundStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  buildings Building[]
+
+  @@index([organizationId])
+  @@map("compounds")
+}
+
+model Building {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  compoundId     String
+  compound       Compound     @relation(fields: [compoundId], references: [id], onDelete: Cascade)
+  code           String?
+  name           String
+  // Not in the original field list, but every other bilingual data field in
+  // this codebase (Property.nameAr, Renter.fullNameAr, ...) has an Arabic
+  // counterpart, and the project's standing rule is that all user-facing
+  // data must support both languages - see docs/PROPERTY-HIERARCHY.md.
+  nameAr         String?
+  description    String?
+  numberOfFloors Int?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  floors Floor[]
+
+  @@index([organizationId])
+  @@index([compoundId])
+  @@map("buildings")
+}
+
+model Floor {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  buildingId     String
+  building       Building     @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  floorNumber    Int
+  name           String?
+  nameAr         String? // see Building.nameAr note above
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  units Unit[]
+
+  @@unique([buildingId, floorNumber])
+  @@index([organizationId])
+  @@index([buildingId])
+  @@map("floors")
+}
+
 model Unit {
   id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  propertyId     String
-  property       Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  // Legacy flat link - optional now that every unit hangs off `floor`
+  // instead. Kept populated for units created before this migration; new
+  // units are not required to set it. See docs/PROPERTY-HIERARCHY.md.
+  propertyId     String?
+  property       Property?    @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  // Canonical location going forward: Unit -> Floor -> Building -> Compound.
+  floorId        String
+  floor          Floor        @relation(fields: [floorId], references: [id])
   unitNumber     String
-  floor          String?
+  floorLabel     String? // free-text floor description (e.g. "3rd Floor"); renamed from the old `floor` scalar column to free that name for the relation above - same data, no loss
   unitType       UnitType     @default(APARTMENT)
   areaSqm        Decimal?     @db.Decimal(10, 2)
   bedrooms       Int?
@@ -170,6 +272,7 @@ model Unit {
 
   @@index([organizationId])
   @@index([propertyId])
+  @@index([floorId])
   @@map("units")
 }
 

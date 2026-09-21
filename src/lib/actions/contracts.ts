@@ -38,9 +38,11 @@ function readContractFields(formData: FormData) {
   };
 }
 
+const COMMERCIAL_UNIT_TYPES = new Set(["OFFICE", "SHOP", "WAREHOUSE"]);
+
 function inlineUnitSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
-    propertyId: z.string().min(1),
+    floorId: z.string().min(1, t.validation.floorRequired),
     unitNumber: z.string().min(1, t.validation.unitNumberRequired),
     unitType: z.enum(["APARTMENT", "VILLA", "OFFICE", "SHOP", "WAREHOUSE", "OTHER"]),
     baseRentAmount: z.coerce.number().positive(t.validation.rentAmountPositive),
@@ -72,21 +74,21 @@ export async function createContract(formData: FormData) {
     if (formData.get("createNewUnit") === "true") {
       await requirePermission("unit.create");
       const newUnit = inlineUnitSchema(t).parse({
-        propertyId: formData.get("newUnitPropertyId"),
+        floorId: formData.get("newUnitFloorId"),
         unitNumber: formData.get("newUnitNumber"),
         unitType: formData.get("newUnitType"),
         baseRentAmount: formData.get("newUnitBaseRentAmount"),
         vatApplicable: formData.get("newUnitVatApplicable") === "on",
       });
-      const property = await tx.property.findUniqueOrThrow({ where: { id: newUnit.propertyId, organizationId } });
+      await tx.floor.findUniqueOrThrow({ where: { id: newUnit.floorId, organizationId } });
       const created = await tx.unit.create({
         data: {
           organizationId,
-          propertyId: newUnit.propertyId,
+          floorId: newUnit.floorId,
           unitNumber: newUnit.unitNumber,
           unitType: newUnit.unitType,
           baseRentAmount: newUnit.baseRentAmount,
-          vatApplicable: newUnit.vatApplicable ?? property.propertyType === "COMMERCIAL",
+          vatApplicable: newUnit.vatApplicable ?? COMMERCIAL_UNIT_TYPES.has(newUnit.unitType),
         },
       });
       unitId = created.id;
@@ -188,7 +190,10 @@ export async function getContractById(contractId: string) {
   const { organizationId } = await requirePermission("contract.view");
   return prisma.contract.findUniqueOrThrow({
     where: { id: contractId, organizationId },
-    include: { unit: { include: { property: true } }, renter: true },
+    include: {
+      unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
+      renter: true,
+    },
   });
 }
 
@@ -198,7 +203,10 @@ export async function getContractEditContext(contractId: string) {
   const [contract, invoiceCount] = await Promise.all([
     prisma.contract.findUniqueOrThrow({
       where: { id: contractId, organizationId },
-      include: { unit: { include: { property: true } }, renter: true },
+      include: {
+        unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
+        renter: true,
+      },
     }),
     prisma.invoice.count({ where: { organizationId, contractId, status: { not: "CANCELLED" } } }),
   ]);
@@ -272,7 +280,11 @@ export async function listContracts() {
   const { organizationId } = await requirePermission("contract.view");
   return prisma.contract.findMany({
     where: { organizationId },
-    include: { unit: { include: { property: true } }, renter: true, paymentSchedules: true },
+    include: {
+      unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
+      renter: true,
+      paymentSchedules: true,
+    },
     orderBy: { createdAt: "desc" },
   });
 }

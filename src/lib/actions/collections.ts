@@ -31,7 +31,12 @@ export async function listCollections() {
   return prisma.paymentSchedule.findMany({
     where: { organizationId },
     include: {
-      contract: { include: { unit: { include: { property: true } }, renter: true } },
+      contract: {
+        include: {
+          unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
+          renter: true,
+        },
+      },
       invoiceLines: { include: { invoice: { select: { id: true, status: true } } }, distinct: ["invoiceId"] },
     },
     orderBy: { dueDate: "asc" },

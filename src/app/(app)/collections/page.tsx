@@ -3,6 +3,7 @@ import { listCollections } from "@/lib/actions/collections";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 const statusTone: Record<string, string> = {
   PENDING: "bg-slate-100 text-slate-600",
@@ -80,7 +81,7 @@ export default async function CollectionsPage({
                     {pickLocalized(locale, s.contract.renter.fullNameAr, s.contract.renter.fullName)}
                   </td>
                   <td className="px-5 py-3 text-slate-500">
-                    {pickLocalized(locale, s.contract.unit.property.nameAr, s.contract.unit.property.name)} /{" "}
+                    {unitLocationLabel(locale, s.contract.unit)} /{" "}
                     {s.contract.unit.unitNumber}
                   </td>
                   <td className="px-5 py-3 text-slate-500">#{s.installmentNo}</td>

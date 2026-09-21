@@ -38,8 +38,35 @@ export async function getScheduleBillableComponents(scheduleId: string): Promise
 function loadScheduleWithContext(scheduleId: string, organizationId: string) {
   return prisma.paymentSchedule.findUniqueOrThrow({
     where: { id: scheduleId, organizationId },
-    include: { contract: { include: { unit: { include: { property: true } }, renter: true } } },
+    include: {
+      contract: {
+        include: {
+          unit: { include: { property: true, floor: { include: { building: { include: { compound: true } } } } } },
+          renter: true,
+        },
+      },
+    },
   });
+}
+
+/**
+ * Property name text used only for invoice line *descriptions* (not any
+ * amount/VAT/tax calculation). `unit.property` is optional post-migration -
+ * fall back to the unit's Compound/Building location when it's absent.
+ */
+function invoiceLinePropertyNames(unit: {
+  property: { name: string; nameAr: string | null } | null;
+  floor: { building: { name: string; nameAr: string | null; compound: { name: string; arabicName: string | null } } };
+}) {
+  if (unit.property) {
+    return { propertyName: unit.property.name, propertyNameAr: unit.property.nameAr ?? unit.property.name };
+  }
+  const { building } = unit.floor;
+  const { compound } = building;
+  return {
+    propertyName: `${compound.name} - ${building.name}`,
+    propertyNameAr: `${compound.arabicName ?? compound.name} - ${building.nameAr ?? building.name}`,
+  };
 }
 
 export async function issueInvoiceForSchedule(formData: FormData) {
@@ -63,8 +90,7 @@ export async function issueInvoiceForSchedule(formData: FormData) {
   };
 
   const { contract } = schedule;
-  const propertyName = contract.unit.property.name;
-  const propertyNameAr = contract.unit.property.nameAr ?? contract.unit.property.name;
+  const { propertyName, propertyNameAr } = invoiceLinePropertyNames(contract.unit);
   const unitNumber = contract.unit.unitNumber;
   const periodLabel = `${format(schedule.periodStart, "yyyy-MM-dd")} – ${format(schedule.periodEnd, "yyyy-MM-dd")}`;
 
@@ -151,7 +177,7 @@ export async function getInvoiceById(invoiceId: string) {
       renter: true,
       lines: true,
       payments: true,
-      contract: { include: { unit: { include: { property: true } } } },
+      contract: { include: { unit: { include: { floor: { include: { building: { include: { compound: true } } } } } } } },
       organization: true,
     },
   });

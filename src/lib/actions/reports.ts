@@ -103,7 +103,11 @@ export async function listUnitOptions() {
   const { organizationId } = await requirePermission("report.view");
   return prisma.unit.findMany({
     where: { organizationId },
-    select: { id: true, unitNumber: true, property: { select: { name: true, nameAr: true } } },
+    select: {
+      id: true,
+      unitNumber: true,
+      floor: { select: { name: true, building: { select: { name: true, nameAr: true, compound: { select: { name: true, arabicName: true } } } } } },
+    },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -149,7 +153,7 @@ export async function getUnitStatement(unitId: string) {
   const { organizationId } = await requirePermission("report.view");
   const unit = await prisma.unit.findUniqueOrThrow({
     where: { id: unitId, organizationId },
-    include: { property: true },
+    include: { floor: { include: { building: { include: { compound: true } } } } },
   });
 
   const [contracts, organization] = await Promise.all([
@@ -203,7 +207,7 @@ export async function getOverdueReport() {
 
   const schedules = await prisma.paymentSchedule.findMany({
     where: { organizationId, status: "OVERDUE" },
-    include: { contract: { include: { renter: true, unit: { include: { property: true } } } } },
+    include: { contract: { include: { renter: true, unit: { include: { floor: { include: { building: { include: { compound: true } } } } } } } } },
     orderBy: { dueDate: "asc" },
   });
 
@@ -217,7 +221,7 @@ export async function getActiveContractsReport() {
   const { organizationId } = await requirePermission("report.view");
   return prisma.contract.findMany({
     where: { organizationId, status: "ACTIVE" },
-    include: { renter: true, unit: { include: { property: true } } },
+    include: { renter: true, unit: { include: { floor: { include: { building: { include: { compound: true } } } } } } },
     orderBy: { startDate: "desc" },
   });
 }
@@ -228,7 +232,7 @@ export async function getExpiringContractsReport(from: Date, to: Date) {
 
   const contracts = await prisma.contract.findMany({
     where: { organizationId, status: "ACTIVE", endDate: { gte: from, lte: to } },
-    include: { renter: true, unit: { include: { property: true } } },
+    include: { renter: true, unit: { include: { floor: { include: { building: { include: { compound: true } } } } } } },
     orderBy: { endDate: "asc" },
   });
 
@@ -285,4 +289,73 @@ export async function getVatReport(from: Date, to: Date) {
   );
 
   return { rows, totals };
+}
+
+export async function getUnitsByCompoundReport() {
+  const { organizationId } = await requirePermission("report.view");
+  const compounds = await prisma.compound.findMany({
+    where: { organizationId },
+    include: { buildings: { include: { _count: { select: { floors: true } }, floors: { include: { _count: { select: { units: true } } } } } } },
+    orderBy: { name: "asc" },
+  });
+
+  return compounds.map((c) => ({
+    id: c.id,
+    name: c.name,
+    arabicName: c.arabicName,
+    totalBuildings: c.buildings.length,
+    totalFloors: c.buildings.reduce((sum, b) => sum + b._count.floors, 0),
+    totalUnits: c.buildings.reduce((sum, b) => sum + b.floors.reduce((fSum, f) => fSum + f._count.units, 0), 0),
+  }));
+}
+
+export async function getBuildingsByCompoundReport() {
+  const { organizationId } = await requirePermission("report.view");
+  const buildings = await prisma.building.findMany({
+    where: { organizationId },
+    include: { compound: true, floors: { include: { _count: { select: { units: true } } } } },
+    orderBy: [{ compound: { name: "asc" } }, { name: "asc" }],
+  });
+
+  return buildings.map((b) => ({
+    id: b.id,
+    name: b.name,
+    nameAr: b.nameAr,
+    compoundName: b.compound.name,
+    compoundArabicName: b.compound.arabicName,
+    totalFloors: b.floors.length,
+    totalUnits: b.floors.reduce((sum, f) => sum + f._count.units, 0),
+  }));
+}
+
+export async function getVacancyByCompoundReport() {
+  const { organizationId } = await requirePermission("report.view");
+  const [compounds, units] = await Promise.all([
+    prisma.compound.findMany({ where: { organizationId }, select: { id: true, name: true, arabicName: true }, orderBy: { name: "asc" } }),
+    prisma.unit.findMany({
+      where: { organizationId },
+      select: { status: true, floor: { select: { building: { select: { compoundId: true } } } } },
+    }),
+  ]);
+
+  const statsByCompound = new Map<string, { total: number; vacant: number }>();
+  for (const u of units) {
+    const compoundId = u.floor.building.compoundId;
+    const entry = statsByCompound.get(compoundId) ?? { total: 0, vacant: 0 };
+    entry.total += 1;
+    if (u.status === "VACANT") entry.vacant += 1;
+    statsByCompound.set(compoundId, entry);
+  }
+
+  return compounds.map((c) => {
+    const stats = statsByCompound.get(c.id) ?? { total: 0, vacant: 0 };
+    return {
+      id: c.id,
+      name: c.name,
+      arabicName: c.arabicName,
+      totalUnits: stats.total,
+      vacantUnits: stats.vacant,
+      vacancyRate: stats.total > 0 ? Math.round((stats.vacant / stats.total) * 100) : 0,
+    };
+  });
 }

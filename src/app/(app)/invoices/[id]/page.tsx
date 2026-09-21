@@ -6,6 +6,7 @@ import { PrintButton } from "@/components/print-button";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, longDateFormatter, pickLocalized } from "@/lib/i18n";
+import { unitLocationLabel } from "@/lib/unit-location";
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -84,7 +85,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
                 {t.invoiceDetail.contractLine(
                   invoice.contract.contractNumber,
                   invoice.contract.unit.unitNumber,
-                  pickLocalized(locale, invoice.contract.unit.property.nameAr, invoice.contract.unit.property.name)
+                  unitLocationLabel(locale, invoice.contract.unit)
                 )}
               </p>
             )}
