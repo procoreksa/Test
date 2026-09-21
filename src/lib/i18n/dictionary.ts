@@ -378,6 +378,7 @@ export interface Dictionary {
     invoiceAlreadyIssued: string;
     selectAtLeastOneComponent: string;
     unitAlreadyOccupied: string;
+    notAuthorized: string;
     paymentExceedsRemaining: (remaining: string) => string;
     logoTooLarge: string;
     logoInvalidType: string;

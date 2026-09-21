@@ -1,8 +1,15 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requireOrgId, requirePermission } from "@/lib/session";
 
+/**
+ * Internal housekeeping (marks stale PENDING schedules/invoices as OVERDUE
+ * based on the current date) - not a user-initiated action, so it is not
+ * permission-gated. It's called as a side effect of the *.view-gated reads
+ * below to keep their data fresh; gating it separately would just block
+ * lower-privileged roles from seeing up-to-date overdue statuses.
+ */
 export async function syncOverdueStatuses() {
   const organizationId = await requireOrgId();
   const now = new Date();
@@ -19,7 +26,7 @@ export async function syncOverdueStatuses() {
 
 export async function listCollections() {
   await syncOverdueStatuses();
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("invoice.view");
 
   return prisma.paymentSchedule.findMany({
     where: { organizationId },

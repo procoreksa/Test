@@ -1,9 +1,13 @@
 import { listRenters, createRenter, deleteRenter } from "@/lib/actions/renters";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
 
 export default async function RentersPage() {
-  const [renters, locale] = await Promise.all([listRenters(), getLocale()]);
+  const [renters, locale, role] = await Promise.all([listRenters(), getLocale(), getCurrentUserRole()]);
   const t = getDictionary(locale);
+  const canCreate = can("renter.create", role);
+  const canDelete = can("renter.delete", role);
 
   return (
     <div className="space-y-6">
@@ -12,38 +16,40 @@ export default async function RentersPage() {
         <p className="text-slate-500 text-sm mt-1">{t.renters.subtitle}</p>
       </div>
 
-      <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
-        <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
-          {t.renters.addNew}
-          <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
-        </summary>
-        <form action={createRenter} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Field label={t.renters.fieldFullName} name="fullName" required />
-          <Field label={t.renters.fieldFullNameAr} name="fullNameAr" />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t.renters.fieldIdType}</label>
-            <select name="idType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-              {(Object.keys(t.idType) as Array<keyof typeof t.idType>).map((value) => (
-                <option key={value} value={value}>
-                  {t.idType[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <Field label={t.renters.fieldIdNumber} name="idNumber" />
-          <Field label={t.renters.fieldVatNumber} name="vatNumber" />
-          <Field label={t.renters.fieldPhone} name="phone" />
-          <Field label={t.renters.fieldEmail} name="email" type="email" />
-          <div className="md:col-span-2">
-            <Field label={t.renters.fieldAddress} name="address" />
-          </div>
-          <div className="md:col-span-3">
-            <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
-              {t.renters.save}
-            </button>
-          </div>
-        </form>
-      </details>
+      {canCreate && (
+        <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
+          <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
+            {t.renters.addNew}
+            <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
+          </summary>
+          <form action={createRenter} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Field label={t.renters.fieldFullName} name="fullName" required />
+            <Field label={t.renters.fieldFullNameAr} name="fullNameAr" />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t.renters.fieldIdType}</label>
+              <select name="idType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                {(Object.keys(t.idType) as Array<keyof typeof t.idType>).map((value) => (
+                  <option key={value} value={value}>
+                    {t.idType[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Field label={t.renters.fieldIdNumber} name="idNumber" />
+            <Field label={t.renters.fieldVatNumber} name="vatNumber" />
+            <Field label={t.renters.fieldPhone} name="phone" />
+            <Field label={t.renters.fieldEmail} name="email" type="email" />
+            <div className="md:col-span-2">
+              <Field label={t.renters.fieldAddress} name="address" />
+            </div>
+            <div className="md:col-span-3">
+              <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
+                {t.renters.save}
+              </button>
+            </div>
+          </form>
+        </details>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
@@ -74,14 +80,16 @@ export default async function RentersPage() {
                 </td>
                 <td className="px-5 py-3 text-slate-500">{r.phone || r.email || t.common.none}</td>
                 <td className="px-5 py-3 text-left">
-                  <form
-                    action={async () => {
-                      "use server";
-                      await deleteRenter(r.id);
-                    }}
-                  >
-                    <button className="text-red-500 hover:underline text-xs">{t.renters.delete}</button>
-                  </form>
+                  {canDelete && (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await deleteRenter(r.id);
+                      }}
+                    >
+                      <button className="text-red-500 hover:underline text-xs">{t.renters.delete}</button>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}

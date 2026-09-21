@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { nextCounterValue, formatReceiptNumber } from "@/lib/numbering";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 import { recomputeScheduleStatus } from "@/lib/schedule-status";
@@ -20,7 +20,7 @@ function paymentSchema(t: ReturnType<typeof getDictionary>) {
 }
 
 export async function recordPayment(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("payment.create");
   const locale = await getLocale();
   const t = getDictionary(locale);
   const parsed = paymentSchema(t).parse({
@@ -82,7 +82,7 @@ export async function recordPayment(formData: FormData) {
 }
 
 export async function listPayments() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("payment.view");
   return prisma.payment.findMany({
     where: { organizationId },
     include: { renter: true, invoice: true },

@@ -3,14 +3,18 @@ import Link from "next/link";
 import { getInvoiceById, cancelInvoice } from "@/lib/actions/invoices";
 import { recordPayment } from "@/lib/actions/payments";
 import { PrintButton } from "@/components/print-button";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, longDateFormatter, pickLocalized } from "@/lib/i18n";
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [invoice, locale] = await Promise.all([getInvoiceById(id), getLocale()]);
+  const [invoice, locale, role] = await Promise.all([getInvoiceById(id), getLocale(), getCurrentUserRole()]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
   const dateFmt = longDateFormatter(locale);
+  const canRecordPayment = can("payment.create", role);
+  const canCancelInvoice = can("invoice.cancel", role);
 
   const qrDataUrl = invoice.qrCodeBase64
     ? await QRCode.toDataURL(invoice.qrCodeBase64, { margin: 1, width: 160 })
@@ -160,7 +164,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {remaining > 0.01 && invoice.status !== "CANCELLED" && (
+      {canRecordPayment && remaining > 0.01 && invoice.status !== "CANCELLED" && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 no-print">
           <h2 className="font-semibold text-slate-800 mb-4">{t.invoiceDetail.recordPaymentTitle}</h2>
           <form action={recordPayment} className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -216,7 +220,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {invoice.status !== "CANCELLED" && invoice.status !== "PAID" && (
+      {canCancelInvoice && invoice.status !== "CANCELLED" && invoice.status !== "PAID" && (
         <form
           action={async () => {
             "use server";

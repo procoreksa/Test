@@ -375,6 +375,7 @@ export const en: Dictionary = {
     invoiceAlreadyIssued: "An invoice has already been issued for this installment",
     selectAtLeastOneComponent: "Please select at least one amount to include in the invoice",
     unitAlreadyOccupied: "This unit is already occupied under another contract",
+    notAuthorized: "You do not have permission to perform this action.",
     paymentExceedsRemaining: (remaining) => `Payment amount exceeds the remaining balance (${remaining})`,
     logoTooLarge: "The logo file is too large — 1MB maximum",
     logoInvalidType: "Unsupported file format — please use a PNG or JPG image",

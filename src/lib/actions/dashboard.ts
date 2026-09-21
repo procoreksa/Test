@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
 import { subMonths, format, startOfMonth, endOfMonth, addDays } from "date-fns";
 
@@ -9,7 +9,7 @@ const EXPIRING_WINDOW_DAYS = 90;
 
 export async function getDashboardStats() {
   await syncOverdueStatuses();
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("dashboard.view");
   const now = new Date();
 
   const [

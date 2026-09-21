@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { issueInvoice } from "@/lib/invoicing";
 import { getScheduleRemaining, recomputeScheduleStatus } from "@/lib/schedule-status";
 import { format } from "date-fns";
@@ -22,7 +22,7 @@ export async function getScheduleBillableComponents(scheduleId: string): Promise
   schedule: Awaited<ReturnType<typeof loadScheduleWithContext>>;
   components: BillableComponent[];
 }> {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("invoice.create");
   const schedule = await loadScheduleWithContext(scheduleId, organizationId);
   const remaining = await getScheduleRemaining(prisma, scheduleId);
 
@@ -43,7 +43,7 @@ function loadScheduleWithContext(scheduleId: string, organizationId: string) {
 }
 
 export async function issueInvoiceForSchedule(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("invoice.create");
   const t = getDictionary(await getLocale());
   const scheduleId = String(formData.get("scheduleId"));
   const selectedKinds = formData.getAll("kind").map(String) as InvoiceLineKind[];
@@ -135,7 +135,7 @@ export async function issueInvoiceForSchedule(formData: FormData) {
 }
 
 export async function listInvoices() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("invoice.view");
   return prisma.invoice.findMany({
     where: { organizationId },
     include: { renter: true, contract: { include: { unit: true } }, payments: true },
@@ -144,7 +144,7 @@ export async function listInvoices() {
 }
 
 export async function getInvoiceById(invoiceId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("invoice.view");
   return prisma.invoice.findUniqueOrThrow({
     where: { id: invoiceId, organizationId },
     include: {
@@ -158,7 +158,7 @@ export async function getInvoiceById(invoiceId: string) {
 }
 
 export async function cancelInvoice(invoiceId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("invoice.cancel");
   await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.update({
       where: { id: invoiceId, organizationId },

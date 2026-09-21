@@ -375,6 +375,7 @@ export const ar: Dictionary = {
     invoiceAlreadyIssued: "تم إصدار فاتورة لهذه الدفعة بالفعل",
     selectAtLeastOneComponent: "الرجاء اختيار مبلغ واحد على الأقل لإصداره في الفاتورة",
     unitAlreadyOccupied: "هذه الوحدة مؤجرة بالفعل بعقد آخر",
+    notAuthorized: "ليس لديك صلاحية لتنفيذ هذا الإجراء.",
     paymentExceedsRemaining: (remaining) => `قيمة الدفعة تتجاوز المبلغ المتبقي (${remaining})`,
     logoTooLarge: "حجم الشعار كبير جدًا — الحد الأقصى 1 ميجابايت",
     logoInvalidType: "صيغة الملف غير مدعومة — استخدم صورة PNG أو JPG",

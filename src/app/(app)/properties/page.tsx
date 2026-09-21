@@ -1,9 +1,13 @@
 import { listProperties, createProperty, deleteProperty } from "@/lib/actions/properties";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
 
 export default async function PropertiesPage() {
-  const [properties, locale] = await Promise.all([listProperties(), getLocale()]);
+  const [properties, locale, role] = await Promise.all([listProperties(), getLocale(), getCurrentUserRole()]);
   const t = getDictionary(locale);
+  const canCreate = can("property.create", role);
+  const canDelete = can("property.delete", role);
 
   return (
     <div className="space-y-6">
@@ -14,32 +18,34 @@ export default async function PropertiesPage() {
         </div>
       </div>
 
-      <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
-        <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
-          {t.properties.addNew}
-          <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
-        </summary>
-        <form action={createProperty} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label={t.properties.fieldNameEn} name="name" required />
-          <Field label={t.properties.fieldNameAr} name="nameAr" />
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t.properties.fieldType}</label>
-            <select name="propertyType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
-              <option value="RESIDENTIAL">{t.propertyType.RESIDENTIAL}</option>
-              <option value="COMMERCIAL">{t.propertyType.COMMERCIAL}</option>
-              <option value="MIXED">{t.propertyType.MIXED}</option>
-            </select>
-          </div>
-          <Field label={t.properties.fieldCity} name="city" />
-          <Field label={t.properties.fieldDistrict} name="district" />
-          <Field label={t.properties.fieldStreet} name="street" />
-          <div className="md:col-span-2">
-            <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
-              {t.properties.save}
-            </button>
-          </div>
-        </form>
-      </details>
+      {canCreate && (
+        <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
+          <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
+            {t.properties.addNew}
+            <span className="text-brand-gold-dark group-open:rotate-45 transition-transform text-xl">+</span>
+          </summary>
+          <form action={createProperty} className="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label={t.properties.fieldNameEn} name="name" required />
+            <Field label={t.properties.fieldNameAr} name="nameAr" />
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t.properties.fieldType}</label>
+              <select name="propertyType" className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                <option value="RESIDENTIAL">{t.propertyType.RESIDENTIAL}</option>
+                <option value="COMMERCIAL">{t.propertyType.COMMERCIAL}</option>
+                <option value="MIXED">{t.propertyType.MIXED}</option>
+              </select>
+            </div>
+            <Field label={t.properties.fieldCity} name="city" />
+            <Field label={t.properties.fieldDistrict} name="district" />
+            <Field label={t.properties.fieldStreet} name="street" />
+            <div className="md:col-span-2">
+              <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-5 py-2.5 font-semibold">
+                {t.properties.save}
+              </button>
+            </div>
+          </form>
+        </details>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
@@ -69,14 +75,16 @@ export default async function PropertiesPage() {
                 </td>
                 <td className="px-5 py-3">{p.units.length}</td>
                 <td className="px-5 py-3 text-left">
-                  <form
-                    action={async () => {
-                      "use server";
-                      await deleteProperty(p.id);
-                    }}
-                  >
-                    <button className="text-red-500 hover:underline text-xs">{t.properties.delete}</button>
-                  </form>
+                  {canDelete && (
+                    <form
+                      action={async () => {
+                        "use server";
+                        await deleteProperty(p.id);
+                      }}
+                    >
+                      <button className="text-red-500 hover:underline text-xs">{t.properties.delete}</button>
+                    </form>
+                  )}
                 </td>
               </tr>
             ))}

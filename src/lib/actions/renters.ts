@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 
 function renterSchema(t: ReturnType<typeof getDictionary>) {
@@ -20,7 +20,7 @@ function renterSchema(t: ReturnType<typeof getDictionary>) {
 }
 
 export async function createRenter(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("renter.create");
   const t = getDictionary(await getLocale());
   const parsed = renterSchema(t).parse({
     fullName: formData.get("fullName"),
@@ -40,13 +40,13 @@ export async function createRenter(formData: FormData) {
 }
 
 export async function deleteRenter(renterId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("renter.delete");
   await prisma.renter.delete({ where: { id: renterId, organizationId } });
   revalidatePath("/renters");
 }
 
 export async function listRenters() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("renter.view");
   return prisma.renter.findMany({
     where: { organizationId },
     orderBy: { createdAt: "desc" },

@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requireOrgId, requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 
 const MAX_LOGO_BYTES = 1024 * 1024; // 1MB — stored as a base64 data URI directly on the row (no external file storage available).
@@ -24,7 +24,7 @@ const orgSchema = z.object({
 });
 
 export async function updateOrganization(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("settings.update");
   const t = getDictionary(await getLocale());
   const parsed = orgSchema.parse({
     name: formData.get("name"),
@@ -61,7 +61,24 @@ export async function updateOrganization(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+/** Full organization record for the Settings page - gated separately from getOrganizationBranding() below, which the app shell needs regardless of role. */
 export async function getOrganization() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("settings.view");
   return prisma.organization.findUniqueOrThrow({ where: { id: organizationId } });
+}
+
+/**
+ * Minimal, permission-free read used by the authenticated app shell
+ * (logo + name in the sidebar) on every page. Every authenticated user of
+ * an org can see its own name/logo regardless of role - that's basic
+ * navigation chrome, not a sensitive setting. The full record (VAT number,
+ * commercial registration, address, etc.) stays behind settings.view via
+ * getOrganization() above.
+ */
+export async function getOrganizationBranding() {
+  const organizationId = await requireOrgId();
+  return prisma.organization.findUniqueOrThrow({
+    where: { id: organizationId },
+    select: { name: true, nameAr: true, logoUrl: true },
+  });
 }

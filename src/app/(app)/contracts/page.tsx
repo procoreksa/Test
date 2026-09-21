@@ -3,6 +3,8 @@ import { listContracts, createContract, terminateContract } from "@/lib/actions/
 import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
 import { listProperties } from "@/lib/actions/properties";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { ToggleNewEntity } from "@/components/toggle-new-entity";
 
@@ -15,17 +17,22 @@ const statusTone: Record<string, string> = {
 };
 
 export default async function ContractsPage() {
-  const [contracts, units, renters, properties, locale] = await Promise.all([
+  const [contracts, units, renters, properties, locale, role] = await Promise.all([
     listContracts(),
     listUnits(),
     listRenters(),
     listProperties(),
     getLocale(),
+    getCurrentUserRole(),
   ]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
   const dateFmt = shortDateFormatter(locale);
   const availableUnits = units.filter((u) => u.status !== "OCCUPIED");
+  const canCreate = can("contract.create", role);
+  const canUpdate = can("contract.update", role);
+  const canRenew = can("contract.renew", role);
+  const canTerminate = can("contract.terminate", role);
 
   return (
     <div className="space-y-6">
@@ -34,6 +41,7 @@ export default async function ContractsPage() {
         <p className="text-slate-500 text-sm mt-1">{t.contracts.subtitle}</p>
       </div>
 
+      {canCreate && (
       <details className="bg-white rounded-xl border border-slate-200 shadow-sm group">
         <summary className="cursor-pointer list-none px-5 py-4 font-semibold text-slate-800 flex items-center justify-between">
           {t.contracts.addNew}
@@ -159,6 +167,7 @@ export default async function ContractsPage() {
           </div>
         </form>
       </details>
+      )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <table className="w-full text-sm">
@@ -197,27 +206,31 @@ export default async function ContractsPage() {
                   </span>
                 </td>
                 <td className="px-5 py-3 text-left space-y-1">
-                  {c.status !== "TERMINATED" && c.status !== "RENEWED" && (
+                  {canUpdate && c.status !== "TERMINATED" && c.status !== "RENEWED" && (
                     <Link href={`/contracts/${c.id}/edit`} className="block text-brand-gold-dark hover:underline text-xs font-medium">
                       {t.contracts.edit}
                     </Link>
                   )}
                   {c.status === "ACTIVE" && (
                     <>
-                      <Link
-                        href={`/contracts/${c.id}/renew`}
-                        className="block text-brand-gold-dark hover:underline text-xs font-medium"
-                      >
-                        {t.contracts.renew}
-                      </Link>
-                      <form
-                        action={async () => {
-                          "use server";
-                          await terminateContract(c.id);
-                        }}
-                      >
-                        <button className="text-red-500 hover:underline text-xs">{t.contracts.terminate}</button>
-                      </form>
+                      {canRenew && (
+                        <Link
+                          href={`/contracts/${c.id}/renew`}
+                          className="block text-brand-gold-dark hover:underline text-xs font-medium"
+                        >
+                          {t.contracts.renew}
+                        </Link>
+                      )}
+                      {canTerminate && (
+                        <form
+                          action={async () => {
+                            "use server";
+                            await terminateContract(c.id);
+                          }}
+                        >
+                          <button className="text-red-500 hover:underline text-xs">{t.contracts.terminate}</button>
+                        </form>
+                      )}
                     </>
                   )}
                 </td>

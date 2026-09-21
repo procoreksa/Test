@@ -3,6 +3,8 @@ import { format } from "date-fns";
 import { getContractEditContext, updateContract } from "@/lib/actions/contracts";
 import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
 
 export default async function EditContractPage({
@@ -11,11 +13,26 @@ export default async function EditContractPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [{ contract, hasBilling }, locale] = await Promise.all([getContractEditContext(id), getLocale()]);
+  const [{ contract, hasBilling }, locale, role] = await Promise.all([
+    getContractEditContext(id),
+    getLocale(),
+    getCurrentUserRole(),
+  ]);
   const t = getDictionary(locale);
 
   const propertyName = pickLocalized(locale, contract.unit.property.nameAr, contract.unit.property.name);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
+
+  if (!can("contract.update", role)) {
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <Link href="/contracts" className="text-brand-gold-dark hover:underline text-sm">
+          {t.contracts.editPage.back}
+        </Link>
+        <p className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{t.validation.notAuthorized}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">

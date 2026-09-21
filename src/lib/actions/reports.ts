@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
 import { differenceInCalendarDays, format } from "date-fns";
 import type { InvoiceLineKind, PaymentFrequency } from "@prisma/client";
@@ -91,7 +91,7 @@ function buildLedger(entries: Omit<LedgerEntry, "balance">[]): LedgerEntry[] {
 }
 
 export async function listRenterOptions() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   return prisma.renter.findMany({
     where: { organizationId },
     select: { id: true, fullName: true, fullNameAr: true },
@@ -100,7 +100,7 @@ export async function listRenterOptions() {
 }
 
 export async function listUnitOptions() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   return prisma.unit.findMany({
     where: { organizationId },
     select: { id: true, unitNumber: true, property: { select: { name: true, nameAr: true } } },
@@ -109,7 +109,7 @@ export async function listUnitOptions() {
 }
 
 export async function getRenterStatement(renterId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   const renter = await prisma.renter.findUniqueOrThrow({ where: { id: renterId, organizationId } });
 
   const [invoices, payments, contracts, organization] = await Promise.all([
@@ -146,7 +146,7 @@ export async function getRenterStatement(renterId: string) {
 }
 
 export async function getUnitStatement(unitId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   const unit = await prisma.unit.findUniqueOrThrow({
     where: { id: unitId, organizationId },
     include: { property: true },
@@ -198,7 +198,7 @@ export async function getUnitStatement(unitId: string) {
 
 export async function getOverdueReport() {
   await syncOverdueStatuses();
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   const today = new Date();
 
   const schedules = await prisma.paymentSchedule.findMany({
@@ -214,7 +214,7 @@ export async function getOverdueReport() {
 }
 
 export async function getActiveContractsReport() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   return prisma.contract.findMany({
     where: { organizationId, status: "ACTIVE" },
     include: { renter: true, unit: { include: { property: true } } },
@@ -223,7 +223,7 @@ export async function getActiveContractsReport() {
 }
 
 export async function getExpiringContractsReport(from: Date, to: Date) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   const today = new Date();
 
   const contracts = await prisma.contract.findMany({
@@ -236,7 +236,7 @@ export async function getExpiringContractsReport(from: Date, to: Date) {
 }
 
 export async function getCollectionsReport(from: Date, to: Date) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   const payments = await prisma.payment.findMany({
     where: { organizationId, paymentDate: { gte: from, lte: to } },
     include: { renter: true, invoice: { include: { contract: { include: { unit: true } } } } },
@@ -255,7 +255,7 @@ export interface VatReportRow {
 }
 
 export async function getVatReport(from: Date, to: Date) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("report.view");
   const invoices = await prisma.invoice.findMany({
     where: { organizationId, issueDate: { gte: from, lte: to }, status: { not: "CANCELLED" } },
     select: { issueDate: true, subtotal: true, vatAmount: true, totalAmount: true },

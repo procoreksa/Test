@@ -4,7 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { createContractWithSchedule, generateAndCreateSchedule } from "@/lib/contract-schedule";
 import { getLocale, getDictionary } from "@/lib/i18n";
 
@@ -59,7 +59,7 @@ function inlineRenterSchema(t: ReturnType<typeof getDictionary>) {
 }
 
 export async function createContract(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.create");
   const t = getDictionary(await getLocale());
   const contractFields = contractFieldsSchema(t).parse(readContractFields(formData));
 
@@ -70,6 +70,7 @@ export async function createContract(formData: FormData) {
   await prisma.$transaction(async (tx) => {
     let unitId: string;
     if (formData.get("createNewUnit") === "true") {
+      await requirePermission("unit.create");
       const newUnit = inlineUnitSchema(t).parse({
         propertyId: formData.get("newUnitPropertyId"),
         unitNumber: formData.get("newUnitNumber"),
@@ -95,6 +96,7 @@ export async function createContract(formData: FormData) {
 
     let renterId: string;
     if (formData.get("createNewRenter") === "true") {
+      await requirePermission("renter.create");
       const newRenter = inlineRenterSchema(t).parse({
         fullName: formData.get("newRenterFullName"),
         fullNameAr: formData.get("newRenterFullNameAr") || undefined,
@@ -120,7 +122,7 @@ export async function createContract(formData: FormData) {
 }
 
 export async function terminateContract(contractId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.terminate");
   await prisma.$transaction(async (tx) => {
     const contract = await tx.contract.update({
       where: { id: contractId, organizationId },
@@ -138,7 +140,7 @@ export async function terminateContract(contractId: string) {
 }
 
 export async function renewContract(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.renew");
   const t = getDictionary(await getLocale());
   const parsed = contractFieldsSchema(t).extend({ contractId: z.string().min(1) }).parse({
     ...readContractFields(formData),
@@ -183,7 +185,7 @@ export async function renewContract(formData: FormData) {
 }
 
 export async function getContractById(contractId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.view");
   return prisma.contract.findUniqueOrThrow({
     where: { id: contractId, organizationId },
     include: { unit: { include: { property: true } }, renter: true },
@@ -192,7 +194,7 @@ export async function getContractById(contractId: string) {
 
 /** Whether any (non-cancelled) invoice has ever been issued against this contract - once true, its billable terms are locked. */
 export async function getContractEditContext(contractId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.view");
   const [contract, invoiceCount] = await Promise.all([
     prisma.contract.findUniqueOrThrow({
       where: { id: contractId, organizationId },
@@ -204,7 +206,7 @@ export async function getContractEditContext(contractId: string) {
 }
 
 export async function updateContract(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.update");
   const t = getDictionary(await getLocale());
   const contractId = String(formData.get("contractId"));
 
@@ -267,7 +269,7 @@ export async function updateContract(formData: FormData) {
 }
 
 export async function listContracts() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("contract.view");
   return prisma.contract.findMany({
     where: { organizationId },
     include: { unit: { include: { property: true } }, renter: true, paymentSchedules: true },

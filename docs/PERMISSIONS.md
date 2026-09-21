@@ -1,0 +1,174 @@
+# Role-Based Access Control (RBAC)
+
+This document describes the permission system introduced in `src/lib/permissions.ts`
+and `src/lib/session.ts`. It replaces the previous state, where the `UserRole`
+column existed on `User` but was never actually checked anywhere.
+
+## 1. Available roles
+
+Defined by the `UserRole` enum in `prisma/schema.prisma` (unchanged):
+
+- `OWNER`
+- `ADMIN`
+- `MANAGER`
+- `ACCOUNTANT`
+- `VIEWER`
+
+## 2. Available permissions
+
+Permissions are typed as the `Permission` union in `src/lib/permissions.ts`,
+one per resource + action:
+
+```
+dashboard.view
+
+property.view / property.create / property.update / property.delete
+unit.view     / unit.create     / unit.update     / unit.delete
+renter.view   / renter.create   / renter.update   / renter.delete
+
+contract.view / contract.create / contract.update / contract.renew / contract.terminate
+
+invoice.view  / invoice.create  / invoice.cancel
+payment.view  / payment.create
+
+report.view
+
+settings.view / settings.update
+```
+
+`property.update`, `unit.update`, and `renter.update` are defined for
+completeness (the spec that introduced this system asked for them, and any
+future edit action on those entities should be gated by them), but as of this
+writing **no `updateProperty`/`updateUnit`/`updateRenter` server action
+exists yet** - properties, units and renters currently only support
+create/delete, not edit. When one is added, gate it with the matching
+`*.update` permission; the permission key is already there waiting for it.
+
+## 3. Role → permission matrix
+
+| Permission | OWNER | ADMIN | MANAGER | ACCOUNTANT | VIEWER |
+|---|:---:|:---:|:---:|:---:|:---:|
+| dashboard.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| property.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| property.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| property.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| property.delete | ✅ | ✅ | ❌ | ❌ | ❌ |
+| unit.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| unit.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| unit.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| unit.delete | ✅ | ✅ | ❌ | ❌ | ❌ |
+| renter.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| renter.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| renter.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| renter.delete | ✅ | ✅ | ❌ | ❌ | ❌ |
+| contract.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| contract.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| contract.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| contract.renew | ✅ | ✅ | ✅ | ❌ | ❌ |
+| contract.terminate | ✅ | ✅ | ✅ | ❌ | ❌ |
+| invoice.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| invoice.create | ✅ | ✅ | ✅ | ✅ | ❌ |
+| invoice.cancel | ✅ | ✅ | ❌ | ✅ | ❌ |
+| payment.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| payment.create | ✅ | ✅ | ✅ | ✅ | ❌ |
+| report.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| settings.view | ✅ | ✅ | ❌ | ❌ | ❌ |
+| settings.update | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+Notes on judgment calls made while encoding the brief's policy:
+
+- **`property.delete` / `unit.delete` / `renter.delete` are OWNER/ADMIN-only.**
+  The brief listed `property.delete` etc. as permission keys to define but
+  didn't put deletion in MANAGER's "Allowed" list (only create/update), so
+  delete stays reserved for the top two roles - deleting a property/unit/
+  renter is a destructive, hard-to-reverse action.
+- **`settings.view`/`settings.update` are OWNER/ADMIN-only.** The brief's
+  MANAGER and ACCOUNTANT sections both explicitly forbid touching
+  organization settings and neither lists "view settings" as allowed;
+  VIEWER's read-only list omits settings entirely. So nobody except
+  OWNER/ADMIN can even see the Settings page.
+- **MANAGER does not have `invoice.cancel`.** The brief's MANAGER "Allowed"
+  list says "view/create invoices" - cancellation isn't mentioned, so it
+  isn't granted. Only ACCOUNTANT and OWNER/ADMIN can cancel an invoice.
+
+## 4. How to protect a new server action
+
+Every mutating server action, and every read of business/financial data,
+must go through `requirePermission()` from `src/lib/session.ts` as its
+**first line**, before touching Prisma or doing any other work:
+
+```ts
+"use server";
+
+import { requirePermission } from "@/lib/session";
+
+export async function createWidget(formData: FormData) {
+  const { organizationId } = await requirePermission("widget.create");
+  // ...parse formData, then use organizationId exactly as requireOrgId() used to provide it
+}
+```
+
+`requirePermission(permission)`:
+1. Verifies there's an authenticated session (`requireSession()` under the hood).
+2. Reads the role from the **signed session JWT** - never from a client-supplied
+   field, form value, or header. A client cannot claim a role they don't have.
+3. Checks `can(permission, role)` against the centralized `ROLE_PERMISSIONS`
+   map in `permissions.ts`.
+4. Throws `AuthorizationError` (a bilingual message, via the existing
+   dictionary system - `t.validation.notAuthorized`) if the role doesn't
+   have the permission.
+5. On success, returns `{ organizationId, role }` so you don't need a
+   separate `requireOrgId()` call - though `requireOrgId()` is still
+   exported and still works exactly as before, for the couple of places
+   (like locale switching) that aren't permission-gated at all because
+   they touch no business data.
+
+**If you add a new `Permission` key**, add it to the `Permission` union,
+add it to `ALL_PERMISSIONS`, and add it to whichever role arrays should
+grant it. TypeScript will not compile if you reference a permission string
+that isn't in the `Permission` union, which is what keeps this centralized
+instead of scattering ad-hoc role checks through the codebase.
+
+## 5. UI visibility is not security
+
+Pages filter which buttons/links/forms they render based on
+`can(permission, role)` (imported directly, or via `getCurrentUserRole()`
+from `session.ts`), purely so a user isn't shown an action they can't
+perform. **This is a usability convenience only.** Every one of those
+actions is independently enforced server-side by `requirePermission()`
+inside the action itself. Hiding a button never substitutes for that check
+- a user (or a script) that calls the server action directly, bypassing the
+UI entirely, is still blocked by the exact same `requirePermission()` call.
+This was verified directly in this session: see `src/lib/actions/rbac.integration.test.ts`,
+which calls the real action functions (not the UI) and asserts that
+unauthorized roles are rejected before any database write happens.
+
+## 6. Rule for all future work
+
+**Every new mutation, and every new read of non-trivial business data, must
+call `requirePermission()` with an appropriate permission before doing
+anything else.** If no existing permission fits, add a new one following
+the `resource.action` naming convention, add it to the relevant role
+arrays in `ROLE_PERMISSIONS`, and document the decision here. A mutation
+protected only by `requireSession()`/`requireOrgId()` (authentication and
+tenant isolation, but no role check) is treated as a bug in this codebase
+going forward.
+
+## 7. Deliberately unprotected actions (and why)
+
+Two exported functions intentionally do **not** call `requirePermission()`:
+
+- **`setLocale`** (`src/lib/actions/locale.ts`) - sets a UI-language cookie.
+  It isn't org-scoped, doesn't touch any business data, and runs even on
+  the pre-login page. Every authenticated (and unauthenticated) user should
+  be able to switch language regardless of role.
+- **`syncOverdueStatuses`** (`src/lib/actions/collections.ts`) - internal
+  housekeeping that flips stale `PENDING` schedules/invoices to `OVERDUE`
+  based on the current date. It's not a user-initiated action; it's called
+  as a side effect of the `*.view`-gated reads (`listCollections`,
+  `getDashboardStats`, `getOverdueReport`) to keep their data fresh. Gating
+  it separately would only block lower-privileged roles (who can rightly
+  view overdue data) from seeing accurate statuses.
+
+Both are called out explicitly here so a future reviewer doesn't mistake
+them for gaps.

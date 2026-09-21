@@ -1,30 +1,33 @@
-import { requireSession } from "@/lib/session";
+import { requireSession, getCurrentUserRole } from "@/lib/session";
 import { signOut } from "@/lib/auth";
-import { getOrganization } from "@/lib/actions/organization";
+import { getOrganizationBranding } from "@/lib/actions/organization";
+import { can } from "@/lib/permissions";
 import { NavLink } from "@/components/nav-link";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { MobileSidebarShell } from "@/components/mobile-sidebar-shell";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import type { Dictionary } from "@/lib/i18n";
+import type { Permission } from "@/lib/permissions";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await requireSession();
-  const [locale, org] = await Promise.all([getLocale(), getOrganization()]);
+  const [locale, org, role] = await Promise.all([getLocale(), getOrganizationBranding(), getCurrentUserRole()]);
   const t = getDictionary(locale);
   const logoSrc = org.logoUrl || "/logo.jpg";
 
-  const navItems = [
-    { href: "/dashboard", label: t.nav.dashboard, icon: "📊" },
-    { href: "/properties", label: t.nav.properties, icon: "🏢" },
-    { href: "/units", label: t.nav.units, icon: "🚪" },
-    { href: "/renters", label: t.nav.renters, icon: "👥" },
-    { href: "/contracts", label: t.nav.contracts, icon: "📄" },
-    { href: "/collections", label: t.nav.collections, icon: "💰" },
-    { href: "/invoices", label: t.nav.invoices, icon: "🧾" },
-    { href: "/payments", label: t.nav.payments, icon: "🧮" },
-    { href: "/reports", label: t.nav.reports, icon: "📈" },
-    { href: "/settings", label: t.nav.settings, icon: "⚙️" },
+  const allNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
+    { href: "/dashboard", label: t.nav.dashboard, icon: "📊", permission: "dashboard.view" },
+    { href: "/properties", label: t.nav.properties, icon: "🏢", permission: "property.view" },
+    { href: "/units", label: t.nav.units, icon: "🚪", permission: "unit.view" },
+    { href: "/renters", label: t.nav.renters, icon: "👥", permission: "renter.view" },
+    { href: "/contracts", label: t.nav.contracts, icon: "📄", permission: "contract.view" },
+    { href: "/collections", label: t.nav.collections, icon: "💰", permission: "invoice.view" },
+    { href: "/invoices", label: t.nav.invoices, icon: "🧾", permission: "invoice.view" },
+    { href: "/payments", label: t.nav.payments, icon: "🧮", permission: "payment.view" },
+    { href: "/reports", label: t.nav.reports, icon: "📈", permission: "report.view" },
+    { href: "/settings", label: t.nav.settings, icon: "⚙️", permission: "settings.view" },
   ];
+  const navItems = allNavItems.filter((item) => can(item.permission, role));
 
   const brandMark = (
     <div className="flex items-center gap-2">

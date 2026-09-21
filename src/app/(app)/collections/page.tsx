@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { listCollections } from "@/lib/actions/collections";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 
 const statusTone: Record<string, string> = {
@@ -19,10 +21,11 @@ export default async function CollectionsPage({
 }: {
   searchParams: Promise<{ q?: string }>;
 }) {
-  const [schedules, locale, { q }] = await Promise.all([listCollections(), getLocale(), searchParams]);
+  const [schedules, locale, { q }, role] = await Promise.all([listCollections(), getLocale(), searchParams, getCurrentUserRole()]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
   const dateFmt = shortDateFormatter(locale);
+  const canIssueInvoice = can("invoice.create", role);
 
   const query = (q ?? "").trim().toLowerCase();
   const filtered = query
@@ -98,7 +101,7 @@ export default async function CollectionsPage({
                         {t.collections.viewInvoice}
                       </Link>
                     ))}
-                    {BILLABLE_STATUSES.has(s.status) && (
+                    {canIssueInvoice && BILLABLE_STATUSES.has(s.status) && (
                       <Link
                         href={`/collections/${s.id}/issue`}
                         className="block text-brand-gold-dark hover:underline text-xs font-medium"

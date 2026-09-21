@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requireOrgId } from "@/lib/session";
+import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 
 function propertySchema(t: ReturnType<typeof getDictionary>) {
@@ -18,7 +18,7 @@ function propertySchema(t: ReturnType<typeof getDictionary>) {
 }
 
 export async function createProperty(formData: FormData) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("property.create");
   const t = getDictionary(await getLocale());
   const parsed = propertySchema(t).parse({
     name: formData.get("name"),
@@ -34,13 +34,13 @@ export async function createProperty(formData: FormData) {
 }
 
 export async function deleteProperty(propertyId: string) {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("property.delete");
   await prisma.property.delete({ where: { id: propertyId, organizationId } });
   revalidatePath("/properties");
 }
 
 export async function listProperties() {
-  const organizationId = await requireOrgId();
+  const { organizationId } = await requirePermission("property.view");
   return prisma.property.findMany({
     where: { organizationId },
     include: { units: true },
