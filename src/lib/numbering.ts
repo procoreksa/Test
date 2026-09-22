@@ -42,3 +42,14 @@ export function formatLeadNumber(seq: number): string {
 export function formatViewingNumber(seq: number): string {
   return `VIEW-${String(seq).padStart(6, "0")}`;
 }
+
+/**
+ * No year component, matching formatLeadNumber()/formatViewingNumber() - an
+ * offer number is not a legal/tax document series. Allocated once per
+ * revision chain (only when versionNumber is 1); every revision copies the
+ * parent's offerNumber rather than drawing a new sequence value - see
+ * docs/LEASING-OFFERS.md, "Versioning".
+ */
+export function formatOfferNumber(seq: number): string {
+  return `OFFER-${String(seq).padStart(6, "0")}`;
+}

@@ -45,6 +45,8 @@ lead.view / lead.create / lead.update / lead.assign / lead.convert / lead.archiv
 leadActivity.view / leadActivity.create
 
 viewing.view / viewing.create / viewing.update / viewing.assign / viewing.complete / viewing.cancel
+
+offer.view / offer.create / offer.update / offer.submit / offer.approve / offer.send / offer.revise / offer.accept / offer.reject / offer.cancel
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -87,6 +89,28 @@ rescheduling is gated by `viewing.update` (it's fundamentally an edit to
 the same record) and marking a no-show is gated by `viewing.cancel` (it
 closes out the viewing negatively, the same authorization tier as
 cancelling it), rather than inventing a permission per verb.
+
+`offer.*` gate the Leasing Offer Management foundation (see
+`docs/LEASING-OFFERS.md`). ACCOUNTANT gets none at all, and VIEWER gets
+`offer.view` only - deliberately mirroring `lead.*`/`viewing.*` exactly:
+Offers are pre-contract commercial/negotiation data, and ACCOUNTANT's
+financial visibility begins at Contract/Invoice stage, same policy as
+Leads and Viewings. MANAGER holds every `offer.*` permission, **including
+`offer.approve`** - unlike every other permission in this table, that one
+is further restricted at the business-data layer, not the RBAC layer: a
+MANAGER's `approveOffer()` call additionally checks
+`canApproveDiscount(role, discountPercentage)`
+(`src/lib/crm/offer-rules.ts`), which returns `false` for MANAGER above a
+10% discount even though the flat permission grant passes. This was a
+deliberate choice per `docs/LEASING-OFFERS.md` §6/§13: the brief asks for
+"MANAGER can create offers but cannot self-approve >10% discount," which
+is a data-dependent rule, not a role-only one - representing it as an RBAC
+permission split (e.g. a separate `offer.approveHighDiscount`) would wrongly
+imply *no* MANAGER can ever approve *any* discount, when the real rule is
+threshold-based per offer. There is no `offer.delete`: offers are
+cancelled (`offer.cancel`, terminal `CANCELLED` status) or superseded by a
+revision, never deleted, matching the no-hard-delete policy `lead.*`/
+`viewing.*` already established.
 
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
@@ -150,6 +174,16 @@ create/delete, not edit. When one is added, gate it with the matching
 | viewing.assign | ✅ | ✅ | ✅ | ❌ | ❌ |
 | viewing.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
 | viewing.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.view | ✅ | ✅ | ✅ | ❌ | ✅ |
+| offer.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.submit | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.approve | ✅ | ✅ | ✅ (≤10% discount only - see §2) | ❌ | ❌ |
+| offer.send | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.revise | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.accept | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.reject | ✅ | ✅ | ✅ | ❌ | ❌ |
+| offer.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 

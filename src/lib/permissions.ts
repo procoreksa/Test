@@ -56,7 +56,17 @@ export type Permission =
   | "viewing.update"
   | "viewing.assign"
   | "viewing.complete"
-  | "viewing.cancel";
+  | "viewing.cancel"
+  | "offer.view"
+  | "offer.create"
+  | "offer.update"
+  | "offer.submit"
+  | "offer.approve"
+  | "offer.send"
+  | "offer.revise"
+  | "offer.accept"
+  | "offer.reject"
+  | "offer.cancel";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -109,6 +119,16 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "viewing.assign",
   "viewing.complete",
   "viewing.cancel",
+  "offer.view",
+  "offer.create",
+  "offer.update",
+  "offer.submit",
+  "offer.approve",
+  "offer.send",
+  "offer.revise",
+  "offer.accept",
+  "offer.reject",
+  "offer.cancel",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -155,11 +175,30 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "viewing.assign",
   "viewing.complete",
   "viewing.cancel",
+  // MANAGER holds every offer.* permission including offer.approve - the
+  // >10% discount restriction ("MANAGER cannot self-approve") is a business
+  // rule enforced inside approveOffer() via canApproveDiscount(), not a
+  // permission gate, so a future centralized approval engine can generalize
+  // it without an RBAC change. See docs/LEASING-OFFERS.md, "Approval rules".
+  "offer.view",
+  "offer.create",
+  "offer.update",
+  "offer.submit",
+  "offer.approve",
+  "offer.send",
+  "offer.revise",
+  "offer.accept",
+  "offer.reject",
+  "offer.cancel",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
 // and now owner ledger entries/reversals), read-only on properties/units/
-// renters/contracts/owners/ownership, no org settings.
+// renters/contracts/owners/ownership, no org settings. No offer.* at all -
+// deliberately mirrors ACCOUNTANT already having no lead.*/viewing.*
+// permissions either: Offers are pre-contract commercial/negotiation data,
+// and ACCOUNTANT's visibility begins at Contract/Invoice stage, same as for
+// Leads/Viewings. See docs/PERMISSIONS.md.
 const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
   "property.view",
@@ -195,6 +234,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "ownerLedger.view",
   "lead.view",
   "viewing.view",
+  "offer.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

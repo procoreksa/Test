@@ -16,6 +16,12 @@ export default async function CrmReportsIndexPage() {
     { href: "/crm/reports/most-viewed-units", icon: "🏠", title: t.viewing.reportMostViewedUnits },
     { href: "/crm/reports/most-viewed-compounds", icon: "🏘️", title: t.viewing.reportMostViewedCompounds },
     { href: "/crm/reports/no-show-analysis", icon: "🚫", title: t.viewing.reportNoShowAnalysis },
+    { href: "/crm/reports/offer-pipeline", icon: "📋", title: t.offer.reportPipeline },
+    { href: "/crm/reports/offer-acceptance", icon: "✅", title: t.offer.reportAcceptance },
+    { href: "/crm/reports/offer-discount", icon: "💸", title: t.offer.reportDiscount },
+    { href: "/crm/reports/offer-value-by-compound", icon: "🏘️", title: t.offer.reportValueByCompound },
+    { href: "/crm/reports/offer-agent-performance", icon: "🧑‍💼", title: t.offer.reportAgentPerformance },
+    { href: "/crm/reports/rejected-offer-analysis", icon: "📉", title: t.offer.reportRejectedAnalysis },
   ];
 
   return (

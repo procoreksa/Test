@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getViewingById, confirmViewing, startViewing, completeViewing, cancelViewing, markViewingNoShow, rescheduleViewing, updateViewingNotes } from "@/lib/actions/viewings";
+import { getOffersForViewing } from "@/lib/actions/offers";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
-import { getLocale, getDictionary, longDateTimeFormatter, pickLocalized } from "@/lib/i18n";
+import { getLocale, getDictionary, longDateTimeFormatter, currencyFormatter, pickLocalized } from "@/lib/i18n";
 import { AuditTimeline } from "@/components/audit-timeline";
 
 export default async function ViewingProfilePage({ params }: { params: Promise<{ id: string }> }) {
@@ -10,10 +11,13 @@ export default async function ViewingProfilePage({ params }: { params: Promise<{
   const [viewing, role, locale] = await Promise.all([getViewingById(id), getCurrentUserRole(), getLocale()]);
   const t = getDictionary(locale);
   const dateTimeFmt = longDateTimeFormatter(locale);
+  const sar = currencyFormatter(locale);
 
   const canUpdate = can("viewing.update", role);
   const canComplete = can("viewing.complete", role);
   const canCancel = can("viewing.cancel", role);
+  const canCreateOffer = can("offer.create", role);
+  const offersForViewing = can("offer.view", role) ? await getOffersForViewing(viewing.id) : [];
 
   const isScheduled = viewing.status === "SCHEDULED";
   const isConfirmed = viewing.status === "CONFIRMED";
@@ -145,11 +149,53 @@ export default async function ViewingProfilePage({ params }: { params: Promise<{
           <h2 className="font-semibold text-slate-800 mb-4">{t.viewing.profileOutcomeTitle}</h2>
           <p className="text-sm text-slate-700 mb-2">{viewing.outcome ? t.viewingOutcome[viewing.outcome] : "—"}</p>
           {viewing.feedbackSummary && <p className="text-sm text-slate-500">{viewing.feedbackSummary}</p>}
-          {(viewing.outcome === "OFFER_REQUESTED" || viewing.outcome === "RESERVATION_REQUESTED") && (
-            <button disabled className="mt-3 rounded-lg border border-dashed border-slate-300 text-slate-400 px-4 py-2 text-sm cursor-not-allowed">
-              {viewing.outcome === "OFFER_REQUESTED" ? t.viewing.futureOfferPlaceholder : t.viewing.futureReservationPlaceholder}
-            </button>
-          )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {canCreateOffer && (
+              <Link
+                href={`/crm/offers/new?leadId=${viewing.leadId}&viewingId=${viewing.id}&unitId=${viewing.units[0]?.unitId ?? ""}`}
+                className="rounded-lg bg-brand-gold hover:bg-brand-gold-dark text-brand-black px-4 py-2 text-sm font-semibold"
+              >
+                {t.offer.createOfferButton}
+              </Link>
+            )}
+            {viewing.outcome === "RESERVATION_REQUESTED" && (
+              <button disabled className="rounded-lg border border-dashed border-slate-300 text-slate-400 px-4 py-2 text-sm cursor-not-allowed">
+                {t.viewing.futureReservationPlaceholder}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {offersForViewing.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-4">{t.offer.offersFromViewingTitle}</h2>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-start text-slate-400 text-xs uppercase">
+                <th className="py-2 text-start">{t.offer.colOfferNumber}</th>
+                <th className="py-2 text-start">{t.offer.colVersion}</th>
+                <th className="py-2 text-start">{t.offer.colStatus}</th>
+                <th className="py-2 text-start">{t.offer.colNetRent}</th>
+                <th className="py-2 text-start">{t.offer.colCreatedDate}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {offersForViewing.map((offer) => (
+                <tr key={offer.id}>
+                  <td className="py-2">
+                    <Link href={`/crm/offers/${offer.id}`} className="text-brand-gold-dark hover:underline">
+                      {offer.offerNumber}
+                    </Link>
+                  </td>
+                  <td className="py-2">{offer.versionNumber}</td>
+                  <td className="py-2">{t.offerStatus[offer.status]}</td>
+                  <td className="py-2">{sar.format(Number(offer.netAnnualRent))}</td>
+                  <td className="py-2">{dateTimeFmt.format(offer.createdAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

@@ -3,6 +3,7 @@ import { getLeadById, updateLead, changeLeadStatus, assignLead, markLeadLost, ar
 import { createLeadActivity, listLeadActivities } from "@/lib/actions/lead-activities";
 import { getCompoundOptions } from "@/lib/actions/compounds";
 import { getViewingsForLead } from "@/lib/actions/viewings";
+import { getOffersForLead } from "@/lib/actions/offers";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, longDateTimeFormatter, pickLocalized } from "@/lib/i18n";
@@ -12,7 +13,7 @@ const MOVABLE_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "VIEWING_PENDING", "V
 
 export default async function LeadProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [lead, activities, role, locale, agents, compounds, renterMatches, viewingsSummary] = await Promise.all([
+  const [lead, activities, role, locale, agents, compounds, renterMatches, viewingsSummary, offersSummary] = await Promise.all([
     getLeadById(id),
     listLeadActivities(id).catch(() => []),
     getCurrentUserRole(),
@@ -21,6 +22,7 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
     getCompoundOptions(),
     findPossibleRenterMatches(id).catch(() => []),
     getViewingsForLead(id).catch(() => ({ upcoming: [], past: [], lastOutcome: null, nextViewingDate: null })),
+    getOffersForLead(id).catch(() => ({ offers: [], latest: null })),
   ]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
@@ -35,6 +37,8 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
   const canViewActivity = can("leadActivity.view", role);
   const canScheduleViewing = can("viewing.create", role);
   const canViewViewings = can("viewing.view", role);
+  const canCreateOffer = can("offer.create", role);
+  const canViewOffers = can("offer.view", role);
 
   const isClosed = lead.status === "WON" || lead.status === "LOST" || lead.status === "ARCHIVED";
 
@@ -148,6 +152,43 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {canViewOffers && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-slate-800">{t.offer.offersTitle}</h2>
+            {canCreateOffer && !isClosed && (
+              <Link href={`/crm/offers/new?leadId=${lead.id}`} className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-4 py-2 text-sm font-semibold">
+                {t.offer.createOfferFromLeadButton}
+              </Link>
+            )}
+          </div>
+
+          {offersSummary.latest && (
+            <dl className="grid grid-cols-2 gap-y-2 text-sm mb-4">
+              <InfoRow label={t.offer.latestOfferLabel} value={`${offersSummary.latest.offerNumber} (${t.offer.colVersionShort}${offersSummary.latest.versionNumber})`} />
+              <InfoRow label={t.offer.offerStatusLabel} value={t.offerStatus[offersSummary.latest.status]} />
+              <InfoRow label={t.offer.offerAmountLabel} value={sar.format(Number(offersSummary.latest.netAnnualRent))} />
+              <InfoRow label={t.offer.offerValidUntilLabel} value={dateFmt.format(offersSummary.latest.validUntil)} />
+            </dl>
+          )}
+
+          {offersSummary.offers.length === 0 ? (
+            <p className="text-sm text-slate-400">{t.offer.noOffers}</p>
+          ) : (
+            <ul className="space-y-1">
+              {offersSummary.offers.map((o) => (
+                <li key={o.id} className="text-sm">
+                  <Link href={`/crm/offers/${o.id}`} className="text-brand-gold-dark hover:underline">
+                    {o.offerNumber} — {t.offer.colVersionShort}{o.versionNumber}
+                  </Link>{" "}
+                  — {t.offerStatus[o.status]} — {sar.format(Number(o.netAnnualRent))}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

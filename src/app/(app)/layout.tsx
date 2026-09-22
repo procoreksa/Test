@@ -44,6 +44,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/crm/pipeline", label: t.nav.crmPipeline, icon: "🧭", permission: "lead.view" },
     { href: "/crm/viewings", label: t.nav.crmViewings, icon: "🗝️", permission: "viewing.view" },
     { href: "/crm/viewings/calendar", label: t.nav.crmViewingCalendar, icon: "📅", permission: "viewing.view" },
+    { href: "/crm/offers", label: t.nav.crmOffers, icon: "📝", permission: "offer.view" },
     { href: "/crm/reports", label: t.nav.crmReports, icon: "📑", permission: "lead.view" },
   ];
   const crmNavItems = allCrmNavItems.filter((item) => can(item.permission, role));

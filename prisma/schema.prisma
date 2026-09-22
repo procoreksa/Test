@@ -80,6 +80,7 @@ model Organization {
   leads              Lead[]
   leadActivities     LeadActivity[]
   viewings           Viewing[]
+  leasingOffers      LeasingOffer[]
 
   @@map("organizations")
 }
@@ -108,8 +109,9 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  assignedLeads    Lead[]    @relation("LeadAssignedTo")
-  assignedViewings Viewing[] @relation("ViewingAssignedTo")
+  assignedLeads    Lead[]         @relation("LeadAssignedTo")
+  assignedViewings Viewing[]      @relation("ViewingAssignedTo")
+  assignedOffers   LeasingOffer[] @relation("OfferAssignedTo")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -285,6 +287,7 @@ model Unit {
   propertyOwnerships PropertyOwnership[]
   ownerLedgerEntries OwnerLedgerEntry[]
   viewingUnits       ViewingUnit[]
+  leasingOffers      LeasingOffer[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -1036,8 +1039,9 @@ model Lead {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  activities LeadActivity[]
-  viewings   Viewing[]
+  activities    LeadActivity[]
+  viewings      Viewing[]
+  leasingOffers LeasingOffer[]
 
   @@unique([organizationId, leadNumber])
   @@index([organizationId, status])
@@ -1155,7 +1159,8 @@ model Viewing {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  units ViewingUnit[]
+  units         ViewingUnit[]
+  leasingOffers LeasingOffer[]
 
   @@unique([organizationId, viewingNumber])
   @@index([organizationId, scheduledStart])
@@ -1186,4 +1191,159 @@ model ViewingUnit {
   @@unique([viewingId, unitId])
   @@index([organizationId, unitId])
   @@map("viewing_units")
+}
+
+// ---------------------------------------------------------------------------
+// CRM: Leasing Offer Management
+//
+// A LeasingOffer is a commercial pre-contract proposal: Lead -> (optional)
+// Viewing -> Offer -> Negotiation -> future Reservation -> future Contract.
+// Purely additive on top of Lead/Viewing/Unit - none of them are redesigned,
+// and this task deliberately stops short of Reservations/Contract
+// conversion - see docs/LEASING-OFFERS.md, "Future Reservation/Contract
+// integration". Offer calculations are commercial/pre-contract data only:
+// no Invoice/PaymentSchedule/Payment/OwnerLedgerEntry row is ever created by
+// any action in this file.
+// ---------------------------------------------------------------------------
+
+enum OfferStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  UNDER_NEGOTIATION
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+  SUPERSEDED // superseded by a newer revision in the same offerNumber chain - see reviseOffer()
+}
+
+/// Deliberately separate from OfferStatus (Step 12 of the brief): internal
+/// discount-approval sign-off and the customer's own accept/reject decision
+/// are different concepts and must never be conflated in one enum. See
+/// docs/LEASING-OFFERS.md, "Approval rules".
+enum ApprovalStatus {
+  NOT_REQUIRED
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// The customer's own reason for declining an offer - distinct from
+/// LeadLostReason (a Lead can be rejected on this Offer without ever being
+/// marked LOST, see docs/LEASING-OFFERS.md, "Lead status integration").
+enum OfferRejectReason {
+  PRICE
+  PAYMENT_TERMS
+  UNIT
+  LOCATION
+  TIMING
+  COMPETITOR
+  CUSTOMER_CANCELLED
+  OTHER
+}
+
+model LeasingOffer {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Stable across an entire revision chain (Step 11) - e.g. "OFFER-000001"
+  // via the existing Counter infrastructure (key "offer"), allocated only
+  // once per chain (on the first version); revisions copy it rather than
+  // drawing a new sequence value. `versionNumber` is the only thing that
+  // increments per revision - see reviseOffer() in src/lib/actions/offers.ts.
+  offerNumber   String
+  versionNumber Int    @default(1)
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Optional - Step 10 requires a direct Offer from a qualified Lead to
+  // remain possible without ever having gone through a Viewing.
+  viewingId String?
+  viewing   Viewing? @relation(fields: [viewingId], references: [id], onDelete: SetNull)
+
+  // Single primary Unit only (Step 3) - schema is additive-friendly for a
+  // future OfferUnit join table (corporate multi-unit), not implemented here.
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  status         OfferStatus    @default(DRAFT)
+  approvalStatus ApprovalStatus @default(NOT_REQUIRED)
+
+  validFrom  DateTime
+  validUntil DateTime
+
+  currency String @default("SAR")
+
+  // Pricing - see src/lib/crm/offer-pricing.ts for the pure calculation
+  // this row's stored values are derived from. Rent itself carries no VAT
+  // at Offer stage (matching Contract.vatApplicable defaulting to false for
+  // residential leasing); only the leasing commission is taxed, mirroring
+  // EXTRA_CHARGE_VAT_RATE in src/lib/actions/invoices.ts.
+  annualRent         Decimal @db.Decimal(12, 2)
+  discountAmount     Decimal @default(0) @db.Decimal(12, 2)
+  discountPercentage Decimal @default(0) @db.Decimal(5, 2)
+  netAnnualRent      Decimal @db.Decimal(12, 2)
+
+  securityDeposit Decimal @db.Decimal(12, 2)
+  contractFee     Decimal @default(0) @db.Decimal(12, 2)
+
+  leasingCommissionAmount Decimal  @default(0) @db.Decimal(12, 2)
+  leasingCommissionRate   Decimal? @db.Decimal(5, 2)
+  commissionVatRate       Decimal  @default(15) @db.Decimal(5, 2)
+  commissionVatAmount     Decimal  @default(0) @db.Decimal(12, 2)
+
+  totalInitialPayment Decimal @db.Decimal(12, 2)
+
+  paymentFrequency PaymentFrequency @default(ANNUAL)
+
+  leaseStartDate      DateTime?
+  leaseDurationMonths Int       @default(12)
+
+  furnishedStatus FurnishingPreference @default(UNFURNISHED)
+
+  specialTerms  String?
+  internalNotes String?
+
+  sentAt     DateTime?
+  acceptedAt DateTime?
+  rejectedAt DateTime?
+  expiredAt  DateTime?
+
+  rejectReason     OfferRejectReason?
+  rejectReasonNote String?
+
+  // Plain string, not a relation - mirrors Lead.createdByUserId/
+  // Viewing.createdByUserId: survives a User being removed.
+  createdByUserId String
+
+  // Live operational assignment - same pattern as Lead/Viewing's
+  // assignedToUserId: a real relation, verified same-organization on every
+  // write.
+  assignedToUserId String?
+  assignedToUser   User?   @relation("OfferAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  // Revision chain (Step 11/32): unique so exactly one child can ever point
+  // at a given parent, keeping the chain linear - mirrors
+  // Contract.renewedFromContractId. Set only by reviseOffer(), which also
+  // flips the parent's status to SUPERSEDED in the same transaction.
+  parentOfferId String?       @unique
+  parentOffer   LeasingOffer? @relation("OfferRevision", fields: [parentOfferId], references: [id], onDelete: SetNull)
+  revisedInto   LeasingOffer? @relation("OfferRevision")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, offerNumber, versionNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, leadId])
+  @@index([organizationId, unitId])
+  @@index([organizationId, assignedToUserId])
+  @@index([organizationId, validUntil])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, offerNumber])
+  @@map("leasing_offers")
 }

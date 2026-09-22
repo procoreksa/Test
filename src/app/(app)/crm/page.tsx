@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { getCrmDashboardStats } from "@/lib/actions/crm";
 import { getViewingDashboardStats } from "@/lib/actions/viewing-reports";
+import { getOfferDashboardStats } from "@/lib/actions/offer-reports";
 import { StatCard } from "@/components/stat-card";
-import { getLocale, getDictionary } from "@/lib/i18n";
+import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 
 export default async function CrmDashboardPage() {
-  const [stats, viewingStats, locale] = await Promise.all([getCrmDashboardStats(), getViewingDashboardStats(), getLocale()]);
+  const [stats, viewingStats, offerStats, locale] = await Promise.all([
+    getCrmDashboardStats(),
+    getViewingDashboardStats(),
+    getOfferDashboardStats(),
+    getLocale(),
+  ]);
   const t = getDictionary(locale);
+  const sar = currencyFormatter(locale);
 
   return (
     <div className="space-y-6">
@@ -90,6 +97,22 @@ export default async function CrmDashboardPage() {
         </div>
       </div>
 
+      <div>
+        <h2 className="font-semibold text-slate-800 mb-4">{t.offer.dashboardTitle}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label={t.offer.kpiDraftOffers} value={String(offerStats.draftCount)} />
+          <StatCard label={t.offer.kpiPendingApproval} value={String(offerStats.pendingApprovalCount)} tone="warning" />
+          <StatCard label={t.offer.kpiSentOffers} value={String(offerStats.sentCount)} />
+          <StatCard label={t.offer.kpiNegotiations} value={String(offerStats.negotiationCount)} />
+          <StatCard label={t.offer.kpiAcceptedThisMonth} value={String(offerStats.acceptedThisMonth)} tone="positive" />
+          <StatCard label={t.offer.kpiRejected} value={String(offerStats.rejectedThisMonth)} tone="danger" />
+          <StatCard label={t.offer.kpiExpired} value={String(offerStats.expiredThisMonth)} tone="danger" />
+          <StatCard label={t.offer.kpiAcceptanceRate} value={`${offerStats.acceptanceRate}%`} tone="positive" />
+          <StatCard label={t.offer.kpiOpenOfferValue} value={sar.format(offerStats.openOfferValue)} />
+          <StatCard label={t.offer.kpiAcceptedOfferValue} value={sar.format(offerStats.acceptedOfferValue)} tone="positive" />
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-3">
         <Link href="/crm/leads" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmLeads} →
@@ -102,6 +125,9 @@ export default async function CrmDashboardPage() {
         </Link>
         <Link href="/crm/viewings/calendar" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmViewingCalendar} →
+        </Link>
+        <Link href="/crm/offers" className="text-brand-gold-dark hover:underline text-sm font-medium">
+          {t.nav.crmOffers} →
         </Link>
         <Link href="/crm/reports" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmReports} →

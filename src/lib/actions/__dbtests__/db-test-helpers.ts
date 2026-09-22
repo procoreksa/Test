@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { assertSafeTestDatabaseUrl } from "@/lib/test-db-guard";
 import { createContractWithSchedule } from "@/lib/contract-schedule";
 import { issueInvoice } from "@/lib/invoicing";
-import type { UserRole, ViewingStatus } from "@prisma/client";
+import type { UserRole, ViewingStatus, OfferStatus } from "@prisma/client";
 
 assertSafeTestDatabaseUrl(process.env.DATABASE_URL);
 
@@ -137,12 +137,59 @@ export async function createTestViewing(
   return viewing;
 }
 
+export async function createTestOffer(
+  organizationId: string,
+  leadId: string,
+  unitId: string,
+  createdByUserId: string,
+  overrides: Partial<{
+    viewingId: string;
+    assignedToUserId: string;
+    status: OfferStatus;
+    offerNumber: string;
+    versionNumber: number;
+    parentOfferId: string;
+    annualRent: number;
+    discountPercentage: number;
+    validFrom: Date;
+    validUntil: Date;
+  }> = {}
+) {
+  const annualRent = overrides.annualRent ?? 80000;
+  const discountPercentage = overrides.discountPercentage ?? 0;
+  const discountAmount = (annualRent * discountPercentage) / 100;
+  const netAnnualRent = annualRent - discountAmount;
+  return prisma.leasingOffer.create({
+    data: {
+      organizationId,
+      offerNumber: overrides.offerNumber ?? `OFFER-${uniqueSuffix()}`,
+      versionNumber: overrides.versionNumber ?? 1,
+      parentOfferId: overrides.parentOfferId,
+      leadId,
+      viewingId: overrides.viewingId,
+      unitId,
+      assignedToUserId: overrides.assignedToUserId,
+      status: overrides.status ?? "DRAFT",
+      validFrom: overrides.validFrom ?? new Date("2027-01-01T00:00:00Z"),
+      validUntil: overrides.validUntil ?? new Date("2027-12-31T00:00:00Z"),
+      annualRent,
+      discountAmount,
+      discountPercentage,
+      netAnnualRent,
+      securityDeposit: netAnnualRent / 4,
+      totalInitialPayment: netAnnualRent / 4,
+      paymentFrequency: "QUARTERLY",
+      createdByUserId,
+    },
+  });
+}
+
 /**
  * A fully wired organization: compound -> building -> floor -> unit, a
  * renter, an owner (100% assigned to the unit), an admin user, a lead, a
- * scheduled viewing (assigned to the org's own admin), and the matching
- * mocked session - everything a cross-org/IDOR test needs to assert that
- * another organization's admin cannot reach any of it.
+ * scheduled viewing (assigned to the org's own admin), a Draft leasing
+ * offer, and the matching mocked session - everything a cross-org/IDOR test
+ * needs to assert that another organization's admin cannot reach any of it.
  */
 export async function seedFullOrg(label: string) {
   const organization = await createTestOrganization(`${label} Org`);
@@ -158,6 +205,7 @@ export async function seedFullOrg(label: string) {
   });
   const lead = await createTestLead(organization.id, admin.id, { fullName: `${label} Lead`, mobile: "0501234567" });
   const viewing = await createTestViewing(organization.id, lead.id, [unit.id], admin.id, { assignedToUserId: admin.id });
+  const offer = await createTestOffer(organization.id, lead.id, unit.id, admin.id, { assignedToUserId: admin.id });
 
   return {
     organization,
@@ -172,6 +220,7 @@ export async function seedFullOrg(label: string) {
     ownership,
     lead,
     viewing,
+    offer,
   };
 }
 

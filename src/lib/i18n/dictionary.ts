@@ -51,6 +51,7 @@ export interface Dictionary {
     crmReports: string;
     crmViewings: string;
     crmViewingCalendar: string;
+    crmOffers: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -629,6 +630,15 @@ export interface Dictionary {
     viewingUnitNotEligible: string;
     viewingInvalidTransition: string;
     viewingCancelReasonNoteRequired: string;
+    offerValidUntilAfterFrom: string;
+    offerLeadNotEligible: string;
+    offerUnitNotEligible: string;
+    offerViewingMismatch: string;
+    offerInvalidTransition: string;
+    offerCannotEditNonDraft: string;
+    offerCannotRevise: string;
+    offerApprovalNotAllowed: string;
+    offerRejectReasonNoteRequired: string;
   };
   zatca: {
     notConfigured: string;
@@ -1191,7 +1201,6 @@ export interface Dictionary {
     cancelSubmit: string;
     rescheduleTitle: string;
     rescheduleSubmit: string;
-    futureOfferPlaceholder: string;
     futureReservationPlaceholder: string;
 
     scheduleViewingButton: string;
@@ -1237,6 +1246,216 @@ export interface Dictionary {
     colLastViewing: string;
 
     unitViewingsLink: string;
+  };
+  offerStatus: {
+    DRAFT: string;
+    PENDING_APPROVAL: string;
+    APPROVED: string;
+    SENT: string;
+    UNDER_NEGOTIATION: string;
+    ACCEPTED: string;
+    REJECTED: string;
+    EXPIRED: string;
+    CANCELLED: string;
+    SUPERSEDED: string;
+  };
+  approvalStatus: {
+    NOT_REQUIRED: string;
+    PENDING: string;
+    APPROVED: string;
+    REJECTED: string;
+  };
+  offerRejectReason: {
+    PRICE: string;
+    PAYMENT_TERMS: string;
+    UNIT: string;
+    LOCATION: string;
+    TIMING: string;
+    COMPETITOR: string;
+    CUSTOMER_CANCELLED: string;
+    OTHER: string;
+  };
+  offer: {
+    activityCreated: (offerNumber: string, netAnnualRent: number) => string;
+    activitySent: (offerNumber: string) => string;
+    activityNegotiation: (offerNumber: string) => string;
+    activityAccepted: (offerNumber: string) => string;
+    activityRejected: (offerNumber: string, reasonLabel: string) => string;
+    activityCancelled: (offerNumber: string) => string;
+    activityRevised: (offerNumber: string, versionNumber: number) => string;
+
+    createOfferButton: string;
+    createOfferFromLeadButton: string;
+    offersFromViewingTitle: string;
+
+    listTitle: string;
+    listSubtitle: string;
+    searchPlaceholder: string;
+    colOfferNumber: string;
+    colVersion: string;
+    colVersionShort: string;
+    colLead: string;
+    colUnit: string;
+    colCompound: string;
+    colAnnualRent: string;
+    colDiscount: string;
+    colNetRent: string;
+    colStatus: string;
+    colAgent: string;
+    colValidUntil: string;
+    colCreatedDate: string;
+    colActions: string;
+    filterStatus: string;
+    filterAgent: string;
+    filterCompound: string;
+    filterUnit: string;
+    filterLead: string;
+    filterDateFrom: string;
+    filterDateTo: string;
+    filterValidUntilFrom: string;
+    filterValidUntilTo: string;
+    filterExpiredOnly: string;
+    filterAcceptedOnly: string;
+    filterRejectedOnly: string;
+    filterApply: string;
+    filterAll: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    newTitle: string;
+    newSubtitle: string;
+    editTitle: string;
+    editSubtitle: string;
+    save: string;
+    fieldLead: string;
+    fieldViewing: string;
+    fieldUnit: string;
+    fieldAssignedAgent: string;
+    fieldValidFrom: string;
+    fieldValidUntil: string;
+    fieldAnnualRent: string;
+    fieldDiscountAmount: string;
+    fieldDiscountPercentage: string;
+    fieldSecurityDeposit: string;
+    fieldContractFee: string;
+    fieldCommissionAmount: string;
+    fieldCommissionRate: string;
+    fieldCommissionVatRate: string;
+    fieldPaymentFrequency: string;
+    fieldLeaseStartDate: string;
+    fieldLeaseDurationMonths: string;
+    fieldFurnishedStatus: string;
+    fieldSpecialTerms: string;
+    fieldInternalNotes: string;
+    pickCompound: string;
+    pickBuilding: string;
+    pickFloor: string;
+    pickUnit: string;
+
+    previewTitle: string;
+    previewGrossAnnualRent: string;
+    previewDiscount: string;
+    previewNetAnnualRent: string;
+    previewCommission: string;
+    previewCommissionVat: string;
+    previewDeposit: string;
+    previewContractFee: string;
+    previewInitialPayment: string;
+    /** Template with {count}/{amount} placeholders, interpolated client-side in OfferPricingForm - a function value cannot cross the Server->Client Component prop boundary. */
+    previewInstallmentsTemplate: string;
+
+    profileBack: string;
+    profileSummaryTitle: string;
+    profileLeadTitle: string;
+    profileUnitTitle: string;
+    profilePricingTitle: string;
+    profilePaymentTermsTitle: string;
+    profileDepositTitle: string;
+    profileCommissionTitle: string;
+    profileVatTitle: string;
+    profileSpecialTermsTitle: string;
+    profileValidityTitle: string;
+    profileStatusTitle: string;
+    profileVersionHistoryTitle: string;
+    profileActivitiesTitle: string;
+    approvalStatusLabel: string;
+
+    currentVersionBadge: string;
+
+    actionSubmitForApproval: string;
+    actionApprove: string;
+    actionDeclineApproval: string;
+    actionSend: string;
+    actionMoveToNegotiation: string;
+    actionAccept: string;
+    actionReject: string;
+    actionCancel: string;
+    actionRevise: string;
+    actionEdit: string;
+    actionPrint: string;
+
+    declineApprovalTitle: string;
+    fieldDeclineNotes: string;
+    declineApprovalSubmit: string;
+
+    rejectTitle: string;
+    fieldRejectReason: string;
+    fieldRejectReasonNote: string;
+    rejectSubmit: string;
+
+    reservationNotImplemented: string;
+
+    approvalRequiredBadge: string;
+    approvalNotRequiredBadge: string;
+
+    printTitle: string;
+    printCustomer: string;
+    printUnit: string;
+    printCompound: string;
+    printLeasePeriod: string;
+    printRent: string;
+    printPaymentSchedule: string;
+    printDeposit: string;
+    printCommission: string;
+    printVat: string;
+    printTerms: string;
+    printValidity: string;
+
+    dashboardTitle: string;
+    kpiDraftOffers: string;
+    kpiPendingApproval: string;
+    kpiSentOffers: string;
+    kpiNegotiations: string;
+    kpiAcceptedThisMonth: string;
+    kpiRejected: string;
+    kpiExpired: string;
+    kpiAcceptanceRate: string;
+    kpiOpenOfferValue: string;
+    kpiAcceptedOfferValue: string;
+
+    reportsTitle: string;
+    reportPipeline: string;
+    reportAcceptance: string;
+    reportDiscount: string;
+    reportValueByCompound: string;
+    reportAgentPerformance: string;
+    reportRejectedAnalysis: string;
+    colCount: string;
+    colAverageDiscount: string;
+    colEscalatedCount: string;
+    colTotalValue: string;
+    colAcceptedCount: string;
+    colOfferCount: string;
+    colReason: string;
+
+    offersTitle: string;
+    latestOfferLabel: string;
+    offerStatusLabel: string;
+    offerAmountLabel: string;
+    offerValidUntilLabel: string;
+    noOffers: string;
   };
 }
 
