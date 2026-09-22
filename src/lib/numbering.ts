@@ -32,3 +32,8 @@ export function formatContractNumber(seq: number, year: number): string {
 export function formatReceiptNumber(seq: number, year: number): string {
   return `RCT-${year}-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, per the CRM brief's own example ("LEAD-000001") - unlike invoice/contract/receipt numbers, lead numbers are not a legal/tax document series. */
+export function formatLeadNumber(seq: number): string {
+  return `LEAD-${String(seq).padStart(6, "0")}`;
+}

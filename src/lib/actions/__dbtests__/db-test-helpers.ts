@@ -97,6 +97,21 @@ export async function createTestOwner(organizationId: string, name = "Test Owner
   return prisma.owner.create({ data: { organizationId, name, iban: "SA1234567890123456789012" } });
 }
 
+export async function createTestLead(organizationId: string, createdByUserId: string, overrides: Partial<{ fullName: string; mobile: string }> = {}) {
+  const mobile = overrides.mobile ?? "0501234567";
+  return prisma.lead.create({
+    data: {
+      organizationId,
+      leadNumber: `LEAD-${uniqueSuffix()}`,
+      fullName: overrides.fullName ?? "Test Lead",
+      mobile,
+      normalizedMobile: `966${mobile.replace(/^0/, "")}`,
+      source: "WEBSITE",
+      createdByUserId,
+    },
+  });
+}
+
 /**
  * A fully wired organization: compound -> building -> floor -> unit, a
  * renter, an owner (100% assigned to the unit), an admin user, and the
@@ -115,6 +130,7 @@ export async function seedFullOrg(label: string) {
   const ownership = await prisma.propertyOwnership.create({
     data: { organizationId: organization.id, ownerId: owner.id, unitId: unit.id, ownershipPercentage: 100 },
   });
+  const lead = await createTestLead(organization.id, admin.id, { fullName: `${label} Lead`, mobile: "0501234567" });
 
   return {
     organization,
@@ -127,6 +143,7 @@ export async function seedFullOrg(label: string) {
     renter,
     owner,
     ownership,
+    lead,
   };
 }
 

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { requireSession, getCurrentUserRole } from "@/lib/session";
 import { signOut } from "@/lib/auth";
 import { getOrganizationBranding } from "@/lib/actions/organization";
@@ -34,6 +35,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   const navItems = allNavItems.filter((item) => can(item.permission, role));
 
+  // Its own navigation group (Step 26): a labeled block, not folded flat
+  // into the list above, so it reads as "CRM" - only rendered at all if the
+  // role has lead.view (ACCOUNTANT/no-lead-access roles see nothing here).
+  const crmNavItems: Array<{ href: string; label: string; icon: string }> = can("lead.view", role)
+    ? [
+        { href: "/crm", label: t.nav.crmDashboard, icon: "🎯" },
+        { href: "/crm/leads", label: t.nav.crmLeads, icon: "📇" },
+        { href: "/crm/pipeline", label: t.nav.crmPipeline, icon: "🧭" },
+        { href: "/crm/reports", label: t.nav.crmReports, icon: "📑" },
+      ]
+    : [];
+
   const brandMark = (
     <div className="flex items-center gap-2">
       <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
@@ -64,7 +77,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
         <nav className="flex-1 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
-            <NavLink key={item.href} {...item} />
+            <Fragment key={item.href}>
+              <NavLink {...item} />
+              {item.href === "/renters" && crmNavItems.length > 0 && (
+                <div className="pt-3 mt-2 border-t border-brand-black-line">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.nav.crmGroupLabel}</p>
+                  {crmNavItems.map((crmItem) => (
+                    <NavLink key={crmItem.href} {...crmItem} />
+                  ))}
+                </div>
+              )}
+            </Fragment>
           ))}
         </nav>
 

@@ -77,6 +77,8 @@ model Organization {
   owners             Owner[]
   propertyOwnerships PropertyOwnership[]
   ownerLedgerEntries OwnerLedgerEntry[]
+  leads              Lead[]
+  leadActivities     LeadActivity[]
 
   @@map("organizations")
 }
@@ -104,6 +106,8 @@ model User {
   isActive       Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+
+  assignedLeads Lead[] @relation("LeadAssignedTo")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -199,6 +203,7 @@ model Compound {
   buildings          Building[]
   propertyOwnerships PropertyOwnership[]
   ownerLedgerEntries OwnerLedgerEntry[]
+  leads              Lead[]
 
   @@index([organizationId])
   @@map("compounds")
@@ -311,9 +316,10 @@ model Renter {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts Contract[]
-  invoices  Invoice[]
-  payments  Payment[]
+  contracts         Contract[]
+  invoices          Invoice[]
+  payments          Payment[]
+  convertedFromLead Lead?
 
   @@index([organizationId])
   @@map("renters")
@@ -383,8 +389,9 @@ model Contract {
   renewedFromContract   Contract? @relation("ContractRenewal", fields: [renewedFromContractId], references: [id])
   renewedIntoContract   Contract? @relation("ContractRenewal")
 
-  paymentSchedules PaymentSchedule[]
-  invoices         Invoice[]
+  paymentSchedules  PaymentSchedule[]
+  invoices          Invoice[]
+  convertedFromLead Lead?
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
@@ -844,4 +851,225 @@ model AuditLog {
   @@index([organizationId, action])
   @@index([userId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// CRM: Leads
+//
+// A Lead is a prospective residential/corporate tenant BEFORE a lease
+// exists - it deliberately does not reuse or extend the `Renter` model
+// (Renter is a contracted tenancy entity used throughout invoicing/
+// payments/statements). A Lead becomes a Renter only through the explicit
+// convertLeadToRenter() workflow (see docs/CRM-LEADS.md); the Lead row is
+// never deleted by conversion, only linked via `convertedRenterId` and
+// moved to WON, so its full pipeline history stays intact.
+//
+// This is the Lead + Qualification + pipeline foundation only - Viewings,
+// Offers, Reservations, and automatic Contract creation are a future task
+// (see docs/CRM-LEADS.md, "Future Viewing/Offer/Reservation architecture").
+// ---------------------------------------------------------------------------
+
+enum LeadType {
+  INDIVIDUAL
+  CORPORATE
+  AGENT_REFERRAL
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  VIEWING_PENDING // reserved for the future Viewing module - not settable by any action in this task
+  VIEWING_COMPLETED // reserved for the future Viewing module - not settable by any action in this task
+  OFFER_PENDING // reserved for the future Offer module - not settable by any action in this task
+  NEGOTIATION // reserved for the future Offer module - not settable by any action in this task
+  RESERVATION_PENDING // reserved for the future Reservation module - not settable by any action in this task
+  WON
+  LOST
+  ARCHIVED
+}
+
+enum LeadSource {
+  FACEBOOK
+  INSTAGRAM
+  GOOGLE
+  WHATSAPP
+  WEBSITE
+  REFERRAL
+  WALK_IN
+  CORPORATE
+  AGENT
+  PHONE
+  OTHER
+}
+
+enum FurnishingPreference {
+  FURNISHED
+  SEMI_FURNISHED
+  UNFURNISHED
+  FLEXIBLE
+}
+
+enum LeadLostReason {
+  PRICE
+  NO_AVAILABILITY
+  LOCATION
+  COMPETITOR
+  NO_RESPONSE
+  BUDGET
+  TIMING
+  CUSTOMER_CANCELLED
+  OTHER
+}
+
+enum LeadActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  MEETING
+  NOTE
+  FOLLOW_UP
+  STATUS_CHANGE
+  OTHER
+}
+
+model Lead {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  leadNumber String // e.g. "LEAD-000001" - sequential per organization via the existing Counter infrastructure (key "lead"), never a separate numbering scheme
+
+  leadType LeadType   @default(INDIVIDUAL)
+  status   LeadStatus @default(NEW)
+
+  // Individual/agent-referral contact identity. For CORPORATE leads these
+  // hold the case contact's name (mirrored into contactPerson* below for
+  // clarity); `fullName` is always kept in sync (by the server action, not
+  // a DB trigger) as the single display name used across list/search UI -
+  // "first last" for individuals, `companyName` for corporate leads.
+  firstName String?
+  lastName  String?
+  fullName  String
+
+  mobile           String
+  // Normalized (digits only, country-code-canonicalized) form of `mobile`,
+  // computed by src/lib/crm/phone.ts at write time - used for duplicate
+  // detection and the organizationId+normalizedMobile index. `mobile`
+  // itself keeps the original, user-entered display value.
+  normalizedMobile String
+  alternateMobile  String?
+  email            String?
+
+  nationality String?
+
+  employer String?
+  jobTitle String?
+
+  // Also used as the primary company identity for CORPORATE leads.
+  companyName String?
+
+  // CORPORATE-only fields (see docs/CRM-LEADS.md, "Corporate leads") - this
+  // is deliberately NOT a separate Corporate Client model yet, just the
+  // additional fields a corporate housing enquiry needs on the Lead itself.
+  contactPersonName   String?
+  contactPersonMobile String?
+  contactPersonEmail  String?
+  employeeCount       Int?
+  requiredUnits       Int?
+  requestedCity       String?
+  projectName         String?
+  housingStartDate    DateTime?
+  housingEndDate      DateTime?
+
+  familySize Int?
+
+  budgetMin Decimal? @db.Decimal(12, 2)
+  budgetMax Decimal? @db.Decimal(12, 2)
+
+  preferredBedrooms Int?
+  // Reuses the existing UnitType enum (see Unit model) rather than a new
+  // CRM-specific one - a lead's unit-type preference and a real unit's
+  // type are the same concept.
+  preferredUnitType UnitType?
+
+  preferredCompoundId String?
+  preferredCompound   Compound? @relation(fields: [preferredCompoundId], references: [id], onDelete: SetNull)
+
+  moveInDate          DateTime?
+  leaseDurationMonths Int?
+  furnishedPreference FurnishingPreference?
+
+  notes String?
+
+  source LeadSource @default(OTHER)
+
+  // Live operational assignment (unlike createdByUserId below, this is a
+  // real relation: the UI needs to join/display/reassign it, and it must
+  // be verified to belong to the same organization on every write).
+  assignedToUserId String?
+  assignedToUser   User?   @relation("LeadAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  // Plain string, not a relation - mirrors Owner.createdBy/updatedBy: an
+  // audit-adjacent attribution field that must survive a User being
+  // removed, not a live join target.
+  createdByUserId String
+
+  convertedRenterId String? @unique
+  convertedRenter   Renter? @relation(fields: [convertedRenterId], references: [id], onDelete: SetNull)
+
+  // Reserved for the future Contract-conversion step (not implemented in
+  // this task) - present now so the column exists additively rather than
+  // requiring another migration when that workflow is built.
+  convertedContractId String?   @unique
+  convertedContract   Contract? @relation(fields: [convertedContractId], references: [id], onDelete: SetNull)
+
+  lostReason     LeadLostReason?
+  lostReasonNote String?
+
+  lastContactAt  DateTime?
+  nextFollowUpAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activities LeadActivity[]
+
+  @@unique([organizationId, leadNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, normalizedMobile])
+  @@index([organizationId, assignedToUserId])
+  @@index([organizationId, nextFollowUpAt])
+  @@index([organizationId, source])
+  @@index([organizationId, createdAt])
+  @@map("leads")
+}
+
+/// Business interaction history (calls, WhatsApp, meetings, notes, follow-
+/// ups) - append-only by convention (no update/delete action exists), but
+/// distinct from AuditLog: LeadActivity is what leasing staff did with a
+/// prospect, AuditLog is the system/security record of what changed and
+/// who has access. See docs/CRM-LEADS.md, "LeadActivity vs AuditLog".
+model LeadActivity {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  leadId         String
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  activityType LeadActivityType
+
+  subject String?
+  notes   String?
+
+  activityDate DateTime @default(now())
+
+  // Plain string (never client-supplied - see src/lib/actions/lead-
+  // activities.ts) - same attribution pattern as Lead.createdByUserId.
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, leadId])
+  @@index([organizationId, activityDate])
+  @@map("lead_activities")
 }

@@ -40,6 +40,9 @@ ownership.view / ownership.manage
 ownerLedger.view / ownerLedger.create / ownerLedger.reverse
 
 audit.view / audit.export
+
+lead.view / lead.create / lead.update / lead.assign / lead.convert / lead.archive
+leadActivity.view / leadActivity.create
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -60,6 +63,18 @@ no permission for those verbs exists at all. `audit.export` is granted only
 to OWNER/ADMIN (via `ALL_PERMISSIONS`) - MANAGER/ACCOUNTANT can view the
 audit log filtered to their category but not export it, per the brief's
 "Optionally: audit.export" wording.
+
+`lead.*`/`leadActivity.*` gate the CRM Leads foundation (see
+`docs/CRM-LEADS.md`). MANAGER gets every CRM permission (full leasing-agent
+CRM access, mirroring MANAGER's full operational access elsewhere).
+ACCOUNTANT gets none at all - the brief's own policy explicitly excludes
+ACCOUNTANT from CRM. VIEWER gets `lead.view` only (not `leadActivity.view`)
+per the brief's literal "lead.view only" instruction: a VIEWER can see a
+lead's core profile (contact info, requirements, budget, status) but not
+its activity interaction history, mirroring how `owner.view` and
+`ownerLedger.view` are separate grants elsewhere in this table. There is no
+`lead.delete` - leads are archived (`lead.archive`, sets `status:
+ARCHIVED`), never deleted, so no delete verb exists at all.
 
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
@@ -109,6 +124,14 @@ create/delete, not edit. When one is added, gate it with the matching
 | ownerLedger.reverse | ✅ | ✅ | ❌ | ✅ | ❌ |
 | audit.view | ✅ | ✅ | ✅ (operational only) | ✅ (financial only) | ❌ |
 | audit.export | ✅ | ✅ | ❌ | ❌ | ❌ |
+| lead.view | ✅ | ✅ | ✅ | ❌ | ✅ |
+| lead.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| lead.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| lead.assign | ✅ | ✅ | ✅ | ❌ | ❌ |
+| lead.convert | ✅ | ✅ | ✅ | ❌ | ❌ |
+| lead.archive | ✅ | ✅ | ✅ | ❌ | ❌ |
+| leadActivity.view | ✅ | ✅ | ✅ | ❌ | ❌ |
+| leadActivity.create | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
