@@ -54,38 +54,50 @@ export async function createOwnership(formData: FormData) {
   const owner = await prisma.owner.findUniqueOrThrow({ where: { id: parsed.ownerId, organizationId } });
   const assetField = await assertAssetInOrg(organizationId, parsed.assetLevel, parsed.assetId);
 
-  await prisma.$transaction(async (tx) => {
-    const existingTotal = await activeOwnershipTotalForAsset(tx, organizationId, parsed.assetLevel, parsed.assetId);
-    const newTotal = existingTotal.plus(parsed.ownershipPercentage);
-    if (newTotal.greaterThan(100)) {
-      throw new Error(t.validation.ownershipExceeds100(newTotal.toFixed(2)));
-    }
+  // Hardening (docs/SECURITY-REVIEW.md, "Ownership concurrency"): the
+  // read-total-then-insert check below is a classic TOCTOU race under the
+  // default READ COMMITTED isolation - two concurrent requests can each
+  // read the same pre-insert total, both pass the <=100% check, and both
+  // commit, pushing the real total over 100%. Serializable isolation (this
+  // codebase's established concurrency-safety strategy for every
+  // check-conflicts-then-write critical section - see reservations.ts/
+  // reservation-contract.ts/move-ins.ts) makes Postgres detect this
+  // read-write conflict and abort one of the two transactions instead.
+  await prisma.$transaction(
+    async (tx) => {
+      const existingTotal = await activeOwnershipTotalForAsset(tx, organizationId, parsed.assetLevel, parsed.assetId);
+      const newTotal = existingTotal.plus(parsed.ownershipPercentage);
+      if (newTotal.greaterThan(100)) {
+        throw new Error(t.validation.ownershipExceeds100(newTotal.toFixed(2)));
+      }
 
-    const ownership = await tx.propertyOwnership.create({
-      data: {
-        organizationId,
-        ownerId: parsed.ownerId,
-        ...assetField,
-        ownershipPercentage: parsed.ownershipPercentage,
-        effectiveFrom: parsed.effectiveFrom,
-        notes: parsed.notes,
-        createdBy: user.id,
-      },
-    });
+      const ownership = await tx.propertyOwnership.create({
+        data: {
+          organizationId,
+          ownerId: parsed.ownerId,
+          ...assetField,
+          ownershipPercentage: parsed.ownershipPercentage,
+          effectiveFrom: parsed.effectiveFrom,
+          notes: parsed.notes,
+          createdBy: user.id,
+        },
+      });
 
-    await auditCreate(tx, {
-      action: "OWNERSHIP_ASSIGNED",
-      entityType: "PropertyOwnership",
-      entityId: ownership.id,
-      entityDisplayName: `${owner.name} - ${parsed.assetLevel} ${parsed.assetId}`,
-      newValues: {
-        ownerId: parsed.ownerId,
-        ...assetField,
-        ownershipPercentage: parsed.ownershipPercentage,
-        effectiveFrom: parsed.effectiveFrom,
-      },
-    });
-  });
+      await auditCreate(tx, {
+        action: "OWNERSHIP_ASSIGNED",
+        entityType: "PropertyOwnership",
+        entityId: ownership.id,
+        entityDisplayName: `${owner.name} - ${parsed.assetLevel} ${parsed.assetId}`,
+        newValues: {
+          ownerId: parsed.ownerId,
+          ...assetField,
+          ownershipPercentage: parsed.ownershipPercentage,
+          effectiveFrom: parsed.effectiveFrom,
+        },
+      });
+    },
+    { isolationLevel: "Serializable" }
+  );
 
   revalidatePath("/owners");
   revalidatePath(`/owners/${parsed.ownerId}`);

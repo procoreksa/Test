@@ -544,6 +544,11 @@ model Invoice {
   @@unique([organizationId, icv])
   @@index([organizationId])
   @@index([renterId])
+  // Hardening (docs/PERFORMANCE-REVIEW.md, "Dashboard query audit"):
+  // supports getDashboardStats()'s monthly invoiced/collected trend, which
+  // filters by organizationId + a 6-month issueDate window rather than
+  // scanning every invoice the organization has ever issued.
+  @@index([organizationId, issueDate])
   @@map("invoices")
 }
 

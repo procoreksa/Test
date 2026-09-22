@@ -1,11 +1,64 @@
 "use server";
 
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
-import { subMonths, format, startOfMonth, endOfMonth, addDays } from "date-fns";
+import { subMonths, format, startOfMonth, addDays } from "date-fns";
 
 const EXPIRING_WINDOW_DAYS = 90;
+const TREND_MONTHS = 6;
+
+/**
+ * Hardening (docs/PERFORMANCE-REVIEW.md, "Dashboard query audit"): this
+ * used to be `prisma.invoice.findMany({ where: { organizationId } })` with
+ * no limit or date bound - every invoice the organization has EVER
+ * issued, loaded into memory on every single dashboard view, just to sum
+ * a handful of totals and bucket the last 6 months in JavaScript. For a
+ * long-lived organization with tens of thousands of invoices this scales
+ * the dashboard's load time and memory with the organization's entire
+ * history forever. Replaced with a bounded aggregate for the lifetime
+ * totals and a bounded (6-month), grouped-in-SQL query for the trend -
+ * same output shape, same business definition (every invoice regardless
+ * of status counts toward these totals, exactly as before - this is a
+ * performance fix, not a business-logic change), just computed by
+ * Postgres instead of pulled row-by-row into Node.
+ */
+async function getInvoiceTotals(organizationId: string) {
+  const totals = await prisma.invoice.aggregate({
+    where: { organizationId },
+    _sum: { totalAmount: true, paidAmount: true, vatAmount: true },
+  });
+  const totalInvoiced = Number(totals._sum.totalAmount ?? 0);
+  const totalCollected = Number(totals._sum.paidAmount ?? 0);
+  const totalVat = Number(totals._sum.vatAmount ?? 0);
+  return { totalInvoiced, totalCollected, totalOutstanding: totalInvoiced - totalCollected, totalVat };
+}
+
+async function getMonthlyInvoiceTrend(organizationId: string, now: Date) {
+  const windowStart = startOfMonth(subMonths(now, TREND_MONTHS - 1));
+  const rows = await prisma.$queryRaw<Array<{ month: Date; invoiced: Prisma.Decimal | null; collected: Prisma.Decimal | null }>>(Prisma.sql`
+    SELECT date_trunc('month', "issueDate") AS month,
+           SUM("totalAmount") AS invoiced,
+           SUM("paidAmount") AS collected
+    FROM invoices
+    WHERE "organizationId" = ${organizationId} AND "issueDate" >= ${windowStart}
+    GROUP BY date_trunc('month', "issueDate")
+  `);
+  const byMonthKey = new Map(rows.map((r) => [format(r.month, "yyyy-MM"), r]));
+
+  const months: { label: string; invoiced: number; collected: number }[] = [];
+  for (let i = TREND_MONTHS - 1; i >= 0; i--) {
+    const monthDate = subMonths(now, i);
+    const row = byMonthKey.get(format(monthDate, "yyyy-MM"));
+    months.push({
+      label: format(monthDate, "MMM yy"),
+      invoiced: Number(row?.invoiced ?? 0),
+      collected: Number(row?.collected ?? 0),
+    });
+  }
+  return months;
+}
 
 export async function getDashboardStats() {
   await syncOverdueStatuses();
@@ -16,7 +69,8 @@ export async function getDashboardStats() {
     unitsTotal,
     unitsOccupied,
     contractsActive,
-    invoices,
+    invoiceTotals,
+    monthlySeries,
     overdueCount,
     overdueSchedules,
     expiringContracts,
@@ -29,7 +83,8 @@ export async function getDashboardStats() {
     prisma.unit.count({ where: { organizationId } }),
     prisma.unit.count({ where: { organizationId, status: "OCCUPIED" } }),
     prisma.contract.count({ where: { organizationId, status: "ACTIVE" } }),
-    prisma.invoice.findMany({ where: { organizationId }, select: { totalAmount: true, paidAmount: true, vatAmount: true, status: true, issueDate: true } }),
+    getInvoiceTotals(organizationId),
+    getMonthlyInvoiceTrend(organizationId, now),
     prisma.paymentSchedule.count({ where: { organizationId, status: "OVERDUE" } }),
     prisma.paymentSchedule.findMany({
       where: { organizationId, status: "OVERDUE" },
@@ -78,38 +133,17 @@ export async function getDashboardStats() {
     occupancyRate: v.total > 0 ? Math.round((v.occupied / v.total) * 100) : 0,
   }));
 
-  const totalInvoiced = invoices.reduce((sum, i) => sum + Number(i.totalAmount), 0);
-  const totalCollected = invoices.reduce((sum, i) => sum + Number(i.paidAmount), 0);
-  const totalOutstanding = totalInvoiced - totalCollected;
-  const totalVat = invoices.reduce((sum, i) => sum + Number(i.vatAmount), 0);
-
-  const months: { label: string; invoiced: number; collected: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const monthDate = subMonths(new Date(), i);
-    const start = startOfMonth(monthDate);
-    const end = endOfMonth(monthDate);
-    const monthInvoices = invoices.filter((inv) => inv.issueDate >= start && inv.issueDate <= end);
-    months.push({
-      label: format(monthDate, "MMM yy"),
-      invoiced: monthInvoices.reduce((s, i) => s + Number(i.totalAmount), 0),
-      collected: monthInvoices.reduce((s, i) => s + Number(i.paidAmount), 0),
-    });
-  }
-
   return {
     unitsTotal,
     unitsOccupied,
     occupancyRate: unitsTotal > 0 ? Math.round((unitsOccupied / unitsTotal) * 100) : 0,
     contractsActive,
-    totalInvoiced,
-    totalCollected,
-    totalOutstanding,
-    totalVat,
+    ...invoiceTotals,
     overdueCount,
     overdueSchedules,
     expiringContracts,
     unclosedContracts,
-    monthlySeries: months,
+    monthlySeries,
     totalCompounds,
     totalBuildings,
     totalFloors,

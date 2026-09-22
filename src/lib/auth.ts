@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { AuditAction } from "@/lib/audit";
+import { shouldRevalidateSession, refreshSessionClaims } from "@/lib/auth-session-refresh";
 
 /**
  * Writes a LOGIN/LOGIN_FAILED/LOGOUT row directly via `prisma`, deliberately
@@ -75,6 +76,8 @@ interface AppJwt {
   role: string;
   organizationId: string;
   organizationName: string;
+  /** Epoch ms this token's role/organization were last re-verified against the database - see src/lib/auth-session-refresh.ts. */
+  verifiedAt?: number;
 }
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -155,6 +158,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         t.role = (user as { role: string }).role;
         t.organizationId = (user as { organizationId: string }).organizationId;
         t.organizationName = (user as { organizationName: string }).organizationName;
+        t.verifiedAt = Date.now();
+        return t;
+      }
+
+      // Hardening (docs/SECURITY-REVIEW.md, "Stale session / authentication
+      // boundaries"): periodically re-verify this token's role/organization
+      // against the database so a deactivated user, a changed role, or a
+      // renamed organization takes effect without waiting for the JWT's
+      // full 30-day maxAge to expire. Bounded to once per
+      // SESSION_REVALIDATE_INTERVAL_MS rather than every request.
+      if (shouldRevalidateSession(t.verifiedAt)) {
+        const fresh = await refreshSessionClaims(t.userId);
+        if (!fresh) return null;
+        t.role = fresh.role;
+        t.organizationId = fresh.organizationId;
+        t.organizationName = fresh.organizationName;
+        t.verifiedAt = Date.now();
       }
       return t;
     },

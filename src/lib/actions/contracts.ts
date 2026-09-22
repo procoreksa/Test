@@ -116,6 +116,14 @@ export async function createContract(formData: FormData) {
     }
 
     const unit = await tx.unit.findUniqueOrThrow({ where: { id: unitId, organizationId } });
+    // Hardening (docs/SECURITY-REVIEW.md, "Cross-org relation injection"):
+    // unitId was already verified above, but renterId was previously taken
+    // straight from client input with no organization check at all - a
+    // caller could link a Contract to another organization's Renter by
+    // submitting that Renter's id. Verified the same way unitId already is.
+    if (formData.get("createNewRenter") !== "true") {
+      await tx.renter.findUniqueOrThrow({ where: { id: renterId, organizationId } });
+    }
     const vatApplicable = contractFields.vatApplicable ?? unit.vatApplicable;
     const contract = await createContractWithSchedule(tx, organizationId, { ...contractFields, unitId, renterId, vatApplicable });
     await auditCreate(tx, {
@@ -281,6 +289,14 @@ export async function updateContract(formData: FormData) {
         }
         await tx.unit.update({ where: { id: existing.unitId }, data: { status: "VACANT" } });
         await tx.unit.update({ where: { id: parsed.unitId }, data: { status: "OCCUPIED" } });
+      }
+      // Hardening (docs/SECURITY-REVIEW.md, "Cross-org relation injection"):
+      // unitId is verified above when changed, but renterId had no
+      // organization check at all before being written to Contract.renterId
+      // below - a caller could re-point a Contract at another
+      // organization's Renter by submitting that Renter's id.
+      if (parsed.renterId !== existing.renterId) {
+        await tx.renter.findUniqueOrThrow({ where: { id: parsed.renterId, organizationId } });
       }
 
       const updated = await tx.contract.update({
