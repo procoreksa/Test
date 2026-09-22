@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { activeOwnershipTotalForAsset, getEffectiveOwners, type AssetLevel } from "@/lib/ownership";
+import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 
 function ownershipSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -34,7 +35,11 @@ async function assertAssetInOrg(organizationId: string, level: AssetLevel, asset
 }
 
 export async function createOwnership(formData: FormData) {
-  const { organizationId } = await requirePermission("ownership.manage");
+  const { organizationId } = await requirePermissionAudited(
+    "ownership.manage",
+    "PropertyOwnership",
+    String(formData.get("assetId") ?? "")
+  );
   const { user } = await requireSession();
   const t = getDictionary(await getLocale());
   const parsed = ownershipSchema(t).parse({
@@ -46,25 +51,40 @@ export async function createOwnership(formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 
-  await prisma.owner.findUniqueOrThrow({ where: { id: parsed.ownerId, organizationId } });
+  const owner = await prisma.owner.findUniqueOrThrow({ where: { id: parsed.ownerId, organizationId } });
   const assetField = await assertAssetInOrg(organizationId, parsed.assetLevel, parsed.assetId);
 
-  const existingTotal = await activeOwnershipTotalForAsset(prisma, organizationId, parsed.assetLevel, parsed.assetId);
-  const newTotal = existingTotal.plus(parsed.ownershipPercentage);
-  if (newTotal.greaterThan(100)) {
-    throw new Error(t.validation.ownershipExceeds100(newTotal.toFixed(2)));
-  }
+  await prisma.$transaction(async (tx) => {
+    const existingTotal = await activeOwnershipTotalForAsset(tx, organizationId, parsed.assetLevel, parsed.assetId);
+    const newTotal = existingTotal.plus(parsed.ownershipPercentage);
+    if (newTotal.greaterThan(100)) {
+      throw new Error(t.validation.ownershipExceeds100(newTotal.toFixed(2)));
+    }
 
-  await prisma.propertyOwnership.create({
-    data: {
-      organizationId,
-      ownerId: parsed.ownerId,
-      ...assetField,
-      ownershipPercentage: parsed.ownershipPercentage,
-      effectiveFrom: parsed.effectiveFrom,
-      notes: parsed.notes,
-      createdBy: user.id,
-    },
+    const ownership = await tx.propertyOwnership.create({
+      data: {
+        organizationId,
+        ownerId: parsed.ownerId,
+        ...assetField,
+        ownershipPercentage: parsed.ownershipPercentage,
+        effectiveFrom: parsed.effectiveFrom,
+        notes: parsed.notes,
+        createdBy: user.id,
+      },
+    });
+
+    await auditCreate(tx, {
+      action: "OWNERSHIP_ASSIGNED",
+      entityType: "PropertyOwnership",
+      entityId: ownership.id,
+      entityDisplayName: `${owner.name} - ${parsed.assetLevel} ${parsed.assetId}`,
+      newValues: {
+        ownerId: parsed.ownerId,
+        ...assetField,
+        ownershipPercentage: parsed.ownershipPercentage,
+        effectiveFrom: parsed.effectiveFrom,
+      },
+    });
   });
 
   revalidatePath("/owners");
@@ -73,12 +93,23 @@ export async function createOwnership(formData: FormData) {
 }
 
 export async function endOwnership(ownershipId: string) {
-  const { organizationId } = await requirePermission("ownership.manage");
+  const { organizationId } = await requirePermissionAudited("ownership.manage", "PropertyOwnership", ownershipId);
   const { user } = await requireSession();
 
-  const ownership = await prisma.propertyOwnership.update({
-    where: { id: ownershipId, organizationId },
-    data: { status: "ENDED", effectiveTo: new Date(), updatedBy: user.id },
+  const ownership = await prisma.$transaction(async (tx) => {
+    const before = await tx.propertyOwnership.findUniqueOrThrow({ where: { id: ownershipId, organizationId } });
+    const updated = await tx.propertyOwnership.update({
+      where: { id: ownershipId, organizationId },
+      data: { status: "ENDED", effectiveTo: new Date(), updatedBy: user.id },
+    });
+    await auditAction(tx, {
+      action: "OWNERSHIP_ENDED",
+      entityType: "PropertyOwnership",
+      entityId: updated.id,
+      previousValues: { status: before.status, effectiveTo: before.effectiveTo },
+      newValues: { status: updated.status, effectiveTo: updated.effectiveTo },
+    });
+    return updated;
   });
 
   revalidatePath("/owners");

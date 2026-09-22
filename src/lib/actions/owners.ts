@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditUpdate, auditAction, requirePermissionAudited } from "@/lib/audit";
 
 function ownerSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -58,8 +59,11 @@ export async function createOwner(formData: FormData) {
   const t = getDictionary(await getLocale());
   const parsed = ownerSchema(t).parse(readOwnerFields(formData));
 
-  await prisma.owner.create({
-    data: { ...parsed, organizationId, createdBy: user.id },
+  await prisma.$transaction(async (tx) => {
+    const owner = await tx.owner.create({
+      data: { ...parsed, organizationId, createdBy: user.id },
+    });
+    await auditCreate(tx, { entityType: "Owner", entityId: owner.id, entityDisplayName: owner.name, newValues: parsed });
   });
   revalidatePath("/owners");
 }
@@ -71,18 +75,32 @@ export async function updateOwner(formData: FormData) {
   const ownerId = z.string().min(1).parse(formData.get("ownerId"));
   const parsed = ownerSchema(t).parse(readOwnerFields(formData));
 
-  await prisma.owner.update({
-    where: { id: ownerId, organizationId },
-    data: { ...parsed, updatedBy: user.id },
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.owner.findUniqueOrThrow({ where: { id: ownerId, organizationId } });
+    const updated = await tx.owner.update({
+      where: { id: ownerId, organizationId },
+      data: { ...parsed, updatedBy: user.id },
+    });
+    await auditUpdate(tx, { entityType: "Owner", entityId: updated.id, entityDisplayName: updated.name, before: existing, after: updated });
   });
   revalidatePath("/owners");
   revalidatePath(`/owners/${ownerId}`);
 }
 
 export async function deactivateOwner(ownerId: string) {
-  const { organizationId } = await requirePermission("owner.update");
+  const { organizationId } = await requirePermissionAudited("owner.update", "Owner", ownerId);
   const { user } = await requireSession();
-  await prisma.owner.update({ where: { id: ownerId, organizationId }, data: { status: "INACTIVE", updatedBy: user.id } });
+  await prisma.$transaction(async (tx) => {
+    const owner = await tx.owner.update({ where: { id: ownerId, organizationId }, data: { status: "INACTIVE", updatedBy: user.id } });
+    await auditAction(tx, {
+      action: "DEACTIVATE",
+      entityType: "Owner",
+      entityId: owner.id,
+      entityDisplayName: owner.name,
+      previousValues: { status: "ACTIVE" },
+      newValues: { status: "INACTIVE" },
+    });
+  });
   revalidatePath("/owners");
   revalidatePath(`/owners/${ownerId}`);
 }
@@ -90,7 +108,17 @@ export async function deactivateOwner(ownerId: string) {
 export async function reactivateOwner(ownerId: string) {
   const { organizationId } = await requirePermission("owner.update");
   const { user } = await requireSession();
-  await prisma.owner.update({ where: { id: ownerId, organizationId }, data: { status: "ACTIVE", updatedBy: user.id } });
+  await prisma.$transaction(async (tx) => {
+    const owner = await tx.owner.update({ where: { id: ownerId, organizationId }, data: { status: "ACTIVE", updatedBy: user.id } });
+    await auditAction(tx, {
+      action: "ACTIVATE",
+      entityType: "Owner",
+      entityId: owner.id,
+      entityDisplayName: owner.name,
+      previousValues: { status: "INACTIVE" },
+      newValues: { status: "ACTIVE" },
+    });
+  });
   revalidatePath("/owners");
   revalidatePath(`/owners/${ownerId}`);
 }
@@ -103,7 +131,7 @@ export async function reactivateOwner(ownerId: string) {
  * it has any history).
  */
 export async function deleteOwner(ownerId: string) {
-  const { organizationId } = await requirePermission("owner.update");
+  const { organizationId } = await requirePermissionAudited("owner.update", "Owner", ownerId);
   const t = getDictionary(await getLocale());
 
   const [ownershipCount, ledgerCount] = await Promise.all([
@@ -114,7 +142,17 @@ export async function deleteOwner(ownerId: string) {
     throw new Error(t.validation.ownerHasHistory);
   }
 
-  await prisma.owner.update({ where: { id: ownerId, organizationId }, data: { deletedAt: new Date() } });
+  await prisma.$transaction(async (tx) => {
+    const owner = await tx.owner.update({ where: { id: ownerId, organizationId }, data: { deletedAt: new Date() } });
+    await auditAction(tx, {
+      action: "SOFT_DELETE",
+      entityType: "Owner",
+      entityId: owner.id,
+      entityDisplayName: owner.name,
+      previousValues: { deletedAt: null },
+      newValues: { deletedAt: owner.deletedAt },
+    });
+  });
   revalidatePath("/owners");
 }
 

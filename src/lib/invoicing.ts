@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import type { Prisma, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { nextCounterValue, formatInvoiceNumber } from "@/lib/numbering";
 import { computeInvoiceTotals, type LineInput } from "@/lib/zatca/vat";
@@ -6,6 +7,8 @@ import { buildZatcaQrBase64 } from "@/lib/zatca/qr";
 import { hashInvoicePayload, GENESIS_HASH } from "@/lib/zatca/hash";
 import { recomputeScheduleStatus } from "@/lib/schedule-status";
 import type { InvoiceKind, InvoiceLineKind } from "@prisma/client";
+
+type Tx = Prisma.TransactionClient | PrismaClient;
 
 export interface IssueInvoiceInput {
   organizationId: string;
@@ -26,10 +29,20 @@ export interface IssueInvoiceInput {
   notes?: string;
 }
 
-export async function issueInvoice(input: IssueInvoiceInput) {
+/**
+ * Optionally accepts an already-open transaction client (`existingTx`) so a
+ * caller that needs to write an audit-log entry atomically alongside the
+ * invoice (see docs/AUDIT-AND-FINANCIAL-CONTROLS.md, "Database transaction
+ * strategy") can wrap both in one `prisma.$transaction` and pass it
+ * straight through here, instead of nesting a second transaction inside
+ * the one this function would otherwise open itself. Callers that don't
+ * care (e.g. the demo-data seed script) can keep calling this with just
+ * `input`, exactly as before.
+ */
+export async function issueInvoice(input: IssueInvoiceInput, existingTx?: Tx) {
   const { organizationId } = input;
 
-  return prisma.$transaction(async (tx) => {
+  const run = async (tx: Tx) => {
     const org = await tx.organization.findUniqueOrThrow({ where: { id: organizationId } });
     const renter = await tx.renter.findUniqueOrThrow({ where: { id: input.renterId } });
 
@@ -113,5 +126,7 @@ export async function issueInvoice(input: IssueInvoiceInput) {
     }
 
     return invoice;
-  });
+  };
+
+  return existingTx ? run(existingTx) : prisma.$transaction(run);
 }

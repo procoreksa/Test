@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
+import { auditCreate, auditAction } from "@/lib/audit";
 
 const floorSchema = z.object({
   buildingId: z.string().min(1),
@@ -22,14 +23,31 @@ export async function createFloor(formData: FormData) {
   });
 
   await prisma.building.findUniqueOrThrow({ where: { id: parsed.buildingId, organizationId } });
-  await prisma.floor.create({ data: { ...parsed, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const floor = await tx.floor.create({ data: { ...parsed, organizationId } });
+    await auditCreate(tx, {
+      entityType: "Floor",
+      entityId: floor.id,
+      entityDisplayName: floor.name ?? String(floor.floorNumber),
+      newValues: parsed,
+    });
+  });
   revalidatePath("/floors");
   revalidatePath("/buildings");
 }
 
 export async function deleteFloor(floorId: string) {
   const { organizationId } = await requirePermission("unit.delete");
-  await prisma.floor.delete({ where: { id: floorId, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const floor = await tx.floor.delete({ where: { id: floorId, organizationId } });
+    await auditAction(tx, {
+      action: "DELETE",
+      entityType: "Floor",
+      entityId: floor.id,
+      entityDisplayName: floor.name ?? String(floor.floorNumber),
+      previousValues: floor,
+    });
+  });
   revalidatePath("/floors");
   revalidatePath("/buildings");
 }

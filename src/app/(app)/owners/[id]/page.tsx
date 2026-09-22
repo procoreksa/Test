@@ -5,6 +5,7 @@ import { getOwnerBalance, listOwnerLedger, postManualLedgerEntry, reverseLedgerE
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
+import { AuditTimeline } from "@/components/audit-timeline";
 
 function assetLabel(
   locale: Awaited<ReturnType<typeof getLocale>>,
@@ -263,6 +264,8 @@ export default async function OwnerProfilePage({ params }: { params: Promise<{ i
         <h2 className="font-semibold text-slate-800 mb-1">{t.owners.profile.documentsPlaceholderTitle}</h2>
         <p className="text-sm text-slate-400">{t.owners.profile.documentsPlaceholderBody}</p>
       </div>
+
+      <AuditTimeline entityType="Owner" entityId={owner.id} />
     </div>
   );
 }

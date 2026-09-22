@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditAction } from "@/lib/audit";
 
 function buildingSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -30,14 +31,26 @@ export async function createBuilding(formData: FormData) {
   });
 
   await prisma.compound.findUniqueOrThrow({ where: { id: parsed.compoundId, organizationId } });
-  await prisma.building.create({ data: { ...parsed, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const building = await tx.building.create({ data: { ...parsed, organizationId } });
+    await auditCreate(tx, { entityType: "Building", entityId: building.id, entityDisplayName: building.name, newValues: parsed });
+  });
   revalidatePath("/buildings");
   revalidatePath("/compounds");
 }
 
 export async function deleteBuilding(buildingId: string) {
   const { organizationId } = await requirePermission("property.delete");
-  await prisma.building.delete({ where: { id: buildingId, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const building = await tx.building.delete({ where: { id: buildingId, organizationId } });
+    await auditAction(tx, {
+      action: "DELETE",
+      entityType: "Building",
+      entityId: building.id,
+      entityDisplayName: building.name,
+      previousValues: building,
+    });
+  });
   revalidatePath("/buildings");
   revalidatePath("/compounds");
 }

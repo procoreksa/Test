@@ -7,6 +7,7 @@ import { issueInvoice } from "@/lib/invoicing";
 import { getScheduleRemaining, recomputeScheduleStatus } from "@/lib/schedule-status";
 import { format } from "date-fns";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 import type { LineInput } from "@/lib/zatca/vat";
 import type { InvoiceLineKind } from "@prisma/client";
 
@@ -146,13 +147,35 @@ export async function issueInvoiceForSchedule(formData: FormData) {
     throw new Error(t.validation.invoiceAlreadyIssued);
   }
 
-  const invoice = await issueInvoice({
-    organizationId,
-    renterId: contract.renterId,
-    contractId: contract.id,
-    paymentScheduleId: schedule.id,
-    dueDate: schedule.dueDate,
-    lines,
+  const invoice = await prisma.$transaction(async (tx) => {
+    const created = await issueInvoice(
+      {
+        organizationId,
+        renterId: contract.renterId,
+        contractId: contract.id,
+        paymentScheduleId: schedule.id,
+        dueDate: schedule.dueDate,
+        lines,
+      },
+      tx
+    );
+    await auditCreate(tx, {
+      action: "ISSUE",
+      entityType: "Invoice",
+      entityId: created.id,
+      entityDisplayName: created.invoiceNumber,
+      newValues: {
+        invoiceNumber: created.invoiceNumber,
+        kind: created.kind,
+        contractId: created.contractId,
+        renterId: created.renterId,
+        subtotal: created.subtotal,
+        vatAmount: created.vatAmount,
+        totalAmount: created.totalAmount,
+        lineKinds: selectedKinds,
+      },
+    });
+    return created;
   });
 
   revalidatePath("/invoices");
@@ -184,8 +207,9 @@ export async function getInvoiceById(invoiceId: string) {
 }
 
 export async function cancelInvoice(invoiceId: string) {
-  const { organizationId } = await requirePermission("invoice.cancel");
+  const { organizationId } = await requirePermissionAudited("invoice.cancel", "Invoice", invoiceId);
   await prisma.$transaction(async (tx) => {
+    const before = await tx.invoice.findUniqueOrThrow({ where: { id: invoiceId, organizationId } });
     const invoice = await tx.invoice.update({
       where: { id: invoiceId, organizationId },
       data: { status: "CANCELLED" },
@@ -195,6 +219,14 @@ export async function cancelInvoice(invoiceId: string) {
     for (const scheduleId of scheduleIds) {
       await recomputeScheduleStatus(tx, scheduleId);
     }
+    await auditAction(tx, {
+      action: "CANCEL",
+      entityType: "Invoice",
+      entityId: invoice.id,
+      entityDisplayName: invoice.invoiceNumber,
+      previousValues: { status: before.status },
+      newValues: { status: invoice.status },
+    });
   });
   revalidatePath("/invoices");
   revalidatePath("/collections");

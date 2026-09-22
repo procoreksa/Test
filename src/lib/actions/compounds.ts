@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditAction } from "@/lib/audit";
 
 // Compound/Building/Floor CRUD reuses the existing property.* permission keys
 // (Compound and Building) and unit.* keys (Floor) rather than adding new
@@ -46,13 +47,25 @@ export async function createCompound(formData: FormData) {
     status: formData.get("status") || "ACTIVE",
   });
 
-  await prisma.compound.create({ data: { ...parsed, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const compound = await tx.compound.create({ data: { ...parsed, organizationId } });
+    await auditCreate(tx, { entityType: "Compound", entityId: compound.id, entityDisplayName: compound.name, newValues: parsed });
+  });
   revalidatePath("/compounds");
 }
 
 export async function deleteCompound(compoundId: string) {
   const { organizationId } = await requirePermission("property.delete");
-  await prisma.compound.delete({ where: { id: compoundId, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const compound = await tx.compound.delete({ where: { id: compoundId, organizationId } });
+    await auditAction(tx, {
+      action: "DELETE",
+      entityType: "Compound",
+      entityId: compound.id,
+      entityDisplayName: compound.name,
+      previousValues: compound,
+    });
+  });
   revalidatePath("/compounds");
 }
 

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOrgId, requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditUpdate } from "@/lib/audit";
 
 const MAX_LOGO_BYTES = 1024 * 1024; // 1MB — stored as a base64 data URI directly on the row (no external file storage available).
 const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
@@ -53,9 +54,19 @@ export async function updateOrganization(formData: FormData) {
     logoUrl = `data:${logoFile.type};base64,${buffer.toString("base64")}`;
   }
 
-  await prisma.organization.update({
-    where: { id: organizationId },
-    data: { ...parsed, email: parsed.email || undefined, ...(logoUrl ? { logoUrl } : {}) },
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.organization.findUniqueOrThrow({ where: { id: organizationId } });
+    const updated = await tx.organization.update({
+      where: { id: organizationId },
+      data: { ...parsed, email: parsed.email || undefined, ...(logoUrl ? { logoUrl } : {}) },
+    });
+    await auditUpdate(tx, {
+      entityType: "Organization",
+      entityId: organizationId,
+      entityDisplayName: updated.name,
+      before: existing,
+      after: updated,
+    });
   });
   revalidatePath("/settings");
   revalidatePath("/dashboard");

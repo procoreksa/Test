@@ -375,6 +375,14 @@ model Contract {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
+  // Renewal chain: set by renewContract() on both sides at once, purely
+  // additive (nullable, so every pre-existing contract is simply
+  // unlinked). Lets contract history/audit answer "which contract
+  // preceded/replaced this one" without inferring it from status alone.
+  renewedFromContractId String?   @unique
+  renewedFromContract   Contract? @relation("ContractRenewal", fields: [renewedFromContractId], references: [id])
+  renewedIntoContract   Contract? @relation("ContractRenewal")
+
   paymentSchedules PaymentSchedule[]
   invoices         Invoice[]
 
@@ -538,6 +546,17 @@ enum PaymentMethod {
   ONLINE
 }
 
+enum PaymentStatus {
+  POSTED
+  REVERSED
+}
+
+/// Payments are never hard-deleted or edited after posting. A correction is
+/// made by reversePayment(), which posts a NEW row with a NEGATIVE `amount`
+/// (so every existing report/statement that does SUM(amount) nets out
+/// correctly with no query changes) and flips the original to `REVERSED` -
+/// the original row itself is never touched otherwise. See
+/// docs/AUDIT-AND-FINANCIAL-CONTROLS.md, "Payment reversal decision".
 model Payment {
   id              String        @id @default(cuid())
   organizationId  String
@@ -552,7 +571,12 @@ model Payment {
   method          PaymentMethod @default(BANK_TRANSFER)
   referenceNumber String?
   notes           String?
+  status          PaymentStatus @default(POSTED)
   createdAt       DateTime      @default(now())
+
+  reversalOfPaymentId String?  @unique
+  reversalOfPayment   Payment? @relation("PaymentReversal", fields: [reversalOfPaymentId], references: [id])
+  reversedByPayment   Payment? @relation("PaymentReversal")
 
   @@unique([organizationId, receiptNumber])
   @@index([organizationId])
@@ -764,4 +788,60 @@ model OwnerLedgerEntry {
   @@index([ownerId])
   @@index([entryDate])
   @@map("owner_ledger_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Audit log
+//
+// Immutable, append-only, system-written-only record of every mutating
+// action across the app. No update/delete server action exists for this
+// model anywhere in the codebase, and there is deliberately no `updatedAt`
+// or `deletedAt` column - a row is written once and never touched again.
+// See docs/AUDIT-AND-FINANCIAL-CONTROLS.md.
+//
+// organizationId/userId/userEmail/userRole are plain denormalized fields,
+// NOT Prisma relations - on purpose, mirroring Owner.createdBy/updatedBy in
+// this schema: an audit trail must remain queryable and intact even if the
+// Organization or User it refers to is later deleted, renamed, or has its
+// role changed. `action`/`entityType` are plain strings (not Prisma enums)
+// so a new audited action never requires a schema migration - type safety
+// for both is enforced at the application layer instead, in src/lib/audit.ts.
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id             String @id @default(cuid())
+  organizationId String
+
+  userId    String?
+  userEmail String?
+  userRole  String?
+
+  action String
+
+  entityType String
+  entityId   String
+
+  entityDisplayName String?
+
+  // Only the fields that actually changed (for UPDATE), or the relevant
+  // created/deleted state (for CREATE/DELETE) - never a full raw row dump.
+  // Redacted per src/lib/audit.ts's REDACTED_FIELDS/MASKED_FIELDS before
+  // being written; see docs/AUDIT-AND-FINANCIAL-CONTROLS.md, "Redaction".
+  previousValues Json?
+  newValues      Json?
+
+  // Free-form extra context (e.g. { reason, denialReason, attemptedEmail }) -
+  // used by permission-denial and login events, which have no entity row.
+  metadata Json?
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, createdAt])
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, action])
+  @@index([userId])
+  @@map("audit_logs")
 }

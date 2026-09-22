@@ -29,6 +29,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/invoices", label: t.nav.invoices, icon: "🧾", permission: "invoice.view" },
     { href: "/payments", label: t.nav.payments, icon: "🧮", permission: "payment.view" },
     { href: "/reports", label: t.nav.reports, icon: "📈", permission: "report.view" },
+    { href: "/audit-logs", label: t.nav.auditLogs, icon: "🛡️", permission: "audit.view" },
     { href: "/settings", label: t.nav.settings, icon: "⚙️", permission: "settings.view" },
   ];
   const navItems = allNavItems.filter((item) => can(item.permission, role));

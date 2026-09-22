@@ -43,6 +43,7 @@ export interface Dictionary {
     invoices: string;
     payments: string;
     reports: string;
+    auditLogs: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -556,7 +557,13 @@ export interface Dictionary {
     colMethod: string;
     colDate: string;
     colAmount: string;
+    colStatus: string;
+    reverse: string;
     empty: string;
+  };
+  paymentStatus: {
+    POSTED: string;
+    REVERSED: string;
   };
   settings: {
     title: string;
@@ -603,6 +610,7 @@ export interface Dictionary {
     ownershipExceeds100: (total: string) => string;
     ownershipAssetRequired: string;
     ledgerAlreadyReversed: string;
+    paymentAlreadyReversed: string;
   };
   zatca: {
     notConfigured: string;
@@ -776,6 +784,61 @@ export interface Dictionary {
       colLeaseEnd: string;
       empty: string;
     };
+  };
+  auditLogs: {
+    title: string;
+    subtitle: string;
+    filterFrom: string;
+    filterTo: string;
+    filterUser: string;
+    filterAction: string;
+    filterEntityType: string;
+    filterEntityId: string;
+    filterFinancialOnly: string;
+    searchPlaceholder: string;
+    filterApply: string;
+    colDate: string;
+    colUser: string;
+    colAction: string;
+    colEntity: string;
+    colChanges: string;
+    colCategory: string;
+    system: string;
+    noChanges: string;
+    empty: string;
+    pageOf: (page: number, totalPages: number) => string;
+    previous: string;
+    next: string;
+  };
+  auditAction: {
+    CREATE: string;
+    UPDATE: string;
+    DELETE: string;
+    SOFT_DELETE: string;
+    ACTIVATE: string;
+    DEACTIVATE: string;
+    APPROVE: string;
+    REJECT: string;
+    TERMINATE: string;
+    RENEW: string;
+    ISSUE: string;
+    CANCEL: string;
+    VOID: string;
+    PAYMENT_RECORDED: string;
+    PAYMENT_REVERSED: string;
+    OWNERSHIP_ASSIGNED: string;
+    OWNERSHIP_ENDED: string;
+    LEDGER_POSTED: string;
+    LEDGER_REVERSED: string;
+    LOGIN: string;
+    LOGIN_FAILED: string;
+    LOGOUT: string;
+    PERMISSION_DENIED: string;
+  };
+  auditTimeline: {
+    title: string;
+    empty: string;
+    by: (name: string) => string;
   };
 }
 

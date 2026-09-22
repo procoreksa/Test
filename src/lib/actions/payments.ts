@@ -3,10 +3,11 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { requirePermission } from "@/lib/session";
+import { requirePermission, requireSession } from "@/lib/session";
 import { nextCounterValue, formatReceiptNumber } from "@/lib/numbering";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 import { recomputeScheduleStatus } from "@/lib/schedule-status";
+import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 
 function paymentSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -46,7 +47,7 @@ export async function recordPayment(formData: FormData) {
     const seq = await nextCounterValue(tx, organizationId, "receipt");
     const receiptNumber = formatReceiptNumber(seq, new Date().getFullYear());
 
-    await tx.payment.create({
+    const payment = await tx.payment.create({
       data: {
         organizationId,
         invoiceId: invoice.id,
@@ -74,11 +75,113 @@ export async function recordPayment(formData: FormData) {
     for (const scheduleId of scheduleIds) {
       await recomputeScheduleStatus(tx, scheduleId);
     }
+
+    await auditCreate(tx, {
+      action: "PAYMENT_RECORDED",
+      entityType: "Payment",
+      entityId: payment.id,
+      entityDisplayName: payment.receiptNumber,
+      newValues: {
+        invoiceId: payment.invoiceId,
+        amount: payment.amount,
+        method: payment.method,
+        paymentDate: payment.paymentDate,
+        referenceNumber: payment.referenceNumber,
+      },
+    });
   });
 
   revalidatePath("/invoices");
   revalidatePath("/collections");
   revalidatePath("/payments");
+}
+
+/**
+ * Corrects a posted payment without hard-deleting or editing it: posts a
+ * new, NEGATIVE-amount Payment row (reversalOfPaymentId links back to the
+ * original) and flips the original to REVERSED. The negative amount means
+ * every existing SUM(amount)-based report/statement (collections report,
+ * renter/unit ledgers, the payments list) already nets out correctly with
+ * no query changes required - see docs/AUDIT-AND-FINANCIAL-CONTROLS.md,
+ * "Payment reversal decision".
+ */
+export async function reversePayment(paymentId: string) {
+  const { organizationId } = await requirePermissionAudited("payment.create", "Payment", paymentId);
+  const { user } = await requireSession();
+  const t = getDictionary(await getLocale());
+
+  return prisma.$transaction(async (tx) => {
+    const original = await tx.payment.findUniqueOrThrow({ where: { id: paymentId, organizationId } });
+    if (original.status === "REVERSED") {
+      throw new Error(t.validation.paymentAlreadyReversed);
+    }
+    const alreadyReversed = await tx.payment.findUnique({ where: { reversalOfPaymentId: paymentId } });
+    if (alreadyReversed) {
+      throw new Error(t.validation.paymentAlreadyReversed);
+    }
+
+    const invoice = await tx.invoice.findUniqueOrThrow({
+      where: { id: original.invoiceId },
+      include: { lines: { select: { paymentScheduleId: true } } },
+    });
+
+    const seq = await nextCounterValue(tx, organizationId, "receipt");
+    const receiptNumber = formatReceiptNumber(seq, new Date().getFullYear());
+
+    const reversal = await tx.payment.create({
+      data: {
+        organizationId,
+        invoiceId: original.invoiceId,
+        renterId: original.renterId,
+        receiptNumber,
+        amount: original.amount.negated(),
+        paymentDate: new Date(),
+        method: original.method,
+        referenceNumber: original.referenceNumber,
+        notes: `Reversal of receipt ${original.receiptNumber}`,
+        reversalOfPaymentId: original.id,
+      },
+    });
+
+    await tx.payment.update({ where: { id: original.id }, data: { status: "REVERSED" } });
+
+    const newPaidAmount = Math.max(0, Number(invoice.paidAmount) - Number(original.amount));
+    const now = new Date();
+    const newStatus =
+      newPaidAmount <= 0.01
+        ? invoice.dueDate && invoice.dueDate < now
+          ? "OVERDUE"
+          : "ISSUED"
+        : newPaidAmount >= Number(invoice.totalAmount) - 0.01
+          ? "PAID"
+          : "PARTIALLY_PAID";
+
+    await tx.invoice.update({ where: { id: invoice.id }, data: { paidAmount: newPaidAmount, status: newStatus } });
+
+    const scheduleIds = Array.from(
+      new Set(invoice.lines.map((l) => l.paymentScheduleId).filter((id): id is string => !!id))
+    );
+    for (const scheduleId of scheduleIds) {
+      await recomputeScheduleStatus(tx, scheduleId);
+    }
+
+    await auditAction(tx, {
+      action: "PAYMENT_REVERSED",
+      entityType: "Payment",
+      entityId: original.id,
+      entityDisplayName: original.receiptNumber,
+      previousValues: { status: "POSTED" },
+      newValues: { status: "REVERSED", reversalPaymentId: reversal.id, reversalReceiptNumber: reversal.receiptNumber },
+      metadata: { performedBy: user.id },
+    });
+
+    return reversal.id;
+  }).then((reversalId) => {
+    revalidatePath("/invoices");
+    revalidatePath("/collections");
+    revalidatePath("/payments");
+    return reversalId;
+  });
 }
 
 export async function listPayments() {

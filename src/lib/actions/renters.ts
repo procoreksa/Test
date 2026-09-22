@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditAction } from "@/lib/audit";
 
 function renterSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -33,15 +34,27 @@ export async function createRenter(formData: FormData) {
     address: formData.get("address") || undefined,
   });
 
-  await prisma.renter.create({
-    data: { ...parsed, email: parsed.email || undefined, organizationId },
+  await prisma.$transaction(async (tx) => {
+    const renter = await tx.renter.create({
+      data: { ...parsed, email: parsed.email || undefined, organizationId },
+    });
+    await auditCreate(tx, { entityType: "Renter", entityId: renter.id, entityDisplayName: renter.fullName, newValues: parsed });
   });
   revalidatePath("/renters");
 }
 
 export async function deleteRenter(renterId: string) {
   const { organizationId } = await requirePermission("renter.delete");
-  await prisma.renter.delete({ where: { id: renterId, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const renter = await tx.renter.delete({ where: { id: renterId, organizationId } });
+    await auditAction(tx, {
+      action: "DELETE",
+      entityType: "Renter",
+      entityId: renter.id,
+      entityDisplayName: renter.fullName,
+      previousValues: renter,
+    });
+  });
   revalidatePath("/renters");
 }
 

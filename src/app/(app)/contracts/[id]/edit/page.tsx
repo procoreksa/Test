@@ -7,6 +7,7 @@ import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
+import { AuditTimeline } from "@/components/audit-timeline";
 
 export default async function EditContractPage({
   params,
@@ -85,6 +86,8 @@ export default async function EditContractPage({
           </button>
         </div>
       </form>
+
+      <AuditTimeline entityType="Contract" entityId={contract.id} />
     </div>
   );
 }

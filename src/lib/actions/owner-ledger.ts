@@ -9,6 +9,7 @@ import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { defaultLedgerSide, allocateIncomeToOwners, allocateExpenseToOwners } from "@/lib/owner-allocation";
 import type { AssetLevel } from "@/lib/ownership";
+import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 
 const MANUAL_ENTRY_TYPES = [
   "RENT_INCOME",
@@ -67,29 +68,58 @@ export async function postManualLedgerEntry(formData: FormData) {
     unitId: formData.get("unitId") || undefined,
   });
 
-  await prisma.owner.findUniqueOrThrow({ where: { id: parsed.ownerId, organizationId } });
+  const owner = await prisma.owner.findUniqueOrThrow({ where: { id: parsed.ownerId, organizationId } });
+  // compoundId/unitId are optional tagging fields, not permission-gated
+  // lookups elsewhere - without this check a caller could tag their own
+  // ledger entry with another organization's compound/unit id. Verify each
+  // belongs to the caller's own organization before it's ever persisted.
+  if (parsed.compoundId) {
+    await prisma.compound.findUniqueOrThrow({ where: { id: parsed.compoundId, organizationId } });
+  }
+  if (parsed.unitId) {
+    await prisma.unit.findUniqueOrThrow({ where: { id: parsed.unitId, organizationId } });
+  }
   const side = parsed.entryType === "ADJUSTMENT" ? (parsed.side ?? "debit") : defaultLedgerSide(parsed.entryType);
   const amount = new Prisma.Decimal(parsed.amount);
 
-  const entry = await prisma.ownerLedgerEntry.create({
-    data: {
-      organizationId,
-      ownerId: parsed.ownerId,
-      entryType: parsed.entryType,
-      referenceType: "MANUAL",
-      description: parsed.description,
-      descriptionAr: parsed.descriptionAr,
-      debit: side === "debit" ? amount : new Prisma.Decimal(0),
-      credit: side === "credit" ? amount : new Prisma.Decimal(0),
-      entryDate: parsed.entryDate,
-      compoundId: parsed.compoundId,
-      unitId: parsed.unitId,
-      createdBy: user.id,
-    },
+  const entryId = await prisma.$transaction(async (tx) => {
+    const entry = await tx.ownerLedgerEntry.create({
+      data: {
+        organizationId,
+        ownerId: parsed.ownerId,
+        entryType: parsed.entryType,
+        referenceType: "MANUAL",
+        description: parsed.description,
+        descriptionAr: parsed.descriptionAr,
+        debit: side === "debit" ? amount : new Prisma.Decimal(0),
+        credit: side === "credit" ? amount : new Prisma.Decimal(0),
+        entryDate: parsed.entryDate,
+        compoundId: parsed.compoundId,
+        unitId: parsed.unitId,
+        createdBy: user.id,
+      },
+    });
+
+    await auditCreate(tx, {
+      action: "LEDGER_POSTED",
+      entityType: "OwnerLedgerEntry",
+      entityId: entry.id,
+      entityDisplayName: `${owner.name} - ${parsed.entryType}`,
+      newValues: {
+        ownerId: parsed.ownerId,
+        entryType: parsed.entryType,
+        debit: entry.debit,
+        credit: entry.credit,
+        entryDate: parsed.entryDate,
+        description: parsed.description,
+      },
+    });
+
+    return entry.id;
   });
 
   revalidatePath(`/owners/${parsed.ownerId}`);
-  return entry.id;
+  return entryId;
 }
 
 /**
@@ -125,8 +155,8 @@ export async function allocateToOwnersAction(formData: FormData) {
 
   const allocate = INCOME_TYPES.has(parsed.entryType) ? allocateIncomeToOwners : allocateExpenseToOwners;
 
-  const result = await prisma.$transaction((tx) =>
-    allocate(tx, {
+  const result = await prisma.$transaction(async (tx) => {
+    const allocationResult = await allocate(tx, {
       organizationId,
       assetLevel: parsed.assetLevel as AssetLevel,
       assetId: parsed.assetId,
@@ -136,8 +166,27 @@ export async function allocateToOwnersAction(formData: FormData) {
       description: parsed.description,
       descriptionAr: parsed.descriptionAr,
       createdBy: user.id,
-    })
-  );
+    });
+
+    if (allocationResult.createdEntryIds.length > 0) {
+      await auditAction(tx, {
+        action: "LEDGER_POSTED",
+        entityType: "OwnerLedgerEntry",
+        entityId: allocationResult.createdEntryIds[0],
+        entityDisplayName: `Allocation - ${parsed.entryType} - ${parsed.assetLevel} ${parsed.assetId}`,
+        newValues: {
+          assetLevel: parsed.assetLevel,
+          assetId: parsed.assetId,
+          entryType: parsed.entryType,
+          totalAmount: parsed.amount,
+          allocations: allocationResult.allocations.map((a) => ({ ownerId: a.ownerId, amount: a.amount })),
+          createdEntryIds: allocationResult.createdEntryIds,
+        },
+      });
+    }
+
+    return allocationResult;
+  });
 
   if (parsed.assetLevel === "COMPOUND") revalidatePath(`/compounds/${parsed.assetId}/ownership`);
   if (parsed.assetLevel === "BUILDING") revalidatePath(`/buildings/${parsed.assetId}/ownership`);
@@ -152,7 +201,7 @@ export async function allocateToOwnersAction(formData: FormData) {
  * reversed at most once (reversalOfEntryId is unique).
  */
 export async function reverseLedgerEntry(entryId: string) {
-  const { organizationId } = await requirePermission("ownerLedger.reverse");
+  const { organizationId } = await requirePermissionAudited("ownerLedger.reverse", "OwnerLedgerEntry", entryId);
   const { user } = await requireSession();
   const t = getDictionary(await getLocale());
 
@@ -181,6 +230,15 @@ export async function reverseLedgerEntry(entryId: string) {
         reversalOfEntryId: original.id,
         createdBy: user.id,
       },
+    });
+
+    await auditAction(tx, {
+      action: "LEDGER_REVERSED",
+      entityType: "OwnerLedgerEntry",
+      entityId: original.id,
+      entityDisplayName: original.description,
+      previousValues: { debit: original.debit, credit: original.credit },
+      newValues: { reversalEntryId: reversal.id, reversalDebit: reversal.debit, reversalCredit: reversal.credit },
     });
 
     revalidatePath(`/owners/${original.ownerId}`);

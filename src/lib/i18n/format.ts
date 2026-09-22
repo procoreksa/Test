@@ -20,6 +20,17 @@ export function monthDateFormatter(locale: Locale): Intl.DateTimeFormat {
   return new Intl.DateTimeFormat(intlTag(locale), { day: "numeric", month: "short" });
 }
 
+/** Date + time, used for audit log timestamps where "when exactly" matters, not just the day. */
+export function longDateTimeFormatter(locale: Locale): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(intlTag(locale), {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 /**
  * Picks the right language for a bilingual data field (a property/renter's
  * name, an invoice line description, ...). These are user-entered records

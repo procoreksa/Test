@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { createContractWithSchedule, generateAndCreateSchedule } from "@/lib/contract-schedule";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditUpdate, auditAction, requirePermissionAudited } from "@/lib/audit";
 
 function contractFieldsSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -91,6 +92,7 @@ export async function createContract(formData: FormData) {
           vatApplicable: newUnit.vatApplicable ?? COMMERCIAL_UNIT_TYPES.has(newUnit.unitType),
         },
       });
+      await auditCreate(tx, { entityType: "Unit", entityId: created.id, entityDisplayName: created.unitNumber, newValues: newUnit });
       unitId = created.id;
     } else {
       unitId = z.string().min(1).parse(formData.get("unitId"));
@@ -107,6 +109,7 @@ export async function createContract(formData: FormData) {
         phone: formData.get("newRenterPhone") || undefined,
       });
       const created = await tx.renter.create({ data: { ...newRenter, organizationId } });
+      await auditCreate(tx, { entityType: "Renter", entityId: created.id, entityDisplayName: created.fullName, newValues: newRenter });
       renterId = created.id;
     } else {
       renterId = z.string().min(1).parse(formData.get("renterId"));
@@ -114,7 +117,13 @@ export async function createContract(formData: FormData) {
 
     const unit = await tx.unit.findUniqueOrThrow({ where: { id: unitId, organizationId } });
     const vatApplicable = contractFields.vatApplicable ?? unit.vatApplicable;
-    await createContractWithSchedule(tx, organizationId, { ...contractFields, unitId, renterId, vatApplicable });
+    const contract = await createContractWithSchedule(tx, organizationId, { ...contractFields, unitId, renterId, vatApplicable });
+    await auditCreate(tx, {
+      entityType: "Contract",
+      entityId: contract.id,
+      entityDisplayName: contract.contractNumber,
+      newValues: { unitId, renterId, ...contractFields, vatApplicable },
+    });
   });
 
   revalidatePath("/contracts");
@@ -124,8 +133,9 @@ export async function createContract(formData: FormData) {
 }
 
 export async function terminateContract(contractId: string) {
-  const { organizationId } = await requirePermission("contract.terminate");
+  const { organizationId } = await requirePermissionAudited("contract.terminate", "Contract", contractId);
   await prisma.$transaction(async (tx) => {
+    const before = await tx.contract.findUniqueOrThrow({ where: { id: contractId, organizationId } });
     const contract = await tx.contract.update({
       where: { id: contractId, organizationId },
       data: { status: "TERMINATED" },
@@ -135,6 +145,14 @@ export async function terminateContract(contractId: string) {
       data: { status: "CANCELLED" },
     });
     await tx.unit.update({ where: { id: contract.unitId }, data: { status: "VACANT" } });
+    await auditAction(tx, {
+      action: "TERMINATE",
+      entityType: "Contract",
+      entityId: contract.id,
+      entityDisplayName: contract.contractNumber,
+      previousValues: { status: before.status },
+      newValues: { status: contract.status },
+    });
   });
   revalidatePath("/contracts");
   revalidatePath("/units");
@@ -142,7 +160,11 @@ export async function terminateContract(contractId: string) {
 }
 
 export async function renewContract(formData: FormData) {
-  const { organizationId } = await requirePermission("contract.renew");
+  const { organizationId } = await requirePermissionAudited(
+    "contract.renew",
+    "Contract",
+    String(formData.get("contractId") ?? "")
+  );
   const t = getDictionary(await getLocale());
   const parsed = contractFieldsSchema(t).extend({ contractId: z.string().min(1) }).parse({
     ...readContractFields(formData),
@@ -164,7 +186,7 @@ export async function renewContract(formData: FormData) {
       data: { status: "CANCELLED" },
     });
 
-    await createContractWithSchedule(tx, organizationId, {
+    const newContract = await createContractWithSchedule(tx, organizationId, {
       unitId: oldContract.unitId,
       renterId: oldContract.renterId,
       startDate: parsed.startDate,
@@ -177,6 +199,23 @@ export async function renewContract(formData: FormData) {
       extraChargesMode: parsed.extraChargesMode,
       vatApplicable: parsed.vatApplicable ?? oldContract.vatApplicable,
       notes: parsed.notes,
+    });
+    await tx.contract.update({ where: { id: newContract.id }, data: { renewedFromContractId: oldContract.id } });
+
+    await auditAction(tx, {
+      action: "RENEW",
+      entityType: "Contract",
+      entityId: oldContract.id,
+      entityDisplayName: oldContract.contractNumber,
+      previousValues: { status: oldContract.status, endDate: oldContract.endDate },
+      newValues: { status: "RENEWED", renewedIntoContractId: newContract.id, renewedIntoContractNumber: newContract.contractNumber },
+    });
+    await auditCreate(tx, {
+      action: "RENEW",
+      entityType: "Contract",
+      entityId: newContract.id,
+      entityDisplayName: newContract.contractNumber,
+      newValues: { renewedFromContractId: oldContract.id, renewedFromContractNumber: oldContract.contractNumber, ...parsed },
     });
   });
 
@@ -261,12 +300,26 @@ export async function updateContract(formData: FormData) {
 
       await tx.paymentSchedule.deleteMany({ where: { contractId } });
       await generateAndCreateSchedule(tx, organizationId, updated);
+      await auditUpdate(tx, {
+        entityType: "Contract",
+        entityId: updated.id,
+        entityDisplayName: updated.contractNumber,
+        before: existing,
+        after: updated,
+      });
     } else {
       // Once a contract has been billed, its financial terms and schedule are locked -
       // only fields with no effect on already-issued invoices/schedules stay editable.
       const vatApplicable = formData.get("vatApplicable") === "on";
       const notes = (formData.get("notes") as string) || undefined;
-      await tx.contract.update({ where: { id: contractId }, data: { vatApplicable, notes } });
+      const updated = await tx.contract.update({ where: { id: contractId }, data: { vatApplicable, notes } });
+      await auditUpdate(tx, {
+        entityType: "Contract",
+        entityId: updated.id,
+        entityDisplayName: updated.contractNumber,
+        before: existing,
+        after: updated,
+      });
     }
   });
 

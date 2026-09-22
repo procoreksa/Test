@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditAction } from "@/lib/audit";
 
 const COMMERCIAL_UNIT_TYPES = new Set(["OFFICE", "SHOP", "WAREHOUSE"]);
 
@@ -41,12 +42,15 @@ export async function createUnit(formData: FormData) {
     where: { id: parsed.floorId, organizationId },
   });
 
-  await prisma.unit.create({
-    data: {
-      ...parsed,
-      organizationId,
-      vatApplicable: parsed.vatApplicable ?? COMMERCIAL_UNIT_TYPES.has(parsed.unitType),
-    },
+  await prisma.$transaction(async (tx) => {
+    const unit = await tx.unit.create({
+      data: {
+        ...parsed,
+        organizationId,
+        vatApplicable: parsed.vatApplicable ?? COMMERCIAL_UNIT_TYPES.has(parsed.unitType),
+      },
+    });
+    await auditCreate(tx, { entityType: "Unit", entityId: unit.id, entityDisplayName: unit.unitNumber, newValues: parsed });
   });
   revalidatePath("/properties");
   revalidatePath("/units");
@@ -54,7 +58,16 @@ export async function createUnit(formData: FormData) {
 
 export async function deleteUnit(unitId: string) {
   const { organizationId } = await requirePermission("unit.delete");
-  await prisma.unit.delete({ where: { id: unitId, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const unit = await tx.unit.delete({ where: { id: unitId, organizationId } });
+    await auditAction(tx, {
+      action: "DELETE",
+      entityType: "Unit",
+      entityId: unit.id,
+      entityDisplayName: unit.unitNumber,
+      previousValues: unit,
+    });
+  });
   revalidatePath("/units");
   revalidatePath("/properties");
 }

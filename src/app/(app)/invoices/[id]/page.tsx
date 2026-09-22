@@ -7,6 +7,7 @@ import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, longDateFormatter, pickLocalized } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
+import { AuditTimeline } from "@/components/audit-timeline";
 
 export default async function InvoiceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -232,6 +233,10 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           <button className="text-red-500 hover:underline text-sm">{t.invoiceDetail.cancelInvoice}</button>
         </form>
       )}
+
+      <div className="no-print">
+        <AuditTimeline entityType="Invoice" entityId={invoice.id} />
+      </div>
     </div>
   );
 }

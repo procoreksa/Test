@@ -9,5 +9,10 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["src/**/*.test.ts"],
+    // Real, database-backed tests (src/**/*.db.test.ts) truncate tables and
+    // must only ever run via `npm run test:db` against the disposable
+    // database in .env.test - never as part of the default `npm test` run.
+    // See vitest.db.config.mts and docs/AUDIT-AND-FINANCIAL-CONTROLS.md.
+    exclude: ["**/node_modules/**", "src/**/*.db.test.ts"],
   },
 });

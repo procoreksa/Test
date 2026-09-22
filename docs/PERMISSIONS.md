@@ -38,6 +38,8 @@ settings.view / settings.update
 owner.view    / owner.create    / owner.update
 ownership.view / ownership.manage
 ownerLedger.view / ownerLedger.create / ownerLedger.reverse
+
+audit.view / audit.export
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -49,6 +51,15 @@ requested for that distinction. `ownership.manage` covers both creating a
 new ownership assignment and ending one (a single "manage" permission,
 mirroring how `settings.update` covers every settings field rather than one
 permission per field).
+
+`audit.view`/`audit.export` gate the new `/audit-logs` page (see
+`docs/AUDIT-AND-FINANCIAL-CONTROLS.md`). There is deliberately no
+`audit.create`/`audit.update`/`audit.delete` - audit rows are written only
+by the system itself (`src/lib/audit.ts`), never by a user-facing action, so
+no permission for those verbs exists at all. `audit.export` is granted only
+to OWNER/ADMIN (via `ALL_PERMISSIONS`) - MANAGER/ACCOUNTANT can view the
+audit log filtered to their category but not export it, per the brief's
+"Optionally: audit.export" wording.
 
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
@@ -96,6 +107,8 @@ create/delete, not edit. When one is added, gate it with the matching
 | ownerLedger.view | ✅ | ✅ | ✅ | ✅ | ✅ |
 | ownerLedger.create | ✅ | ✅ | ❌ | ✅ | ❌ |
 | ownerLedger.reverse | ✅ | ✅ | ❌ | ✅ | ❌ |
+| audit.view | ✅ | ✅ | ✅ (operational only) | ✅ (financial only) | ❌ |
+| audit.export | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 

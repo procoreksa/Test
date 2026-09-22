@@ -2,6 +2,60 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import type { AuditAction } from "@/lib/audit";
+
+/**
+ * Writes a LOGIN/LOGIN_FAILED/LOGOUT row directly via `prisma`, deliberately
+ * NOT importing anything (value-level) from src/lib/audit.ts here: that
+ * module imports requireSession()/requirePermission() from src/lib/
+ * session.ts, which itself imports `auth` from this file - a real circular
+ * import. `AuditAction` above is a type-only import (erased at compile
+ * time, so it can't participate in that cycle) for type safety on the
+ * action string; the write itself is a plain, minimal Prisma call since a
+ * login event carries no sensitive previousValues/newValues to redact in
+ * the first place. See docs/AUDIT-AND-FINANCIAL-CONTROLS.md, "Login
+ * security events", for why this stays a standalone helper instead of
+ * reusing writeAuditLog().
+ */
+async function auditLoginEvent(params: {
+  action: Extract<AuditAction, "LOGIN" | "LOGIN_FAILED" | "LOGOUT">;
+  organizationId: string;
+  userId?: string | null;
+  userEmail?: string | null;
+  userRole?: string | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        organizationId: params.organizationId,
+        userId: params.userId ?? null,
+        userEmail: params.userEmail ?? null,
+        userRole: params.userRole ?? null,
+        action: params.action,
+        entityType: "Session",
+        entityId: params.userId ?? params.userEmail ?? "unknown",
+        metadata: params.metadata as Prisma.InputJsonValue,
+        ipAddress: params.ipAddress ?? null,
+        userAgent: params.userAgent ?? null,
+      },
+    });
+  } catch {
+    // Never let audit logging break authentication itself.
+  }
+}
+
+function requestMetadata(request?: Request) {
+  if (!request) return { ipAddress: null, userAgent: null };
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  return {
+    ipAddress: forwardedFor ? forwardedFor.split(",")[0].trim() : null,
+    userAgent: request.headers.get("user-agent"),
+  };
+}
 
 declare module "next-auth" {
   interface Session {
@@ -37,19 +91,50 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      authorize: async (credentials) => {
+      authorize: async (credentials, request) => {
         const email = credentials?.email as string | undefined;
         const password = credentials?.password as string | undefined;
+        const { ipAddress, userAgent } = requestMetadata(request);
         if (!email || !password) return null;
 
+        const normalizedEmail = email.toLowerCase().trim();
         const user = await prisma.user.findFirst({
-          where: { email: email.toLowerCase().trim(), isActive: true },
+          where: { email: normalizedEmail, isActive: true },
           include: { organization: true },
         });
-        if (!user) return null;
+        if (!user) {
+          // No matching user (or a matching-but-deactivated account) - there's
+          // no organization to attribute this to, so per docs/AUDIT-AND-
+          // FINANCIAL-CONTROLS.md this attempt is intentionally not written
+          // to AuditLog (organizationId is required there, unlike userId/
+          // userEmail/userRole). Never log the attempted password either way.
+          return null;
+        }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
-        if (!valid) return null;
+        if (!valid) {
+          await auditLoginEvent({
+            action: "LOGIN_FAILED",
+            organizationId: user.organizationId,
+            userId: user.id,
+            userEmail: user.email,
+            userRole: user.role,
+            ipAddress,
+            userAgent,
+            metadata: { attemptedEmail: normalizedEmail },
+          });
+          return null;
+        }
+
+        await auditLoginEvent({
+          action: "LOGIN",
+          organizationId: user.organizationId,
+          userId: user.id,
+          userEmail: user.email,
+          userRole: user.role,
+          ipAddress,
+          userAgent,
+        });
 
         return {
           id: user.id,
@@ -80,6 +165,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.organizationId = t.organizationId;
       session.user.organizationName = t.organizationName;
       return session;
+    },
+  },
+  events: {
+    // JWT-strategy sessions only ever hand this event a `token` (never a
+    // `session`), and only when a session actually existed to sign out of.
+    async signOut(message) {
+      const token = "token" in message ? (message.token as (Partial<AppJwt> & Record<string, unknown>) | null | undefined) : null;
+      if (!token?.organizationId) return;
+      await auditLoginEvent({
+        action: "LOGOUT",
+        organizationId: token.organizationId,
+        userId: token.userId,
+        userRole: token.role,
+      });
     },
   },
 });

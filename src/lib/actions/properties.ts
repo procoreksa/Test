@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { auditCreate, auditAction } from "@/lib/audit";
 
 function propertySchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -29,13 +30,25 @@ export async function createProperty(formData: FormData) {
     street: formData.get("street") || undefined,
   });
 
-  await prisma.property.create({ data: { ...parsed, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const property = await tx.property.create({ data: { ...parsed, organizationId } });
+    await auditCreate(tx, { entityType: "Property", entityId: property.id, entityDisplayName: property.name, newValues: parsed });
+  });
   revalidatePath("/properties");
 }
 
 export async function deleteProperty(propertyId: string) {
   const { organizationId } = await requirePermission("property.delete");
-  await prisma.property.delete({ where: { id: propertyId, organizationId } });
+  await prisma.$transaction(async (tx) => {
+    const property = await tx.property.delete({ where: { id: propertyId, organizationId } });
+    await auditAction(tx, {
+      action: "DELETE",
+      entityType: "Property",
+      entityId: property.id,
+      entityDisplayName: property.name,
+      previousValues: property,
+    });
+  });
   revalidatePath("/properties");
 }
 
