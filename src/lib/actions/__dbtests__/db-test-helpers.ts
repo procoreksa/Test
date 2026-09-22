@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { assertSafeTestDatabaseUrl } from "@/lib/test-db-guard";
 import { createContractWithSchedule } from "@/lib/contract-schedule";
 import { issueInvoice } from "@/lib/invoicing";
-import type { UserRole, ViewingStatus, OfferStatus } from "@prisma/client";
+import type { UserRole, ViewingStatus, OfferStatus, ReservationStatus, ReservationAmountStatus } from "@prisma/client";
 
 assertSafeTestDatabaseUrl(process.env.DATABASE_URL);
 
@@ -184,10 +184,43 @@ export async function createTestOffer(
   });
 }
 
+export async function createTestReservation(
+  organizationId: string,
+  leadId: string,
+  offerId: string,
+  unitId: string,
+  createdByUserId: string,
+  overrides: Partial<{
+    status: ReservationStatus;
+    assignedToUserId: string;
+    holdUntil: Date;
+    reservationAmount: number;
+    reservationAmountStatus: ReservationAmountStatus;
+  }> = {}
+) {
+  const reservationAmount = overrides.reservationAmount ?? 0;
+  return prisma.reservation.create({
+    data: {
+      organizationId,
+      reservationNumber: `RES-${uniqueSuffix()}`,
+      leadId,
+      offerId,
+      unitId,
+      assignedToUserId: overrides.assignedToUserId,
+      status: overrides.status ?? "DRAFT",
+      holdUntil: overrides.holdUntil ?? new Date("2027-12-31T00:00:00Z"),
+      reservationAmount,
+      reservationAmountStatus: overrides.reservationAmountStatus ?? (reservationAmount > 0 ? "PENDING" : "NOT_REQUIRED"),
+      createdByUserId,
+    },
+  });
+}
+
 /**
- * A fully wired organization: compound -> building -> floor -> unit, a
- * renter, an owner (100% assigned to the unit), an admin user, a lead, a
- * scheduled viewing (assigned to the org's own admin), a Draft leasing
+ * A fully wired organization: compound -> building -> floor -> two units, a
+ * renter, an owner (100% assigned to the first unit), an admin user, a
+ * lead, a scheduled viewing, a Draft leasing offer on the first unit, an
+ * ACCEPTED offer on the second unit, a Draft reservation from that accepted
  * offer, and the matching mocked session - everything a cross-org/IDOR test
  * needs to assert that another organization's admin cannot reach any of it.
  */
@@ -198,6 +231,7 @@ export async function seedFullOrg(label: string) {
   const building = await createTestBuilding(organization.id, compound.id, `${label} Building`);
   const floor = await createTestFloor(organization.id, building.id, 1);
   const unit = await createTestUnit(organization.id, floor.id, { unitNumber: `${label}-101` });
+  const reservableUnit = await createTestUnit(organization.id, floor.id, { unitNumber: `${label}-102` });
   const renter = await createTestRenter(organization.id, `${label} Renter`);
   const owner = await createTestOwner(organization.id, `${label} Owner`);
   const ownership = await prisma.propertyOwnership.create({
@@ -206,6 +240,8 @@ export async function seedFullOrg(label: string) {
   const lead = await createTestLead(organization.id, admin.id, { fullName: `${label} Lead`, mobile: "0501234567" });
   const viewing = await createTestViewing(organization.id, lead.id, [unit.id], admin.id, { assignedToUserId: admin.id });
   const offer = await createTestOffer(organization.id, lead.id, unit.id, admin.id, { assignedToUserId: admin.id });
+  const acceptedOffer = await createTestOffer(organization.id, lead.id, reservableUnit.id, admin.id, { assignedToUserId: admin.id, status: "ACCEPTED" });
+  const reservation = await createTestReservation(organization.id, lead.id, acceptedOffer.id, reservableUnit.id, admin.id, { assignedToUserId: admin.id });
 
   return {
     organization,
@@ -215,12 +251,15 @@ export async function seedFullOrg(label: string) {
     building,
     floor,
     unit,
+    reservableUnit,
     renter,
     owner,
     ownership,
     lead,
     viewing,
     offer,
+    acceptedOffer,
+    reservation,
   };
 }
 

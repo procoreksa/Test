@@ -14,6 +14,7 @@ import {
   reviseOffer,
 } from "@/lib/actions/offers";
 import { listLeadActivities } from "@/lib/actions/lead-activities";
+import { getActiveReservationForOffer } from "@/lib/actions/reservations";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { canApproveDiscount } from "@/lib/crm/offer-rules";
@@ -26,6 +27,9 @@ export default async function OfferProfilePage({ params }: { params: Promise<{ i
   const { id } = await params;
   const [offer, role, locale] = await Promise.all([getOfferById(id), getCurrentUserRole(), getLocale()]);
   const [versionChain, activities] = await Promise.all([getOfferVersionChain(offer.offerNumber), listLeadActivities(offer.leadId).catch(() => [])]);
+  const canViewReservation = can("reservation.view", role);
+  const activeReservation = offer.status === "ACCEPTED" && canViewReservation ? await getActiveReservationForOffer(offer.id) : null;
+  const canCreateReservation = can("reservation.create", role);
   const t = getDictionary(locale);
   const dateFmt = longDateFormatter(locale);
   const dateTimeFmt = longDateTimeFormatter(locale);
@@ -238,11 +242,31 @@ export default async function OfferProfilePage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      {offer.status === "ACCEPTED" && (
+      {offer.status === "ACCEPTED" && canViewReservation && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 no-print">
-          <button disabled className="rounded-lg border border-dashed border-slate-300 text-slate-400 px-4 py-2 text-sm cursor-not-allowed">
-            {t.offer.reservationNotImplemented}
-          </button>
+          <h2 className="font-semibold text-slate-800 mb-3">{t.reservation.activeReservationTitle}</h2>
+          {activeReservation ? (
+            <dl className="grid grid-cols-2 md:grid-cols-4 gap-y-2 text-sm">
+              <dt className="text-slate-500">{t.reservation.colReservationNumber}</dt>
+              <dd className="text-slate-800 font-medium">
+                <Link href={`/crm/reservations/${activeReservation.id}`} className="text-brand-gold-dark hover:underline">
+                  {activeReservation.reservationNumber}
+                </Link>
+              </dd>
+              <dt className="text-slate-500">{t.reservation.colStatus}</dt>
+              <dd className="text-slate-800 font-medium">{t.reservationStatus[activeReservation.status]}</dd>
+              <dt className="text-slate-500">{t.reservation.fieldHoldUntil}</dt>
+              <dd className="text-slate-800 font-medium">{dateTimeFmt.format(activeReservation.holdUntil)}</dd>
+              <dt className="text-slate-500">{t.reservation.colAmountStatus}</dt>
+              <dd className="text-slate-800 font-medium">{t.reservationAmountStatus[activeReservation.reservationAmountStatus]}</dd>
+            </dl>
+          ) : canCreateReservation ? (
+            <Link href={`/crm/reservations/new?offerId=${offer.id}`} className="rounded-lg bg-brand-gold hover:bg-brand-gold-dark text-brand-black px-4 py-2 text-sm font-semibold">
+              {t.reservation.createReservationButton}
+            </Link>
+          ) : (
+            <p className="text-sm text-slate-400">{t.reservation.noActiveReservation}</p>
+          )}
         </div>
       )}
 

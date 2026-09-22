@@ -2,14 +2,16 @@ import Link from "next/link";
 import { getCrmDashboardStats } from "@/lib/actions/crm";
 import { getViewingDashboardStats } from "@/lib/actions/viewing-reports";
 import { getOfferDashboardStats } from "@/lib/actions/offer-reports";
+import { getReservationDashboardStats } from "@/lib/actions/reservation-reports";
 import { StatCard } from "@/components/stat-card";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 
 export default async function CrmDashboardPage() {
-  const [stats, viewingStats, offerStats, locale] = await Promise.all([
+  const [stats, viewingStats, offerStats, reservationStats, locale] = await Promise.all([
     getCrmDashboardStats(),
     getViewingDashboardStats(),
     getOfferDashboardStats(),
+    getReservationDashboardStats(),
     getLocale(),
   ]);
   const t = getDictionary(locale);
@@ -113,6 +115,20 @@ export default async function CrmDashboardPage() {
         </div>
       </div>
 
+      <div>
+        <h2 className="font-semibold text-slate-800 mb-4">{t.reservation.dashboardTitle}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label={t.reservation.kpiActiveReservations} value={String(reservationStats.activeCount)} />
+          <StatCard label={t.reservation.kpiConfirmedReservations} value={String(reservationStats.confirmedCount)} tone="positive" />
+          <StatCard label={t.reservation.kpiExpiringToday} value={String(reservationStats.expiringTodayCount)} tone="warning" />
+          <StatCard label={t.reservation.kpiExpiredThisMonth} value={String(reservationStats.expiredThisMonth)} tone="danger" />
+          <StatCard label={t.reservation.kpiCancelled} value={String(reservationStats.cancelledCount)} tone="danger" />
+          <StatCard label={t.reservation.kpiConversionPending} value={String(reservationStats.conversionPendingCount)} />
+          <StatCard label={t.reservation.kpiAmountPending} value={sar.format(reservationStats.amountPending)} />
+          <StatCard label={t.reservation.kpiAmountReceived} value={sar.format(reservationStats.amountReceived)} tone="positive" />
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-3">
         <Link href="/crm/leads" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmLeads} →
@@ -128,6 +144,9 @@ export default async function CrmDashboardPage() {
         </Link>
         <Link href="/crm/offers" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmOffers} →
+        </Link>
+        <Link href="/crm/reservations" className="text-brand-gold-dark hover:underline text-sm font-medium">
+          {t.nav.crmReservations} →
         </Link>
         <Link href="/crm/reports" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmReports} →

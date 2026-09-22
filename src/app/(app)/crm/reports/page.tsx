@@ -22,6 +22,12 @@ export default async function CrmReportsIndexPage() {
     { href: "/crm/reports/offer-value-by-compound", icon: "🏘️", title: t.offer.reportValueByCompound },
     { href: "/crm/reports/offer-agent-performance", icon: "🧑‍💼", title: t.offer.reportAgentPerformance },
     { href: "/crm/reports/rejected-offer-analysis", icon: "📉", title: t.offer.reportRejectedAnalysis },
+    { href: "/crm/reports/reservations-active", icon: "🔑", title: t.reservation.reportActive },
+    { href: "/crm/reports/reservation-expiry", icon: "⏳", title: t.reservation.reportExpiry },
+    { href: "/crm/reports/reservation-cancellation-analysis", icon: "📉", title: t.reservation.reportCancellationAnalysis },
+    { href: "/crm/reports/reservation-amount-status", icon: "💰", title: t.reservation.reportAmountStatus },
+    { href: "/crm/reports/reservations-by-compound", icon: "🏘️", title: t.reservation.reportByCompound },
+    { href: "/crm/reports/reservation-agent-performance", icon: "🧑‍💼", title: t.reservation.reportAgentPerformance },
   ];
 
   return (

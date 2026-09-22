@@ -2,9 +2,10 @@ import Link from "next/link";
 import { listUnits, createUnit, deleteUnit } from "@/lib/actions/units";
 import { getLocationTree } from "@/lib/actions/floors";
 import { getUnitViewingCounts } from "@/lib/actions/viewings";
+import { getActiveReservationsForUnits } from "@/lib/actions/reservations";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
-import { getLocale, getDictionary, currencyFormatter, pickLocalized } from "@/lib/i18n";
+import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
 import { CascadingLocationPicker } from "@/components/cascading-location-picker";
 
@@ -12,16 +13,20 @@ const statusTone: Record<string, string> = {
   VACANT: "bg-slate-100 text-slate-600",
   OCCUPIED: "bg-emerald-100 text-emerald-700",
   MAINTENANCE: "bg-amber-100 text-amber-700",
+  RESERVED: "bg-brand-gold/20 text-brand-gold-dark",
 };
 
 export default async function UnitsPage() {
   const [units, locationTree, locale, role] = await Promise.all([listUnits(), getLocationTree(), getLocale(), getCurrentUserRole()]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
+  const dateFmt = shortDateFormatter(locale);
   const canCreate = can("unit.create", role);
   const canDelete = can("unit.delete", role);
   const canViewViewings = can("viewing.view", role);
+  const canViewReservations = can("reservation.view", role);
   const viewingCounts = canViewViewings ? await getUnitViewingCounts(units.map((u) => u.id)) : new Map<string, number>();
+  const reservationsByUnit = canViewReservations ? await getActiveReservationsForUnits(units.map((u) => u.id)) : new Map();
 
   return (
     <div className="space-y-6">
@@ -100,6 +105,11 @@ export default async function UnitsPage() {
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[u.status]}`}>
                     {t.unitStatus[u.status]}
                   </span>
+                  {u.status === "RESERVED" && reservationsByUnit.get(u.id) && (
+                    <p className="text-xs text-slate-400 mt-1 whitespace-nowrap">
+                      {reservationsByUnit.get(u.id)!.reservationNumber} · {t.reservation.unitHoldUntilLabel} {dateFmt.format(reservationsByUnit.get(u.id)!.holdUntil)}
+                    </p>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-slate-500">
                   {u.contracts[0] ? pickLocalized(locale, u.contracts[0].renter.fullNameAr, u.contracts[0].renter.fullName) : t.common.none}

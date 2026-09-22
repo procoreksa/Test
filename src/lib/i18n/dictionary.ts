@@ -52,6 +52,7 @@ export interface Dictionary {
     crmViewings: string;
     crmViewingCalendar: string;
     crmOffers: string;
+    crmReservations: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -156,6 +157,7 @@ export interface Dictionary {
     VACANT: string;
     OCCUPIED: string;
     MAINTENANCE: string;
+    RESERVED: string;
   };
   idType: {
     NATIONAL_ID: string;
@@ -639,6 +641,14 @@ export interface Dictionary {
     offerCannotRevise: string;
     offerApprovalNotAllowed: string;
     offerRejectReasonNoteRequired: string;
+    reservationOfferNotAccepted: string;
+    reservationOfferAlreadyActive: string;
+    reservationUnitNotEligible: string;
+    reservationUnitConflict: string;
+    reservationHoldUntilFuture: string;
+    reservationInvalidTransition: string;
+    reservationCancelReasonNoteRequired: string;
+    reservationCannotEdit: string;
   };
   zatca: {
     notConfigured: string;
@@ -1405,8 +1415,6 @@ export interface Dictionary {
     fieldRejectReasonNote: string;
     rejectSubmit: string;
 
-    reservationNotImplemented: string;
-
     approvalRequiredBadge: string;
     approvalNotRequiredBadge: string;
 
@@ -1456,6 +1464,148 @@ export interface Dictionary {
     offerAmountLabel: string;
     offerValidUntilLabel: string;
     noOffers: string;
+  };
+  reservationStatus: {
+    DRAFT: string;
+    PENDING: string;
+    CONFIRMED: string;
+    EXPIRED: string;
+    CANCELLED: string;
+    RELEASED: string;
+    CONVERTED_TO_CONTRACT: string;
+  };
+  reservationAmountStatus: {
+    NOT_REQUIRED: string;
+    PENDING: string;
+    RECEIVED: string;
+    REFUNDED: string;
+    FORFEITED: string;
+  };
+  reservationCancelReason: {
+    CUSTOMER_REQUEST: string;
+    PAYMENT_NOT_RECEIVED: string;
+    DOCUMENTS_INCOMPLETE: string;
+    UNIT_CHANGED: string;
+    OFFER_CHANGED: string;
+    TIMEOUT: string;
+    MANAGEMENT_DECISION: string;
+    OTHER: string;
+  };
+  reservation: {
+    activityCreated: (reservationNumber: string) => string;
+    activityConfirmed: (reservationNumber: string) => string;
+    activityCancelled: (reservationNumber: string) => string;
+    activityReleased: (reservationNumber: string) => string;
+    activityExpired: (reservationNumber: string) => string;
+
+    createReservationButton: string;
+    createReservationFromLeadButton: string;
+
+    listTitle: string;
+    listSubtitle: string;
+    searchPlaceholder: string;
+    colReservationNumber: string;
+    colLead: string;
+    colOfferNumber: string;
+    colUnit: string;
+    colCompound: string;
+    colStatus: string;
+    colAmount: string;
+    colAmountStatus: string;
+    colReservedAt: string;
+    colHoldUntil: string;
+    colAgent: string;
+    colActions: string;
+    filterStatus: string;
+    filterAmountStatus: string;
+    filterAgent: string;
+    filterCompound: string;
+    filterUnit: string;
+    filterLead: string;
+    filterHoldUntilFrom: string;
+    filterHoldUntilTo: string;
+    filterDateFrom: string;
+    filterDateTo: string;
+    filterExpiredOnly: string;
+    filterExpiringToday: string;
+    filterActiveOnly: string;
+    filterApply: string;
+    filterAll: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    newTitle: string;
+    newSubtitle: string;
+    selectOfferTitle: string;
+    noReservableOffers: string;
+    save: string;
+    fieldOffer: string;
+    fieldHoldUntil: string;
+    fieldReservationAmount: string;
+    fieldAssignedAgent: string;
+    fieldNotes: string;
+    amountTrackingDisclaimer: string;
+
+    profileBack: string;
+    profileSummaryTitle: string;
+    profileLeadTitle: string;
+    profileOfferTitle: string;
+    profileUnitTitle: string;
+    profileHoldPeriodTitle: string;
+    profileAmountTitle: string;
+    profileCommercialSummaryTitle: string;
+    profileInternalNotesTitle: string;
+    profileActivitiesTitle: string;
+
+    actionSubmit: string;
+    actionConfirm: string;
+    actionCancel: string;
+    actionRelease: string;
+    actionUpdateAmountStatus: string;
+    actionCreateContract: string;
+    contractNotImplemented: string;
+
+    cancelTitle: string;
+    fieldCancelReason: string;
+    fieldCancelReasonNote: string;
+    cancelSubmit: string;
+
+    updateAmountStatusTitle: string;
+    fieldNewAmountStatus: string;
+    updateAmountStatusSubmit: string;
+
+    dashboardTitle: string;
+    kpiActiveReservations: string;
+    kpiConfirmedReservations: string;
+    kpiExpiringToday: string;
+    kpiExpiredThisMonth: string;
+    kpiCancelled: string;
+    kpiConversionPending: string;
+    kpiAmountPending: string;
+    kpiAmountReceived: string;
+
+    reportsTitle: string;
+    reportActive: string;
+    reportExpiry: string;
+    reportCancellationAnalysis: string;
+    reportAmountStatus: string;
+    reportByCompound: string;
+    reportAgentPerformance: string;
+    colCount: string;
+    colReason: string;
+    colTotalAmount: string;
+    colConfirmationRate: string;
+
+    reservedUnitLabel: string;
+    noActiveReservation: string;
+    reservationHistoryTitle: string;
+    activeReservationTitle: string;
+
+    unitReservedLabel: string;
+    unitReservationNumberLabel: string;
+    unitHoldUntilLabel: string;
   };
 }
 

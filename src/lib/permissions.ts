@@ -66,7 +66,14 @@ export type Permission =
   | "offer.revise"
   | "offer.accept"
   | "offer.reject"
-  | "offer.cancel";
+  | "offer.cancel"
+  | "reservation.view"
+  | "reservation.create"
+  | "reservation.update"
+  | "reservation.confirm"
+  | "reservation.cancel"
+  | "reservation.release"
+  | "reservation.amount.update";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -129,6 +136,13 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "offer.accept",
   "offer.reject",
   "offer.cancel",
+  "reservation.view",
+  "reservation.create",
+  "reservation.update",
+  "reservation.confirm",
+  "reservation.cancel",
+  "reservation.release",
+  "reservation.amount.update",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -190,6 +204,15 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "offer.accept",
   "offer.reject",
   "offer.cancel",
+  // MANAGER holds every reservation.* operational permission (Step 29 of
+  // the brief: "MANAGER: all operational permissions").
+  "reservation.view",
+  "reservation.create",
+  "reservation.update",
+  "reservation.confirm",
+  "reservation.cancel",
+  "reservation.release",
+  "reservation.amount.update",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -217,6 +240,13 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "ownerLedger.create",
   "ownerLedger.reverse",
   "audit.view",
+  // Deliberately different from ACCOUNTANT's lead.*/viewing.*/offer.* policy
+  // (all none): reservation amount status IS relevant to ACCOUNTANT even
+  // though it is not itself an accounting entry, since it foreshadows the
+  // money a future Contract will actually invoice. Per the brief's own
+  // explicit Step 29 instruction. See docs/RESERVATION-MANAGEMENT.md.
+  "reservation.view",
+  "reservation.amount.update",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -235,6 +265,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "lead.view",
   "viewing.view",
   "offer.view",
+  "reservation.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

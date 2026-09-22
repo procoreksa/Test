@@ -53,3 +53,8 @@ export function formatViewingNumber(seq: number): string {
 export function formatOfferNumber(seq: number): string {
   return `OFFER-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatOfferNumber() - a reservation number is not a legal/tax document series either. */
+export function formatReservationNumber(seq: number): string {
+  return `RES-${String(seq).padStart(6, "0")}`;
+}

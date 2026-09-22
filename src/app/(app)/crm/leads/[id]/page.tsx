@@ -4,6 +4,7 @@ import { createLeadActivity, listLeadActivities } from "@/lib/actions/lead-activ
 import { getCompoundOptions } from "@/lib/actions/compounds";
 import { getViewingsForLead } from "@/lib/actions/viewings";
 import { getOffersForLead } from "@/lib/actions/offers";
+import { getReservationsForLead } from "@/lib/actions/reservations";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, longDateTimeFormatter, pickLocalized } from "@/lib/i18n";
@@ -13,7 +14,7 @@ const MOVABLE_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "VIEWING_PENDING", "V
 
 export default async function LeadProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [lead, activities, role, locale, agents, compounds, renterMatches, viewingsSummary, offersSummary] = await Promise.all([
+  const [lead, activities, role, locale, agents, compounds, renterMatches, viewingsSummary, offersSummary, reservationsSummary] = await Promise.all([
     getLeadById(id),
     listLeadActivities(id).catch(() => []),
     getCurrentUserRole(),
@@ -23,6 +24,7 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
     findPossibleRenterMatches(id).catch(() => []),
     getViewingsForLead(id).catch(() => ({ upcoming: [], past: [], lastOutcome: null, nextViewingDate: null })),
     getOffersForLead(id).catch(() => ({ offers: [], latest: null })),
+    getReservationsForLead(id).catch(() => ({ reservations: [], active: null })),
   ]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
@@ -39,6 +41,7 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
   const canViewViewings = can("viewing.view", role);
   const canCreateOffer = can("offer.create", role);
   const canViewOffers = can("offer.view", role);
+  const canViewReservations = can("reservation.view", role);
 
   const isClosed = lead.status === "WON" || lead.status === "LOST" || lead.status === "ARCHIVED";
 
@@ -185,6 +188,36 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
                     {o.offerNumber} — {t.offer.colVersionShort}{o.versionNumber}
                   </Link>{" "}
                   — {t.offerStatus[o.status]} — {sar.format(Number(o.netAnnualRent))}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {canViewReservations && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-4">{t.reservation.listTitle}</h2>
+
+          {reservationsSummary.active && (
+            <dl className="grid grid-cols-2 gap-y-2 text-sm mb-4">
+              <InfoRow label={t.reservation.reservedUnitLabel} value={reservationsSummary.active.unit.unitNumber} />
+              <InfoRow label={t.reservation.colStatus} value={t.reservationStatus[reservationsSummary.active.status]} />
+              <InfoRow label={t.reservation.fieldHoldUntil} value={dateTimeFmt.format(reservationsSummary.active.holdUntil)} />
+              <InfoRow label={t.reservation.colAmountStatus} value={t.reservationAmountStatus[reservationsSummary.active.reservationAmountStatus]} />
+            </dl>
+          )}
+
+          {reservationsSummary.reservations.length === 0 ? (
+            <p className="text-sm text-slate-400">{t.reservation.empty}</p>
+          ) : (
+            <ul className="space-y-1">
+              {reservationsSummary.reservations.map((r) => (
+                <li key={r.id} className="text-sm">
+                  <Link href={`/crm/reservations/${r.id}`} className="text-brand-gold-dark hover:underline">
+                    {r.reservationNumber}
+                  </Link>{" "}
+                  — {t.reservationStatus[r.status]} — {r.unit.unitNumber}
                 </li>
               ))}
             </ul>

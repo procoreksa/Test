@@ -81,6 +81,7 @@ model Organization {
   leadActivities     LeadActivity[]
   viewings           Viewing[]
   leasingOffers      LeasingOffer[]
+  reservations       Reservation[]
 
   @@map("organizations")
 }
@@ -109,9 +110,10 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  assignedLeads    Lead[]         @relation("LeadAssignedTo")
-  assignedViewings Viewing[]      @relation("ViewingAssignedTo")
-  assignedOffers   LeasingOffer[] @relation("OfferAssignedTo")
+  assignedLeads        Lead[]         @relation("LeadAssignedTo")
+  assignedViewings     Viewing[]      @relation("ViewingAssignedTo")
+  assignedOffers       LeasingOffer[] @relation("OfferAssignedTo")
+  assignedReservations Reservation[]  @relation("ReservationAssignedTo")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -150,6 +152,7 @@ enum UnitStatus {
   VACANT
   OCCUPIED
   MAINTENANCE
+  RESERVED // held by an active Reservation (PENDING/CONFIRMED) - see docs/RESERVATION-MANAGEMENT.md
 }
 
 /// @deprecated superseded by Compound (see docs/PROPERTY-HIERARCHY.md) - kept for backward compatibility, not removed.
@@ -288,6 +291,7 @@ model Unit {
   ownerLedgerEntries OwnerLedgerEntry[]
   viewingUnits       ViewingUnit[]
   leasingOffers      LeasingOffer[]
+  reservations       Reservation[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -1042,6 +1046,7 @@ model Lead {
   activities    LeadActivity[]
   viewings      Viewing[]
   leasingOffers LeasingOffer[]
+  reservations  Reservation[]
 
   @@unique([organizationId, leadNumber])
   @@index([organizationId, status])
@@ -1337,6 +1342,8 @@ model LeasingOffer {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  reservations Reservation[]
+
   @@unique([organizationId, offerNumber, versionNumber])
   @@index([organizationId, status])
   @@index([organizationId, leadId])
@@ -1346,4 +1353,116 @@ model LeasingOffer {
   @@index([organizationId, createdAt])
   @@index([organizationId, offerNumber])
   @@map("leasing_offers")
+}
+
+// ---------------------------------------------------------------------------
+// CRM: Reservation Management
+//
+// A Reservation holds a Unit for a prospective tenant after an ACCEPTED
+// LeasingOffer and before lease Contract creation. Purely additive on top
+// of Lead/LeasingOffer/Unit - none of them are redesigned, and this task
+// deliberately stops short of Contract conversion - see
+// docs/RESERVATION-MANAGEMENT.md, "Future Contract conversion". No Invoice/
+// Payment/PaymentSchedule/OwnerLedgerEntry row is ever created by any
+// action in this file - reservationAmount is operational tracking only.
+// ---------------------------------------------------------------------------
+
+enum ReservationStatus {
+  DRAFT
+  PENDING
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+  RELEASED
+  CONVERTED_TO_CONTRACT // reserved for the future Contract module - not settable by any action in this task
+}
+
+enum ReservationAmountStatus {
+  NOT_REQUIRED
+  PENDING
+  RECEIVED
+  REFUNDED
+  FORFEITED
+}
+
+/// The management/customer's own reason for cancelling a reservation -
+/// distinct from OfferRejectReason/ViewingCancelReason (different stage,
+/// different vocabulary - e.g. PAYMENT_NOT_RECEIVED only makes sense here).
+enum ReservationCancelReason {
+  CUSTOMER_REQUEST
+  PAYMENT_NOT_RECEIVED
+  DOCUMENTS_INCOMPLETE
+  UNIT_CHANGED
+  OFFER_CHANGED
+  TIMEOUT
+  MANAGEMENT_DECISION
+  OTHER
+}
+
+model Reservation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "RES-000001" via the existing Counter infrastructure (key
+  // "reservation"), never a separate numbering scheme.
+  reservationNumber String
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Required - a Reservation always traces back to the ACCEPTED Offer it
+  // was created from (Step 5). Offers are never deleted (no offer.delete
+  // action exists), so Restrict is a safety net, not a practical concern.
+  offerId String
+  offer   LeasingOffer @relation(fields: [offerId], references: [id], onDelete: Restrict)
+
+  // Copied from the Offer at creation time and never allowed to diverge
+  // (Step 13: "Do not allow user to change Lead/Unit away from the
+  // selected Offer") - kept as its own column (not derived via the Offer
+  // relation on every read) because Unit-level conflict/hold queries need
+  // to filter directly on it.
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  status ReservationStatus @default(DRAFT)
+
+  reservedAt  DateTime  @default(now())
+  holdUntil   DateTime
+  confirmedAt DateTime?
+  cancelledAt DateTime?
+  expiredAt   DateTime?
+  releasedAt  DateTime?
+
+  reservationAmount       Decimal                 @default(0) @db.Decimal(12, 2)
+  reservationAmountStatus ReservationAmountStatus @default(NOT_REQUIRED)
+
+  notes         String?
+  internalNotes String?
+
+  cancelReason     ReservationCancelReason?
+  cancelReasonNote String?
+
+  // Plain string, not a relation - mirrors Lead/Viewing/Offer's own
+  // createdByUserId: survives a User being removed.
+  createdByUserId String
+
+  // Live operational assignment - same pattern as Lead/Viewing/Offer's
+  // assignedToUserId: a real relation, verified same-organization on every
+  // write.
+  assignedToUserId String?
+  assignedToUser   User?   @relation("ReservationAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, reservationNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, unitId, status])
+  @@index([organizationId, offerId])
+  @@index([organizationId, leadId])
+  @@index([organizationId, assignedToUserId])
+  @@index([organizationId, holdUntil])
+  @@index([organizationId, createdAt])
+  @@map("reservations")
 }

@@ -47,6 +47,8 @@ leadActivity.view / leadActivity.create
 viewing.view / viewing.create / viewing.update / viewing.assign / viewing.complete / viewing.cancel
 
 offer.view / offer.create / offer.update / offer.submit / offer.approve / offer.send / offer.revise / offer.accept / offer.reject / offer.cancel
+
+reservation.view / reservation.create / reservation.update / reservation.confirm / reservation.cancel / reservation.release / reservation.amount.update
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -111,6 +113,23 @@ threshold-based per offer. There is no `offer.delete`: offers are
 cancelled (`offer.cancel`, terminal `CANCELLED` status) or superseded by a
 revision, never deleted, matching the no-hard-delete policy `lead.*`/
 `viewing.*` already established.
+
+`reservation.*` gate the Reservation Management foundation (see
+`docs/RESERVATION-MANAGEMENT.md`). MANAGER holds every `reservation.*`
+permission, matching its full operational access to `lead.*`/`viewing.*`/
+`offer.*`. VIEWER gets `reservation.view` only, same pattern as the other
+three CRM modules. **ACCOUNTANT is the one deliberate exception**: unlike
+`lead.*`/`viewing.*`/`offer.*` (ACCOUNTANT gets none of those), ACCOUNTANT
+here gets `reservation.view` **and** `reservation.amount.update` - the
+reservation amount is money-adjacent operational tracking (though never an
+accounting entry - see `docs/RESERVATION-MANAGEMENT.md` §7), so ACCOUNTANT
+is given visibility and the ability to mark it received/refunded/
+forfeited, but not to create/submit/confirm/cancel/release a Reservation
+itself (that stays an agency/CRM operational decision). There is no
+`reservation.delete`: a Reservation row is never deleted (cancelled,
+released, or lazily expired instead - all three preserve the row),
+matching the no-hard-delete policy every other CRM module already
+established.
 
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
@@ -184,6 +203,13 @@ create/delete, not edit. When one is added, gate it with the matching
 | offer.accept | ✅ | ✅ | ✅ | ❌ | ❌ |
 | offer.reject | ✅ | ✅ | ✅ | ❌ | ❌ |
 | offer.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| reservation.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| reservation.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| reservation.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| reservation.confirm | ✅ | ✅ | ✅ | ❌ | ❌ |
+| reservation.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| reservation.release | ✅ | ✅ | ✅ | ❌ | ❌ |
+| reservation.amount.update | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
