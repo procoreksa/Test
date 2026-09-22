@@ -51,6 +51,12 @@ offer.view / offer.create / offer.update / offer.submit / offer.approve / offer.
 reservation.view / reservation.create / reservation.update / reservation.confirm / reservation.cancel / reservation.release / reservation.amount.update / reservation.convert
 
 moveIn.view / moveIn.create / moveIn.update / moveIn.start / moveIn.complete / moveIn.cancel / moveInInspection.update
+
+maintenance.view
+maintenance.request.create / maintenance.request.update / maintenance.request.triage / maintenance.request.cancel
+maintenance.workOrder.create / maintenance.workOrder.assign / maintenance.workOrder.update / maintenance.workOrder.start / maintenance.workOrder.complete / maintenance.workOrder.verify / maintenance.workOrder.close / maintenance.workOrder.cancel
+maintenance.cost.view / maintenance.cost.manage
+maintenance.vendor.view / maintenance.vendor.manage
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -249,8 +255,47 @@ create/delete, not edit. When one is added, gate it with the matching
 | moveIn.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
 | moveIn.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
 | moveInInspection.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| maintenance.request.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.request.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.request.triage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.request.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.assign | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.start | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.verify | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.close | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.workOrder.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.cost.view | ✅ | ✅ | ✅ | ✅ | ❌ |
+| maintenance.cost.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| maintenance.vendor.view | ✅ | ✅ | ✅ | ✅ | ❌ |
+| maintenance.vendor.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
+
+- **Maintenance Management (docs/MAINTENANCE-MANAGEMENT.md).** No new role
+  was introduced. MANAGER holds every `maintenance.*` operational
+  permission (create/triage/assign/start/complete/verify/close/cancel),
+  the same tier as its own Move-In/Contract permissions. ACCOUNTANT gets
+  `maintenance.view` + `maintenance.cost.view` + `maintenance.vendor.view`
+  only - it can see what maintenance is costing and which vendors exist,
+  but cannot triage a Request, create/assign/progress a Work Order, or
+  add/edit cost entries; this mirrors ACCOUNTANT's existing "broad *.view,
+  narrow mutation" posture everywhere else in this table. VIEWER gets
+  `maintenance.view` only, same read-only pattern as every other module.
+  `maintenance.cost.manage` is deliberately separate from
+  `maintenance.workOrder.update` (a technician can update a Work Order's
+  diagnosis/schedule without necessarily being trusted to enter costs, and
+  vice versa for a back-office user who only enters costs after the fact)
+  - in practice MANAGER/ADMIN/OWNER hold both. There is no
+  `maintenance.request.delete`/`maintenance.workOrder.delete`: neither is
+  ever hard-deleted (only cancelled, which preserves the row), matching
+  the no-hard-delete policy every other module in this table already
+  established - and a CLOSED Work Order is additionally immutable at the
+  service-layer regardless of permission (see docs/MAINTENANCE-MANAGEMENT.md
+  §23).
 
 - **`property.delete` / `unit.delete` / `renter.delete` are OWNER/ADMIN-only.**
   The brief listed `property.delete` etc. as permission keys to define but

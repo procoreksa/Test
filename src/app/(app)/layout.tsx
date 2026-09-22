@@ -56,6 +56,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const allOperationsNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
     { href: "/operations", label: t.nav.operationsDashboard, icon: "🏗️", permission: "moveIn.view" },
     { href: "/operations/move-ins", label: t.nav.operationsMoveIns, icon: "🔑", permission: "moveIn.view" },
+    { href: "/operations/maintenance/requests", label: t.nav.operationsMaintenanceRequests, icon: "🛠️", permission: "maintenance.view" },
+    { href: "/operations/maintenance/work-orders", label: t.nav.operationsMaintenanceWorkOrders, icon: "🧾", permission: "maintenance.view" },
+    { href: "/operations/maintenance/vendors", label: t.nav.operationsMaintenanceVendors, icon: "🧰", permission: "maintenance.vendor.view" },
+    { href: "/operations/maintenance/reports", label: t.nav.operationsMaintenanceReports, icon: "📑", permission: "maintenance.view" },
   ];
   const operationsNavItems = allOperationsNavItems.filter((item) => can(item.permission, role));
 

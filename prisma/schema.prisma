@@ -88,6 +88,9 @@ model Organization {
   moveInMeterReadings   MoveInMeterReading[]
   moveInKeyItems        MoveInKeyItem[]
   moveInAttachments     MoveInAttachment[]
+  maintenanceRequests   MaintenanceRequest[]
+  maintenanceWorkOrders MaintenanceWorkOrder[]
+  maintenanceVendors    MaintenanceVendor[]
 
   @@map("organizations")
 }
@@ -122,6 +125,13 @@ model User {
   assignedReservations Reservation[]  @relation("ReservationAssignedTo")
   inspectedMoveIns     MoveIn[]       @relation("MoveInInspectedBy")
   handedOverMoveIns    MoveIn[]       @relation("MoveInHandedOverBy")
+
+  reportedMaintenanceRequests   MaintenanceRequest[]    @relation("MaintenanceRequestReportedBy")
+  assignedMaintenanceRequests   MaintenanceRequest[]    @relation("MaintenanceRequestAssignedTo")
+  triagedMaintenanceRequests    MaintenanceRequest[]    @relation("MaintenanceRequestTriagedBy")
+  assignedMaintenanceWorkOrders MaintenanceWorkOrder[]  @relation("MaintenanceWorkOrderAssignedTo")
+  verifiedMaintenanceWorkOrders MaintenanceWorkOrder[]  @relation("MaintenanceWorkOrderVerifiedBy")
+  maintenanceLaborEntries       MaintenanceLaborEntry[] @relation("MaintenanceLaborEntryUser")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -215,10 +225,11 @@ model Compound {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  buildings          Building[]
-  propertyOwnerships PropertyOwnership[]
-  ownerLedgerEntries OwnerLedgerEntry[]
-  leads              Lead[]
+  buildings           Building[]
+  propertyOwnerships  PropertyOwnership[]
+  ownerLedgerEntries  OwnerLedgerEntry[]
+  leads               Lead[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([organizationId])
   @@map("compounds")
@@ -242,8 +253,9 @@ model Building {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  floors             Floor[]
-  propertyOwnerships PropertyOwnership[]
+  floors              Floor[]
+  propertyOwnerships  PropertyOwnership[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([organizationId])
   @@index([compoundId])
@@ -294,13 +306,14 @@ model Unit {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts          Contract[]
-  propertyOwnerships PropertyOwnership[]
-  ownerLedgerEntries OwnerLedgerEntry[]
-  viewingUnits       ViewingUnit[]
-  leasingOffers      LeasingOffer[]
-  reservations       Reservation[]
-  moveIns            MoveIn[]
+  contracts           Contract[]
+  propertyOwnerships  PropertyOwnership[]
+  ownerLedgerEntries  OwnerLedgerEntry[]
+  viewingUnits        ViewingUnit[]
+  leasingOffers       LeasingOffer[]
+  reservations        Reservation[]
+  moveIns             MoveIn[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -335,11 +348,12 @@ model Renter {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts         Contract[]
-  invoices          Invoice[]
-  payments          Payment[]
-  convertedFromLead Lead?
-  moveIns           MoveIn[]
+  contracts           Contract[]
+  invoices            Invoice[]
+  payments            Payment[]
+  convertedFromLead   Lead?
+  moveIns             MoveIn[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([organizationId])
   @@map("renters")
@@ -420,9 +434,9 @@ model Contract {
   reservationId String?      @unique
   reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
 
-  paymentSchedules  PaymentSchedule[]
-  invoices          Invoice[]
-  convertedFromLead Lead?
+  paymentSchedules    PaymentSchedule[]
+  invoices            Invoice[]
+  convertedFromLead   Lead?
   // No DB-level unique constraint here (see docs/MOVE-IN-HANDOVER.md,
   // "Contract eligibility") - "one active/completed Move-In per Contract"
   // is enforced the same way "one active Reservation per Offer" already
@@ -430,7 +444,8 @@ model Contract {
   // (blocksNewMoveInForContract()) checked inside a Serializable
   // transaction, not a DB constraint - a Contract may have several
   // CANCELLED MoveIn attempts before a successful one.
-  moveIns           MoveIn[]
+  moveIns             MoveIn[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
@@ -1696,11 +1711,12 @@ model MoveIn {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  inspectionItems MoveInInspectionItem[]
-  inventoryItems  MoveInInventoryItem[]
-  meterReadings   MoveInMeterReading[]
-  keyItems        MoveInKeyItem[]
-  attachments     MoveInAttachment[]
+  inspectionItems     MoveInInspectionItem[]
+  inventoryItems      MoveInInventoryItem[]
+  meterReadings       MoveInMeterReading[]
+  keyItems            MoveInKeyItem[]
+  attachments         MoveInAttachment[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@unique([organizationId, moveInNumber])
   @@index([organizationId, status])
@@ -1745,7 +1761,8 @@ model MoveInInspectionItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  attachments MoveInAttachment[]
+  attachments         MoveInAttachment[]
+  maintenanceRequests MaintenanceRequest[]
 
   @@index([organizationId, moveInId])
   @@index([moveInId, category])
@@ -1865,4 +1882,582 @@ model MoveInAttachment {
 
   @@index([organizationId, moveInId])
   @@map("move_in_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// Maintenance Management
+//
+// Workflow: Maintenance Request -> Triage -> Work Order -> Assignment ->
+// Scheduling -> Diagnosis -> Work In Progress -> Parts/Operational Costs ->
+// Completion -> Verification -> Closure. Covers Compound common areas,
+// Building common areas, and Units (occupied or vacant).
+//
+// MaintenanceRequest ("something is wrong / maintenance is needed") and
+// MaintenanceWorkOrder ("authorized operational work to resolve it") are
+// deliberately separate models, never collapsed - see
+// docs/MAINTENANCE-MANAGEMENT.md. For V1 a Request has at most one
+// non-cancelled Work Order (enforced by blocksNewWorkOrderForRequest(), the
+// same app-layer-predicate-in-a-Serializable-transaction pattern already
+// used by blocksNewMoveInForContract()) - the relation itself is one-to-many
+// so a future follow-up Work Order remains possible without a migration.
+//
+// CRITICAL FINANCIAL BOUNDARY: every cost field/model here is OPERATIONAL
+// ("what did this job cost?"), never accounting ("who is billed and how is
+// it posted?"). Nothing in this section ever creates an Invoice, Payment,
+// PaymentSchedule, OwnerLedgerEntry, or VAT record. `costResponsibility` is
+// a preliminary operational classification only - not a chargeback.
+//
+// Location model: Unit maintenance hangs off Unit (Compound/Building are
+// denormalized onto the Request from Unit -> Floor -> Building -> Compound
+// at creation, via resolveMaintenanceLocation(), never trusted from the
+// client). Building/Compound common-area maintenance hangs off Building/
+// Compound directly with no fake Unit relation. Maintenance never writes
+// to Unit.status (mirrors Move-In's own precedent - see UnitStatus.MAINTENANCE
+// doc comment).
+// ---------------------------------------------------------------------------
+
+enum MaintenanceScopeType {
+  UNIT
+  BUILDING_COMMON_AREA
+  COMPOUND_COMMON_AREA
+}
+
+enum MaintenanceCategory {
+  PLUMBING
+  ELECTRICAL
+  AIR_CONDITIONING
+  APPLIANCE
+  CARPENTRY
+  PAINTING
+  CIVIL
+  FLOORING
+  DOORS_WINDOWS
+  ELEVATOR
+  POOL
+  LANDSCAPING
+  PEST_CONTROL
+  CLEANING
+  FIRE_SAFETY
+  SECURITY_SYSTEM
+  INTERNET_TELECOM
+  GENERAL
+  OTHER
+}
+
+// Operational urgency - deliberately independent of MaintenanceCategory (an
+// EMERGENCY is never derived solely from category; a plumbing leak can be
+// LOW or EMERGENCY depending on the actual situation).
+enum MaintenancePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  EMERGENCY
+}
+
+// Kept deliberately simple (Step 8) - detailed execution status lives on
+// MaintenanceWorkOrder, not here. Valid transitions centralized in
+// src/lib/operations/maintenance-rules.ts.
+enum MaintenanceRequestStatus {
+  OPEN
+  TRIAGED
+  WORK_ORDER_CREATED
+  RESOLVED
+  CANCELLED
+}
+
+enum MaintenanceRequestSource {
+  INTERNAL
+  TENANT
+  MOVE_IN_INSPECTION
+  MANAGEMENT
+  SECURITY
+  HOUSEKEEPING
+  OTHER
+}
+
+// Descriptive only - none of these create a portal account (no Tenant
+// Portal/Owner Portal/Vendor Portal in this task).
+enum MaintenanceReportedByType {
+  STAFF
+  TENANT
+  OWNER
+  SECURITY
+  HOUSEKEEPING
+  MANAGEMENT
+  OTHER
+}
+
+// Shared by MaintenanceRequest.cancelReason and MaintenanceWorkOrder.cancelReason -
+// both are "why was this abandoned before completion" and don't need
+// separate vocabularies.
+enum MaintenanceCancelReason {
+  DUPLICATE
+  NOT_NEEDED
+  TENANT_WITHDREW
+  RESOLVED_INFORMALLY
+  DATA_ERROR
+  OTHER
+}
+
+// Suggested lifecycle: DRAFT -> ASSIGNED -> SCHEDULED -> IN_PROGRESS ->
+// COMPLETED -> VERIFIED -> CLOSED, with legitimate variations (ASSIGNED/
+// SCHEDULED -> IN_PROGRESS directly, IN_PROGRESS <-> ON_HOLD, cancellation
+// any time before COMPLETED). CLOSED is terminal - no reopen in V1 (Step
+// 57); a recurring issue gets a new Request referencing this one instead.
+// Valid transitions centralized in src/lib/operations/maintenance-rules.ts.
+enum MaintenanceWorkOrderStatus {
+  DRAFT
+  ASSIGNED
+  SCHEDULED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  VERIFIED
+  CLOSED
+  CANCELLED
+}
+
+enum MaintenanceHoldReason {
+  WAITING_FOR_PART
+  WAITING_FOR_VENDOR
+  WAITING_FOR_TENANT
+  WAITING_FOR_APPROVAL
+  ACCESS_UNAVAILABLE
+  OTHER
+}
+
+// Append-only operational history a user reads (distinct from AuditLog,
+// which is the security/compliance mutation trail - Step 78).
+enum MaintenanceWorkLogType {
+  NOTE
+  STATUS_UPDATE
+  DIAGNOSIS
+  WORK_PERFORMED
+  CUSTOMER_UPDATE
+  INTERNAL_NOTE
+  OTHER
+}
+
+// Preliminary operational classification only (Step 36) - never creates an
+// accounting entry, chargeback, or deposit deduction.
+enum MaintenanceCostResponsibility {
+  UNDETERMINED
+  OWNER
+  TENANT
+  PROPERTY_MANAGEMENT
+  WARRANTY
+  VENDOR
+  OTHER
+}
+
+// INVOICE_COPY means a vendor/source document attachment (e.g. a vendor's
+// paper invoice photographed for the record) - it is NOT a system
+// accounting Invoice and never creates one.
+enum MaintenanceAttachmentType {
+  PHOTO
+  VIDEO
+  DOCUMENT
+  INVOICE_COPY
+  QUOTE
+  OTHER
+}
+
+enum MaintenanceAttachmentStage {
+  BEFORE
+  DURING
+  AFTER
+  GENERAL
+}
+
+enum MaintenanceCostEntryType {
+  TRANSPORT
+  EXTERNAL_SERVICE
+  EQUIPMENT_RENTAL
+  MISCELLANEOUS
+  OTHER
+}
+
+model MaintenanceRequest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "MR-000001" via the existing Counter infrastructure (key
+  // "maintenanceRequest") - no new numbering scheme.
+  requestNumber String
+
+  scopeType MaintenanceScopeType
+
+  // Denormalized onto the Request from the authoritative source
+  // (Unit -> Floor -> Building -> Compound for UNIT scope; the given
+  // Building/Compound directly otherwise) by resolveMaintenanceLocation() -
+  // never trusted as given by the client. Exactly one combination is valid
+  // per scopeType; see that helper for the enforced rules. Explicit
+  // onDelete: Restrict (Prisma's own default for an optional relation is
+  // SetNull, which is right for a pure reference like MoveIn/
+  // MoveInInspectionItem below but wrong here - a Maintenance Request's
+  // location is core, not incidental, so deleting a Compound/Building/Unit
+  // that still has Maintenance history must fail, exactly like Contract's
+  // required unitId/renterId already do).
+  compoundId String?
+  compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Restrict)
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  unitId     String?
+  unit       Unit?     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  // UNIT scope only, optional even then (vacant-unit maintenance needs
+  // neither) - when supplied, verified same-org and mutually consistent
+  // (Contract's unit must equal unitId; Renter must relate to that
+  // Contract) by resolveMaintenanceLocation(), never trusted standalone.
+  // Same Restrict reasoning as above.
+  contractId String?
+  contract   Contract? @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  renterId   String?
+  renter     Renter?   @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  category MaintenanceCategory
+  priority MaintenancePriority      @default(NORMAL)
+  status   MaintenanceRequestStatus @default(OPEN)
+
+  title       String
+  description String?
+
+  reportedByType   MaintenanceReportedByType
+  reportedByUserId String?
+  reportedByUser   User?                     @relation("MaintenanceRequestReportedBy", fields: [reportedByUserId], references: [id], onDelete: SetNull)
+  reportedByName   String?
+  reportedByPhone  String?
+  reportedAt       DateTime                  @default(now())
+
+  preferredVisitDate  DateTime?
+  preferredTimeWindow String?
+  permissionToEnter   Boolean?
+
+  source MaintenanceRequestSource @default(INTERNAL)
+
+  // Preliminary responsible-person assignment set at triage - independent
+  // of whatever the resulting Work Order itself is assigned to.
+  assignedToUserId String?
+  assignedToUser   User?   @relation("MaintenanceRequestAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  triagedAt       DateTime?
+  triagedByUserId String?
+  triagedByUser   User?     @relation("MaintenanceRequestTriagedBy", fields: [triagedByUserId], references: [id], onDelete: SetNull)
+  triageNotes     String?
+
+  // SLA (Step 25-28): responseDueAt/resolutionDueAt are computed once at
+  // creation from reportedAt + the centralized SLA_POLICY for `priority`
+  // and never recalculated - a later priority change or future policy
+  // update does not rewrite an already-created Request's targets.
+  // firstResponseAt is set once, on first successful triage, and never
+  // overwritten afterward.
+  responseDueAt   DateTime?
+  resolutionDueAt DateTime?
+  firstResponseAt DateTime?
+  resolvedAt      DateTime?
+
+  cancelledAt      DateTime?
+  cancelReason     MaintenanceCancelReason?
+  cancelReasonNote String?
+
+  // Move-In defect traceability (Step 39-40) - reference only. Creating a
+  // Request from a Move-In defect never mutates the MoveIn/inspection item.
+  moveInId               String?
+  moveIn                 MoveIn?               @relation(fields: [moveInId], references: [id], onDelete: SetNull)
+  moveInInspectionItemId String?
+  moveInInspectionItem   MoveInInspectionItem? @relation(fields: [moveInInspectionItemId], references: [id], onDelete: SetNull)
+
+  // Plain string, not a relation - survives the creating User being removed
+  // (same pattern as MoveIn.createdByUserId and every other module here).
+  createdByUserId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workOrders  MaintenanceWorkOrder[]
+  attachments MaintenanceAttachment[]
+
+  @@unique([organizationId, requestNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, priority])
+  @@index([organizationId, category])
+  @@index([organizationId, unitId])
+  @@index([organizationId, compoundId])
+  @@index([organizationId, buildingId])
+  @@index([organizationId, reportedAt])
+  @@index([organizationId, responseDueAt])
+  @@index([organizationId, resolutionDueAt])
+  @@map("maintenance_requests")
+}
+
+model MaintenanceWorkOrder {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "WO-000001" via Counter (key "maintenanceWorkOrder").
+  workOrderNumber String
+
+  requestId String
+  request   MaintenanceRequest @relation(fields: [requestId], references: [id], onDelete: Restrict)
+
+  status   MaintenanceWorkOrderStatus @default(DRAFT)
+  priority MaintenancePriority
+
+  // One responsible party: internal User OR Vendor, never both (Step 22) -
+  // enforced in the service layer and, as defense-in-depth, by a Postgres
+  // CHECK constraint added via raw SQL in this model's migration (mirrors
+  // PropertyOwnership's own num_nonnulls(...) CHECK precedent).
+  assignedToUserId String?
+  assignedToUser   User?              @relation("MaintenanceWorkOrderAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  vendorId         String?
+  vendor           MaintenanceVendor? @relation(fields: [vendorId], references: [id])
+
+  scheduledStart DateTime?
+  scheduledEnd   DateTime?
+
+  startedAt   DateTime?
+  diagnosedAt DateTime?
+  completedAt DateTime?
+  verifiedAt  DateTime?
+  closedAt    DateTime?
+
+  diagnosis        String?
+  workPerformed    String?
+  completionNotes  String?
+  requiresFollowUp Boolean @default(false)
+
+  holdReason     MaintenanceHoldReason?
+  holdReasonNote String?
+
+  estimatedCost Decimal? @db.Decimal(12, 2)
+  // Server-recalculated on every Labor/Parts/Cost entry mutation from
+  // computeMaintenanceCostSummary() - never trusted from the client
+  // (Step 34/85).
+  actualCost    Decimal? @db.Decimal(12, 2)
+
+  // Preliminary operational classification only - see enum doc comment.
+  costResponsibility MaintenanceCostResponsibility @default(UNDETERMINED)
+
+  verifiedByUserId  String?
+  verifiedByUser    User?   @relation("MaintenanceWorkOrderVerifiedBy", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
+  verificationNotes String?
+
+  cancelledAt      DateTime?
+  cancelReason     MaintenanceCancelReason?
+  cancelReasonNote String?
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  workLogs     MaintenanceWorkLog[]
+  laborEntries MaintenanceLaborEntry[]
+  partEntries  MaintenancePartEntry[]
+  costEntries  MaintenanceCostEntry[]
+  attachments  MaintenanceAttachment[]
+
+  @@unique([organizationId, workOrderNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, requestId])
+  @@index([organizationId, assignedToUserId])
+  @@index([organizationId, vendorId])
+  @@index([organizationId, scheduledStart])
+  @@index([organizationId, createdAt])
+  @@map("maintenance_work_orders")
+}
+
+// Lightweight - no Vendor Portal, no login. Belongs to exactly one
+// Organization; an inactive Vendor may keep its historical Work Order
+// relations but cannot receive new assignments (enforced in the service
+// layer). Never hard-deleted (Step 73) - only deactivated.
+model MaintenanceVendor {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "VEN-000001" via Counter (key "maintenanceVendor") - generated, not
+  // client-supplied, for the same concurrency-safety reason as every other
+  // numbered entity in this schema.
+  vendorNumber String
+
+  name          String
+  nameAr        String?
+  contactPerson String?
+  phone         String?
+  email         String?
+
+  active Boolean @default(true)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  specialties  MaintenanceVendorSpecialty[]
+  workOrders   MaintenanceWorkOrder[]
+  laborEntries MaintenanceLaborEntry[]
+
+  @@unique([organizationId, vendorNumber])
+  @@index([organizationId, active])
+  @@map("maintenance_vendors")
+}
+
+// Relational specialties (Step 20 - "prefer relational if simple" over an
+// uncontrolled comma-separated string), so "find every vendor who does
+// PLUMBING" is a normal indexed query.
+model MaintenanceVendorSpecialty {
+  id       String            @id @default(cuid())
+  vendorId String
+  vendor   MaintenanceVendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  category MaintenanceCategory
+
+  createdAt DateTime @default(now())
+
+  @@unique([vendorId, category])
+  @@map("maintenance_vendor_specialties")
+}
+
+// User-facing operational history, immutable/append-only by convention
+// (rows are never edited or deleted by the application) - distinct from
+// AuditLog (Step 78). organizationId is a plain scoping column, not a
+// relation (same pattern as ViewingUnit.organizationId), since every row
+// is always reached through its already-org-scoped MaintenanceWorkOrder
+// parent.
+model MaintenanceWorkLog {
+  id             String @id @default(cuid())
+  organizationId String
+
+  workOrderId String
+  workOrder   MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  logType MaintenanceWorkLogType
+  note    String
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  attachments MaintenanceAttachment[]
+
+  @@index([organizationId, workOrderId])
+  @@map("maintenance_work_logs")
+}
+
+// Operational costing only - see the model-group doc comment above for the
+// financial boundary. `cost` is always server-computed (hours x hourlyRate
+// when a rate is given, otherwise entered directly) and Decimal throughout,
+// never floating-point JS arithmetic.
+model MaintenanceLaborEntry {
+  id             String @id @default(cuid())
+  organizationId String
+
+  workOrderId String
+  workOrder   MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  // At most one of these two is meaningfully set, matching the Work
+  // Order's own "internal User OR Vendor" responsible-party rule - not
+  // DB-enforced here since either or neither may be known for a given
+  // labor line (e.g. a vendor's own internal labor breakdown).
+  userId   String?
+  user     User?              @relation("MaintenanceLaborEntryUser", fields: [userId], references: [id], onDelete: SetNull)
+  vendorId String?
+  vendor   MaintenanceVendor? @relation(fields: [vendorId], references: [id])
+
+  description String
+  hours       Decimal  @db.Decimal(6, 2)
+  hourlyRate  Decimal? @db.Decimal(10, 2)
+  cost        Decimal  @db.Decimal(12, 2)
+  workDate    DateTime
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, workOrderId])
+  @@map("maintenance_labor_entries")
+}
+
+// totalCost is always quantity x unitCost, computed server-side - never
+// trusted from the client (Step 32/85).
+model MaintenancePartEntry {
+  id             String @id @default(cuid())
+  organizationId String
+
+  workOrderId String
+  workOrder   MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  itemName     String
+  quantity     Int
+  unitCost     Decimal @db.Decimal(12, 2)
+  totalCost    Decimal @db.Decimal(12, 2)
+  supplierName String?
+  reference    String?
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, workOrderId])
+  @@map("maintenance_part_entries")
+}
+
+// Catch-all operational cost line (transport, external service, equipment
+// rental, misc.) - kept separate from Labor/Parts rather than overloading
+// either (Step 33).
+model MaintenanceCostEntry {
+  id             String @id @default(cuid())
+  organizationId String
+
+  workOrderId String
+  workOrder   MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  costType    MaintenanceCostEntryType
+  description String
+  amount      Decimal                  @db.Decimal(12, 2)
+  reference   String?
+  date        DateTime
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  @@index([organizationId, workOrderId])
+  @@map("maintenance_cost_entries")
+}
+
+// Metadata-only (mirrors MoveInAttachment exactly - see
+// docs/STORAGE-ARCHITECTURE.md): no binary column, `storageKey` is a
+// nullable placeholder for a future real object-storage integration.
+// Exactly one of requestId/workOrderId/workLogId is normally set (a photo
+// documents one specific record); all three nullable so the same model
+// covers every attachment point named in Step 37 without three near-
+// identical tables. INVOICE_COPY here means a vendor/source document scan,
+// never a system accounting Invoice.
+model MaintenanceAttachment {
+  id             String @id @default(cuid())
+  organizationId String
+
+  requestId   String?
+  request     MaintenanceRequest?   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  workOrderId String?
+  workOrder   MaintenanceWorkOrder? @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workLogId   String?
+  workLog     MaintenanceWorkLog?   @relation(fields: [workLogId], references: [id], onDelete: Cascade)
+
+  attachmentType MaintenanceAttachmentType
+  stage          MaintenanceAttachmentStage @default(GENERAL)
+
+  fileName   String
+  mimeType   String
+  fileSize   Int?
+  storageKey String?
+
+  caption String?
+
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  @@index([organizationId, requestId])
+  @@index([organizationId, workOrderId])
+  @@index([organizationId, workLogId])
+  @@map("maintenance_attachments")
 }

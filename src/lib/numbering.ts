@@ -63,3 +63,18 @@ export function formatReservationNumber(seq: number): string {
 export function formatMoveInNumber(seq: number): string {
   return `MI-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component - a Maintenance Request number is not a legal/tax document series either. */
+export function formatMaintenanceRequestNumber(seq: number): string {
+  return `MR-${String(seq).padStart(6, "0")}`;
+}
+
+/** No year component, matching formatMaintenanceRequestNumber(). */
+export function formatMaintenanceWorkOrderNumber(seq: number): string {
+  return `WO-${String(seq).padStart(6, "0")}`;
+}
+
+/** No year component, matching formatMaintenanceRequestNumber(). */
+export function formatMaintenanceVendorNumber(seq: number): string {
+  return `VEN-${String(seq).padStart(6, "0")}`;
+}

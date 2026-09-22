@@ -56,6 +56,10 @@ export interface Dictionary {
     operationsGroupLabel: string;
     operationsDashboard: string;
     operationsMoveIns: string;
+    operationsMaintenanceRequests: string;
+    operationsMaintenanceWorkOrders: string;
+    operationsMaintenanceVendors: string;
+    operationsMaintenanceReports: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -663,6 +667,30 @@ export interface Dictionary {
     moveInCompletionMissingRequirements: string;
     moveInOverrideReasonRequired: string;
     moveInCancelNoteRequired: string;
+    maintenanceUnitRequired: string;
+    maintenanceUnitNotFound: string;
+    maintenanceBuildingRequired: string;
+    maintenanceBuildingMustNotHaveUnit: string;
+    maintenanceBuildingNotFound: string;
+    maintenanceCompoundRequired: string;
+    maintenanceCompoundMustNotHaveBuildingOrUnit: string;
+    maintenanceCompoundNotFound: string;
+    maintenanceContractMismatch: string;
+    maintenanceRenterMismatch: string;
+    maintenanceRenterRequiresContract: string;
+    maintenanceInvalidTransition: string;
+    maintenanceWorkOrderAlreadyExists: string;
+    maintenanceOneResponsiblePartyOnly: string;
+    maintenanceVendorInactive: string;
+    maintenanceScheduleEndAfterStart: string;
+    maintenanceScheduleOverlap: string;
+    maintenanceCancelReasonRequired: string;
+    maintenanceHoldReasonRequired: string;
+    maintenanceCompletionMissingRequirements: string;
+    maintenanceWorkOrderLocked: string;
+    maintenancePartQuantityPositive: string;
+    maintenanceLaborHoursNonNegative: string;
+    maintenanceAmountNonNegative: string;
   };
   zatca: {
     notConfigured: string;
@@ -1699,6 +1727,41 @@ export interface Dictionary {
     "HANDOVER_DATE" | "INSPECTION_INCOMPLETE" | "REQUIRED_METERS_MISSING" | "KEYS_NOT_RECORDED" | "INVENTORY_REQUIRED_FOR_FURNISHED_UNIT" | "TENANT_ACKNOWLEDGEMENT_MISSING" | "STAFF_ACKNOWLEDGEMENT_MISSING",
     string
   >;
+  maintenanceScopeType: Record<"UNIT" | "BUILDING_COMMON_AREA" | "COMPOUND_COMMON_AREA", string>;
+  maintenanceCategory: Record<
+    | "PLUMBING"
+    | "ELECTRICAL"
+    | "AIR_CONDITIONING"
+    | "APPLIANCE"
+    | "CARPENTRY"
+    | "PAINTING"
+    | "CIVIL"
+    | "FLOORING"
+    | "DOORS_WINDOWS"
+    | "ELEVATOR"
+    | "POOL"
+    | "LANDSCAPING"
+    | "PEST_CONTROL"
+    | "CLEANING"
+    | "FIRE_SAFETY"
+    | "SECURITY_SYSTEM"
+    | "INTERNET_TELECOM"
+    | "GENERAL"
+    | "OTHER",
+    string
+  >;
+  maintenancePriority: Record<"LOW" | "NORMAL" | "HIGH" | "URGENT" | "EMERGENCY", string>;
+  maintenanceRequestStatus: Record<"OPEN" | "TRIAGED" | "WORK_ORDER_CREATED" | "RESOLVED" | "CANCELLED", string>;
+  maintenanceWorkOrderStatus: Record<"DRAFT" | "ASSIGNED" | "SCHEDULED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "VERIFIED" | "CLOSED" | "CANCELLED", string>;
+  maintenanceRequestSource: Record<"INTERNAL" | "TENANT" | "MOVE_IN_INSPECTION" | "MANAGEMENT" | "SECURITY" | "HOUSEKEEPING" | "OTHER", string>;
+  maintenanceReportedByType: Record<"STAFF" | "TENANT" | "OWNER" | "SECURITY" | "HOUSEKEEPING" | "MANAGEMENT" | "OTHER", string>;
+  maintenanceHoldReason: Record<"WAITING_FOR_PART" | "WAITING_FOR_VENDOR" | "WAITING_FOR_TENANT" | "WAITING_FOR_APPROVAL" | "ACCESS_UNAVAILABLE" | "OTHER", string>;
+  maintenanceCancelReason: Record<"DUPLICATE" | "NOT_NEEDED" | "TENANT_WITHDREW" | "RESOLVED_INFORMALLY" | "DATA_ERROR" | "OTHER", string>;
+  maintenanceWorkLogType: Record<"NOTE" | "STATUS_UPDATE" | "DIAGNOSIS" | "WORK_PERFORMED" | "CUSTOMER_UPDATE" | "INTERNAL_NOTE" | "OTHER", string>;
+  maintenanceCostResponsibility: Record<"UNDETERMINED" | "OWNER" | "TENANT" | "PROPERTY_MANAGEMENT" | "WARRANTY" | "VENDOR" | "OTHER", string>;
+  maintenanceAttachmentType: Record<"PHOTO" | "VIDEO" | "DOCUMENT" | "INVOICE_COPY" | "QUOTE" | "OTHER", string>;
+  maintenanceAttachmentStage: Record<"BEFORE" | "DURING" | "AFTER" | "GENERAL", string>;
+  maintenanceSlaStatus: Record<"ON_TRACK" | "AT_RISK" | "BREACHED" | "MET", string>;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -1885,6 +1948,234 @@ export interface Dictionary {
     reportMeterReading: string;
     reportKeysHandover: string;
     reportFurnishedInventory: string;
+
+    kpiOpenRequests: string;
+    kpiEmergencyRequests: string;
+    kpiSlaBreached: string;
+    kpiWorkOrdersInProgress: string;
+    kpiWorkOrdersOnHold: string;
+    kpiCompletedAwaitingVerification: string;
+    kpiClosedThisMonth: string;
+    kpiMaintenanceCostThisMonth: string;
+  };
+  maintenance: {
+    slaResponseDue: string;
+    slaResolutionDue: string;
+    slaLabel: string;
+
+    // Requests list/new/detail
+    requestsListTitle: string;
+    requestsListSubtitle: string;
+    newRequestTitle: string;
+    requestSearchPlaceholder: string;
+    filterStatus: string;
+    filterPriority: string;
+    filterCategory: string;
+    filterScope: string;
+    filterCompound: string;
+    filterBuilding: string;
+    filterUnit: string;
+    filterAssigned: string;
+    filterVendor: string;
+    filterSlaBreached: string;
+    filterOpenOnly: string;
+    filterEmergencyOnly: string;
+    filterAll: string;
+    filterApply: string;
+    colRequestNumber: string;
+    colTitle: string;
+    colLocation: string;
+    colCategory: string;
+    colPriority: string;
+    colStatus: string;
+    colReportedAt: string;
+    colSla: string;
+    colAssigned: string;
+    colWorkOrder: string;
+    colActions: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    fieldScopeType: string;
+    fieldCompound: string;
+    fieldBuilding: string;
+    fieldFloor: string;
+    fieldUnit: string;
+    fieldContract: string;
+    fieldRenter: string;
+    fieldCategory: string;
+    fieldPriority: string;
+    fieldTitle: string;
+    fieldDescription: string;
+    fieldReportedByType: string;
+    fieldReportedByName: string;
+    fieldReportedByPhone: string;
+    fieldPreferredVisitDate: string;
+    fieldPreferredTimeWindow: string;
+    fieldPermissionToEnter: string;
+    fieldSource: string;
+    notSet: string;
+    createButton: string;
+    saveButton: string;
+    viewButton: string;
+    cancelButton: string;
+
+    sectionSummary: string;
+    sectionLocation: string;
+    sectionTenant: string;
+    sectionReportedBy: string;
+    sectionSla: string;
+    sectionDescription: string;
+    sectionAttachments: string;
+    sectionMoveInSource: string;
+    sectionTriage: string;
+    sectionWorkOrder: string;
+    sectionActivity: string;
+    sectionAudit: string;
+
+    triageButton: string;
+    triageNotesLabel: string;
+    triagedAtLabel: string;
+    triagedByLabel: string;
+    createWorkOrderButton: string;
+    noWorkOrderYet: string;
+    cancelRequestTitle: string;
+    cancelReasonLabel: string;
+    cancelNoteLabel: string;
+    confirmCancelButton: string;
+    moveInSourceLabel: string;
+
+    // Work Orders list/detail
+    workOrdersListTitle: string;
+    workOrdersListSubtitle: string;
+    colWorkOrderNumber: string;
+    colRequest: string;
+    colResponsibleParty: string;
+    colScheduled: string;
+    colStarted: string;
+    colActualCost: string;
+
+    fieldAssignedUser: string;
+    fieldVendor: string;
+    fieldScheduledStart: string;
+    fieldScheduledEnd: string;
+    fieldDiagnosis: string;
+    fieldWorkPerformed: string;
+    fieldCompletionNotes: string;
+    fieldRequiresFollowUp: string;
+    fieldEstimatedCost: string;
+    fieldActualCost: string;
+    fieldCostResponsibility: string;
+    fieldHoldReason: string;
+    fieldHoldNote: string;
+    fieldVerificationNotes: string;
+
+    sectionAssignment: string;
+    sectionSchedule: string;
+    sectionDiagnosis: string;
+    sectionWorkLogs: string;
+    sectionLabor: string;
+    sectionParts: string;
+    sectionOtherCosts: string;
+    sectionCostSummary: string;
+    sectionCompletion: string;
+    sectionVerification: string;
+
+    assignButton: string;
+    scheduleButton: string;
+    startButton: string;
+    holdButton: string;
+    resumeButton: string;
+    diagnoseButton: string;
+    completeButton: string;
+    verifyButton: string;
+    closeButton: string;
+    cancelWorkOrderTitle: string;
+
+    addWorkLogButton: string;
+    workLogNoteLabel: string;
+    workLogTypeLabel: string;
+    workLogEmpty: string;
+
+    addLaborButton: string;
+    laborDescriptionLabel: string;
+    laborHoursLabel: string;
+    laborRateLabel: string;
+    laborCostLabel: string;
+    laborEmpty: string;
+
+    addPartButton: string;
+    partItemNameLabel: string;
+    partQuantityLabel: string;
+    partUnitCostLabel: string;
+    partTotalCostLabel: string;
+    partSupplierLabel: string;
+    partEmpty: string;
+
+    addCostButton: string;
+    costTypeLabel: string;
+    costDescriptionLabel: string;
+    costAmountLabel: string;
+    costEmpty: string;
+
+    costLaborTotal: string;
+    costPartsTotal: string;
+    costOtherTotal: string;
+    costActualTotal: string;
+    costEstimatedLabel: string;
+    costVarianceLabel: string;
+    costOperationalNotice: string;
+
+    // Vendors
+    vendorsListTitle: string;
+    vendorsListSubtitle: string;
+    newVendorTitle: string;
+    colVendorNumber: string;
+    colVendorName: string;
+    colSpecialties: string;
+    colActive: string;
+    fieldVendorName: string;
+    fieldVendorNameAr: string;
+    fieldContactPerson: string;
+    fieldPhone: string;
+    fieldEmail: string;
+    fieldSpecialties: string;
+    fieldNotes: string;
+    activateButton: string;
+    deactivateButton: string;
+    activeLabel: string;
+    inactiveLabel: string;
+
+    // Print report
+    reportTitle: string;
+    reportSubtitle: (workOrderNumber: string) => string;
+    reportOrgLabel: string;
+    reportPrintedOn: string;
+
+    // Reports index
+    reportsTitle: string;
+    reportsSubtitle: string;
+    reportRequestSummary: string;
+    reportWorkOrderStatus: string;
+    reportSlaPerformance: string;
+    reportByCategory: string;
+    reportByCompound: string;
+    reportByUnit: string;
+    reportCost: string;
+    reportVendorPerformance: string;
+    reportTechnicianPerformance: string;
+    reportRecurringIssue: string;
+    averageResponseTimeLabel: string;
+    averageResolutionTimeLabel: string;
+    minutesUnit: (n: number) => string;
+    hoursUnit: (n: number) => string;
+    colAssignedCount: string;
+    colCompletedCount: string;
+    colClosedCount: string;
+    colVerifiedCount: string;
+    recurringIssueWindowLabel: (days: number) => string;
   };
 }
 

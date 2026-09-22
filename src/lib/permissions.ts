@@ -81,7 +81,24 @@ export type Permission =
   | "moveIn.start"
   | "moveIn.complete"
   | "moveIn.cancel"
-  | "moveInInspection.update";
+  | "moveInInspection.update"
+  | "maintenance.view"
+  | "maintenance.request.create"
+  | "maintenance.request.update"
+  | "maintenance.request.triage"
+  | "maintenance.request.cancel"
+  | "maintenance.workOrder.create"
+  | "maintenance.workOrder.assign"
+  | "maintenance.workOrder.update"
+  | "maintenance.workOrder.start"
+  | "maintenance.workOrder.complete"
+  | "maintenance.workOrder.verify"
+  | "maintenance.workOrder.close"
+  | "maintenance.workOrder.cancel"
+  | "maintenance.cost.view"
+  | "maintenance.cost.manage"
+  | "maintenance.vendor.view"
+  | "maintenance.vendor.manage";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -159,6 +176,23 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "moveIn.complete",
   "moveIn.cancel",
   "moveInInspection.update",
+  "maintenance.view",
+  "maintenance.request.create",
+  "maintenance.request.update",
+  "maintenance.request.triage",
+  "maintenance.request.cancel",
+  "maintenance.workOrder.create",
+  "maintenance.workOrder.assign",
+  "maintenance.workOrder.update",
+  "maintenance.workOrder.start",
+  "maintenance.workOrder.complete",
+  "maintenance.workOrder.verify",
+  "maintenance.workOrder.close",
+  "maintenance.workOrder.cancel",
+  "maintenance.cost.view",
+  "maintenance.cost.manage",
+  "maintenance.vendor.view",
+  "maintenance.vendor.manage",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -244,6 +278,28 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "moveIn.complete",
   "moveIn.cancel",
   "moveInInspection.update",
+  // MANAGER holds every maintenance.* operational permission (Step 75:
+  // "MANAGER: all operational maintenance permissions") - excludes nothing,
+  // same tier as Move-In/Contract above. No new role was introduced for
+  // Maintenance; MANAGER is the day-to-day operational role throughout
+  // this codebase.
+  "maintenance.view",
+  "maintenance.request.create",
+  "maintenance.request.update",
+  "maintenance.request.triage",
+  "maintenance.request.cancel",
+  "maintenance.workOrder.create",
+  "maintenance.workOrder.assign",
+  "maintenance.workOrder.update",
+  "maintenance.workOrder.start",
+  "maintenance.workOrder.complete",
+  "maintenance.workOrder.verify",
+  "maintenance.workOrder.close",
+  "maintenance.workOrder.cancel",
+  "maintenance.cost.view",
+  "maintenance.cost.manage",
+  "maintenance.vendor.view",
+  "maintenance.vendor.manage",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -283,6 +339,13 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   // into the Contract lifecycle elsewhere in this table (contract.view,
   // ownerLedger.view, etc.); no moveIn.* mutation permission at all.
   "moveIn.view",
+  // Step 75: "ACCOUNTANT: maintenance.view + maintenance.cost.view +
+  // maintenance.vendor.view but NOT operational mutation by default" -
+  // ACCOUNTANT can see what maintenance cost, but never triage/assign/
+  // start/complete a Work Order (that stays MANAGER/ADMIN/OWNER-only).
+  "maintenance.view",
+  "maintenance.cost.view",
+  "maintenance.vendor.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -303,6 +366,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "offer.view",
   "reservation.view",
   "moveIn.view",
+  "maintenance.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

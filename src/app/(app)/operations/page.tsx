@@ -1,10 +1,17 @@
 import Link from "next/link";
 import { getOperationsDashboard } from "@/lib/actions/move-ins";
-import { getLocale, getDictionary } from "@/lib/i18n";
+import { getMaintenanceDashboardKpis } from "@/lib/actions/maintenance";
+import { getCurrentUserRole } from "@/lib/session";
+import { can } from "@/lib/permissions";
+import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 
 export default async function OperationsDashboardPage() {
-  const [kpis, locale] = await Promise.all([getOperationsDashboard(), getLocale()]);
+  const [role, locale] = await Promise.all([getCurrentUserRole(), getLocale()]);
   const t = getDictionary(locale);
+  const canViewMaintenance = can("maintenance.view", role);
+
+  const [kpis, maintenanceKpis] = await Promise.all([getOperationsDashboard(), canViewMaintenance ? getMaintenanceDashboardKpis() : null]);
+  const moneyFmt = currencyFormatter(locale);
 
   const cards: Array<{ label: string; value: number; tone: string }> = [
     { label: t.operations.kpiToday, value: kpis.moveInsToday, tone: "text-slate-900" },
@@ -37,10 +44,60 @@ export default async function OperationsDashboardPage() {
         ))}
       </div>
 
-      <div>
+      {maintenanceKpis && (
+        <>
+          <div className="flex items-center justify-between pt-2">
+            <h2 className="text-lg font-bold text-slate-900">{t.nav.operationsMaintenanceRequests}</h2>
+            <Link href="/operations/maintenance/requests" className="text-sm text-brand-gold-dark hover:underline font-medium">
+              {t.nav.operationsMaintenanceRequests} →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiOpenRequests}</p>
+              <p className="text-3xl font-bold mt-2 text-slate-900">{maintenanceKpis.openRequests}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiEmergencyRequests}</p>
+              <p className="text-3xl font-bold mt-2 text-red-600">{maintenanceKpis.emergencyRequests}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiSlaBreached}</p>
+              <p className="text-3xl font-bold mt-2 text-red-600">{maintenanceKpis.slaBreached}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiWorkOrdersInProgress}</p>
+              <p className="text-3xl font-bold mt-2 text-brand-gold-dark">{maintenanceKpis.workOrdersInProgress}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiWorkOrdersOnHold}</p>
+              <p className="text-3xl font-bold mt-2 text-amber-600">{maintenanceKpis.workOrdersOnHold}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiCompletedAwaitingVerification}</p>
+              <p className="text-3xl font-bold mt-2 text-slate-900">{maintenanceKpis.completedAwaitingVerification}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiClosedThisMonth}</p>
+              <p className="text-3xl font-bold mt-2 text-emerald-600">{maintenanceKpis.closedThisMonth}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMaintenanceCostThisMonth}</p>
+              <p className="text-2xl font-bold mt-2 text-slate-900">{moneyFmt.format(Number(maintenanceKpis.maintenanceCostThisMonth))}</p>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="flex flex-wrap gap-4">
         <Link href="/operations/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
           {t.operations.reportsTitle} →
         </Link>
+        {canViewMaintenance && (
+          <Link href="/operations/maintenance/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
+            {t.maintenance.reportsTitle} →
+          </Link>
+        )}
       </div>
     </div>
   );
