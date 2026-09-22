@@ -51,6 +51,11 @@ export async function listBuildings() {
   });
 }
 
+export async function getBuildingById(buildingId: string) {
+  const { organizationId } = await requirePermission("property.view");
+  return prisma.building.findUniqueOrThrow({ where: { id: buildingId, organizationId }, include: { compound: true } });
+}
+
 export async function getBuildingOptions() {
   const { organizationId } = await requirePermission("unit.view");
   return prisma.building.findMany({

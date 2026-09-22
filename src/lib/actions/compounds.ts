@@ -85,6 +85,11 @@ export async function listCompounds() {
   }));
 }
 
+export async function getCompoundById(compoundId: string) {
+  const { organizationId } = await requirePermission("property.view");
+  return prisma.compound.findUniqueOrThrow({ where: { id: compoundId, organizationId } });
+}
+
 export async function getCompoundOptions() {
   const { organizationId } = await requirePermission("unit.view");
   return prisma.compound.findMany({

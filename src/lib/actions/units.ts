@@ -70,3 +70,11 @@ export async function listUnits() {
     orderBy: { createdAt: "desc" },
   });
 }
+
+export async function getUnitById(unitId: string) {
+  const { organizationId } = await requirePermission("unit.view");
+  return prisma.unit.findUniqueOrThrow({
+    where: { id: unitId, organizationId },
+    include: { floor: { include: { building: { include: { compound: true } } } } },
+  });
+}

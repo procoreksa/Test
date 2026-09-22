@@ -34,7 +34,21 @@ payment.view  / payment.create
 report.view
 
 settings.view / settings.update
+
+owner.view    / owner.create    / owner.update
+ownership.view / ownership.manage
+ownerLedger.view / ownerLedger.create / ownerLedger.reverse
 ```
+
+The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
+ownership & owner-accounting foundation (see
+`docs/OWNERSHIP-ACCOUNTING.md`). There is no `owner.delete` - owners are
+soft-deleted (only when they have no ownership/ledger history at all) or
+deactivated, both gated by `owner.update`; there was no separate permission
+requested for that distinction. `ownership.manage` covers both creating a
+new ownership assignment and ending one (a single "manage" permission,
+mirroring how `settings.update` covers every settings field rather than one
+permission per field).
 
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
@@ -74,6 +88,14 @@ create/delete, not edit. When one is added, gate it with the matching
 | report.view | ✅ | ✅ | ✅ | ✅ | ✅ |
 | settings.view | ✅ | ✅ | ❌ | ❌ | ❌ |
 | settings.update | ✅ | ✅ | ❌ | ❌ | ❌ |
+| owner.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| owner.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| owner.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| ownership.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ownership.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| ownerLedger.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ownerLedger.create | ✅ | ✅ | ❌ | ✅ | ❌ |
+| ownerLedger.reverse | ✅ | ✅ | ❌ | ✅ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -90,6 +112,13 @@ Notes on judgment calls made while encoding the brief's policy:
 - **MANAGER does not have `invoice.cancel`.** The brief's MANAGER "Allowed"
   list says "view/create invoices" - cancellation isn't mentioned, so it
   isn't granted. Only ACCOUNTANT and OWNER/ADMIN can cancel an invoice.
+- **MANAGER can manage ownership assignments but cannot post or reverse
+  owner ledger entries.** This mirrors the existing property/unit/renter
+  split (MANAGER creates/updates the operational records, ACCOUNTANT owns
+  the financial postings): MANAGER gets `ownership.view`/`ownership.manage`
+  but only `ownerLedger.view`, while ACCOUNTANT gets the reverse emphasis
+  (`ownerLedger.create`/`ownerLedger.reverse` but only `ownership.view`, no
+  `ownership.manage`) - this was explicit in the brief's own role policy.
 
 ## 4. How to protect a new server action
 

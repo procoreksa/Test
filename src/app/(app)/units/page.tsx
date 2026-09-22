@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listUnits, createUnit, deleteUnit } from "@/lib/actions/units";
 import { getLocationTree } from "@/lib/actions/floors";
 import { getCurrentUserRole } from "@/lib/session";
@@ -100,9 +101,13 @@ export default async function UnitsPage() {
                 <td className="px-5 py-3 text-slate-500">
                   {u.contracts[0] ? pickLocalized(locale, u.contracts[0].renter.fullNameAr, u.contracts[0].renter.fullName) : t.common.none}
                 </td>
-                <td className="px-5 py-3 text-left">
+                <td className="px-5 py-3 text-left space-x-2 rtl:space-x-reverse">
+                  <Link href={`/units/${u.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
+                    {t.ownership.title}
+                  </Link>
                   {canDelete && (
                     <form
+                      className="inline"
                       action={async () => {
                         "use server";
                         await deleteUnit(u.id);

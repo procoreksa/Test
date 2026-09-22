@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listBuildings, createBuilding, deleteBuilding } from "@/lib/actions/buildings";
 import { listCompounds } from "@/lib/actions/compounds";
 import { getCurrentUserRole } from "@/lib/session";
@@ -72,9 +73,13 @@ export default async function BuildingsPage() {
                 <td className="px-5 py-3 font-medium text-slate-800">{pickLocalized(locale, b.nameAr, b.name)}</td>
                 <td className="px-5 py-3 text-slate-500">{pickLocalized(locale, b.compound.arabicName, b.compound.name)}</td>
                 <td className="px-5 py-3">{b._count.floors}</td>
-                <td className="px-5 py-3 text-left">
+                <td className="px-5 py-3 text-left space-x-2 rtl:space-x-reverse">
+                  <Link href={`/buildings/${b.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
+                    {t.ownership.title}
+                  </Link>
                   {canDelete && (
                     <form
+                      className="inline"
                       action={async () => {
                         "use server";
                         await deleteBuilding(b.id);

@@ -32,7 +32,15 @@ export type Permission =
   | "payment.create"
   | "report.view"
   | "settings.view"
-  | "settings.update";
+  | "settings.update"
+  | "owner.view"
+  | "owner.create"
+  | "owner.update"
+  | "ownership.view"
+  | "ownership.manage"
+  | "ownerLedger.view"
+  | "ownerLedger.create"
+  | "ownerLedger.reverse";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -61,6 +69,14 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "report.view",
   "settings.view",
   "settings.update",
+  "owner.view",
+  "owner.create",
+  "owner.update",
+  "ownership.view",
+  "ownership.manage",
+  "ownerLedger.view",
+  "ownerLedger.create",
+  "ownerLedger.reverse",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -86,10 +102,17 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "payment.view",
   "payment.create",
   "report.view",
+  "owner.view",
+  "owner.create",
+  "owner.update",
+  "ownership.view",
+  "ownership.manage",
+  "ownerLedger.view",
 ];
 
-// ACCOUNTANT: full financial workflow (invoices, cancellations, payments),
-// read-only on properties/units/renters/contracts, no org settings.
+// ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
+// and now owner ledger entries/reversals), read-only on properties/units/
+// renters/contracts/owners/ownership, no org settings.
 const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
   "property.view",
@@ -102,6 +125,11 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "payment.view",
   "payment.create",
   "report.view",
+  "owner.view",
+  "ownership.view",
+  "ownerLedger.view",
+  "ownerLedger.create",
+  "ownerLedger.reverse",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -114,6 +142,9 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "invoice.view",
   "payment.view",
   "report.view",
+  "owner.view",
+  "ownership.view",
+  "ownerLedger.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

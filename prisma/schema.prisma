@@ -63,17 +63,20 @@ model Organization {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  users      User[]
-  properties Property[]
-  renters    Renter[]
-  contracts  Contract[]
-  invoices   Invoice[]
-  payments   Payment[]
-  counters   Counter[]
-  units      Unit[]
-  compounds  Compound[]
-  buildings  Building[]
-  floors     Floor[]
+  users              User[]
+  properties         Property[]
+  renters            Renter[]
+  contracts          Contract[]
+  invoices           Invoice[]
+  payments           Payment[]
+  counters           Counter[]
+  units              Unit[]
+  compounds          Compound[]
+  buildings          Building[]
+  floors             Floor[]
+  owners             Owner[]
+  propertyOwnerships PropertyOwnership[]
+  ownerLedgerEntries OwnerLedgerEntry[]
 
   @@map("organizations")
 }
@@ -193,7 +196,9 @@ model Compound {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  buildings Building[]
+  buildings          Building[]
+  propertyOwnerships PropertyOwnership[]
+  ownerLedgerEntries OwnerLedgerEntry[]
 
   @@index([organizationId])
   @@map("compounds")
@@ -217,7 +222,8 @@ model Building {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  floors Floor[]
+  floors             Floor[]
+  propertyOwnerships PropertyOwnership[]
 
   @@index([organizationId])
   @@index([compoundId])
@@ -268,7 +274,9 @@ model Unit {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts Contract[]
+  contracts          Contract[]
+  propertyOwnerships PropertyOwnership[]
+  ownerLedgerEntries OwnerLedgerEntry[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -550,4 +558,210 @@ model Payment {
   @@index([organizationId])
   @@index([invoiceId])
   @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Ownership & owner accounting foundation
+//
+// This is the internal ownership/accounting layer only - there is no owner
+// login or self-service portal yet (see docs/OWNERSHIP-ACCOUNTING.md for the
+// future Owner Portal design considerations). It is purely additive: no
+// existing Contract/Invoice/Payment/PaymentSchedule row or field is touched,
+// and no historical financial data is auto-migrated into it. Existing
+// compounds/buildings/units may simply have no ownership configured yet.
+// ---------------------------------------------------------------------------
+
+enum OwnerType {
+  INDIVIDUAL
+  COMPANY
+  FUND
+  GOVERNMENT_ENTITY
+  OTHER
+}
+
+enum OwnerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// An individual, company, investment fund, or government entity that owns
+/// (all or part of) a Compound/Building/Unit. Not a User - owners do not log
+/// in (no portal yet). Soft-deleted via `deletedAt`; `status` is a separate,
+/// reversible "deactivated" flag distinct from deletion.
+model Owner {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ownerType OwnerType @default(INDIVIDUAL)
+
+  name   String
+  nameAr String?
+
+  // Identity - only the fields relevant to ownerType are expected to be
+  // filled in; none are required at the schema level since which ID applies
+  // depends on ownerType (individual vs. company/fund).
+  nationalId                String?
+  iqamaNumber               String?
+  passportNumber            String?
+  companyRegistrationNumber String?
+  vatNumber                 String?
+
+  email           String?
+  mobile          String?
+  alternateMobile String?
+
+  address String?
+  city    String?
+  country String? @default("SA")
+
+  // Banking details - sensitive; not included in list views, only the owner
+  // profile/edit screens (see docs/OWNERSHIP-ACCOUNTING.md, "sensitive
+  // fields" note).
+  bankName        String?
+  bankAccountName String?
+  iban            String?
+
+  notes  String?
+  status OwnerStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  // Acting user id at creation/last-update time, for auditability. Not a
+  // foreign key on purpose - an audit trail must survive a User being
+  // removed in the future, and this codebase has no user-delete flow today
+  // anyway, so a hard FK would add constraint risk for no present benefit.
+  createdBy String?
+  updatedBy String?
+  deletedAt DateTime?
+
+  ownerships    PropertyOwnership[]
+  ledgerEntries OwnerLedgerEntry[]
+
+  @@index([organizationId])
+  @@index([organizationId, deletedAt])
+  @@map("owners")
+}
+
+enum OwnershipStatus {
+  ACTIVE
+  ENDED
+}
+
+/// Assigns an Owner (at a percentage) to exactly one level of the property
+/// hierarchy - a Compound, a Building, or a Unit. Deliberately NOT a single
+/// ownerId column on Unit: a unit's effective owner(s) are resolved at read
+/// time by walking Unit -> Building -> Compound and taking the closest level
+/// that has an active ownership record (see getEffectiveOwners() in
+/// src/lib/ownership.ts and docs/OWNERSHIP-ACCOUNTING.md, "Ownership
+/// inheritance"). This means a compound-wide ownership assignment is never
+/// duplicated onto every one of its units.
+model PropertyOwnership {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ownerId String
+  owner   Owner  @relation(fields: [ownerId], references: [id])
+
+  // Exactly one of these three should be set per record (enforced in the
+  // service layer; a DB-level CHECK constraint requiring at least one is
+  // added by the migration as defense in depth - see migration.sql).
+  compoundId String?
+  compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Cascade)
+  buildingId String?
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  unitId     String?
+  unit       Unit?     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  // 0.00-100.00. The sum of ACTIVE ownershipPercentage values for the exact
+  // same asset (same compoundId/buildingId/unitId triple) must never exceed
+  // 100 - enforced in src/lib/actions/ownership.ts before every insert.
+  ownershipPercentage Decimal @db.Decimal(5, 2)
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  status OwnershipStatus @default(ACTIVE)
+  notes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([compoundId])
+  @@index([buildingId])
+  @@index([unitId])
+  @@map("property_ownerships")
+}
+
+/// Extensible - see docs/OWNERSHIP-ACCOUNTING.md for the debit/credit
+/// convention each type follows (income/contribution = credit,
+/// expense/distribution = debit).
+enum OwnerLedgerEntryType {
+  RENT_INCOME
+  OTHER_INCOME
+  MANAGEMENT_FEE
+  MAINTENANCE_EXPENSE
+  UTILITY_EXPENSE
+  SERVICE_EXPENSE
+  GOVERNMENT_FEE
+  OTHER_EXPENSE
+  OWNER_CONTRIBUTION
+  OWNER_DISTRIBUTION
+  ADJUSTMENT
+  REVERSAL
+}
+
+/// Immutable append-only ledger: there is deliberately no update/delete
+/// server action for this model anywhere in the codebase. A posted entry is
+/// corrected only by posting a REVERSAL entry that mirrors it (debit/credit
+/// swapped) via reverseLedgerEntry() - see src/lib/actions/owner-ledger.ts.
+model OwnerLedgerEntry {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ownerId String
+  owner   Owner  @relation(fields: [ownerId], references: [id])
+
+  entryType OwnerLedgerEntryType
+
+  // Free-text pointer to what generated this entry (e.g. "MANUAL",
+  // "ALLOCATION"), not a Prisma relation - this ledger must stay postable
+  // even for sources that aren't (yet) their own model, and must never be
+  // able to cascade-delete a financial record.
+  referenceType String?
+  referenceId   String?
+
+  description   String
+  descriptionAr String?
+
+  debit  Decimal @default(0) @db.Decimal(12, 2)
+  credit Decimal @default(0) @db.Decimal(12, 2)
+
+  entryDate DateTime @default(now())
+
+  compoundId String?
+  compound   Compound? @relation(fields: [compoundId], references: [id])
+  unitId     String?
+  unit       Unit?     @relation(fields: [unitId], references: [id])
+
+  // Reversal linkage: set on the REVERSAL entry (points back at what it
+  // reverses) and on the original entry (points forward, so it can't be
+  // reversed twice). Both unique - a one-to-one pairing.
+  reversalOfEntryId String?           @unique
+  reversalOfEntry   OwnerLedgerEntry? @relation("LedgerReversal", fields: [reversalOfEntryId], references: [id])
+  reversedByEntry   OwnerLedgerEntry? @relation("LedgerReversal")
+
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([entryDate])
+  @@map("owner_ledger_entries")
 }

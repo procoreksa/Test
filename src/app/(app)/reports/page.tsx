@@ -16,6 +16,8 @@ export default async function ReportsIndexPage() {
     { href: "/reports/units-by-compound", icon: "🏘️", ...t.reports.cards.unitsByCompound },
     { href: "/reports/buildings-by-compound", icon: "🏬", ...t.reports.cards.buildingsByCompound },
     { href: "/reports/vacancy-by-compound", icon: "🔑", ...t.reports.cards.vacancyByCompound },
+    { href: "/reports/owner-statement", icon: "🧑‍💼", ...t.reports.cards.ownerStatement },
+    { href: "/reports/owner-portfolio", icon: "📁", ...t.reports.cards.ownerPortfolio },
   ];
 
   return (

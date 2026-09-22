@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/session";
 import { syncOverdueStatuses } from "@/lib/actions/collections";
 import { differenceInCalendarDays, format } from "date-fns";
 import type { InvoiceLineKind, PaymentFrequency } from "@prisma/client";
+import { INSTALLMENTS_PER_YEAR } from "@/lib/lease-math";
 
 export interface LedgerEntry {
   date: Date;
@@ -16,14 +17,6 @@ export interface LedgerEntry {
   credit: number;
   balance: number;
 }
-
-const INSTALLMENTS_PER_YEAR: Record<PaymentFrequency, number> = {
-  MONTHLY: 12,
-  QUARTERLY: 4,
-  SEMI_ANNUAL: 2,
-  ANNUAL: 1,
-  ONE_TIME: 1,
-};
 
 export interface StatementContractInfo {
   contractNumber: string;

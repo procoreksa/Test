@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { listCompounds, createCompound, deleteCompound } from "@/lib/actions/compounds";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
@@ -84,9 +85,13 @@ export default async function CompoundsPage() {
                     {t.compoundStatus[c.status]}
                   </span>
                 </td>
-                <td className="px-5 py-3 text-left">
+                <td className="px-5 py-3 text-left space-x-2 rtl:space-x-reverse">
+                  <Link href={`/compounds/${c.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
+                    {t.ownership.title}
+                  </Link>
                   {canDelete && (
                     <form
+                      className="inline"
                       action={async () => {
                         "use server";
                         await deleteCompound(c.id);

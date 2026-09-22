@@ -22,6 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/buildings", label: t.nav.buildings, icon: "🏬", permission: "property.view" },
     { href: "/floors", label: t.nav.floors, icon: "🪜", permission: "unit.view" },
     { href: "/units", label: t.nav.units, icon: "🚪", permission: "unit.view" },
+    { href: "/owners", label: t.nav.owners, icon: "🧑‍💼", permission: "owner.view" },
     { href: "/renters", label: t.nav.renters, icon: "👥", permission: "renter.view" },
     { href: "/contracts", label: t.nav.contracts, icon: "📄", permission: "contract.view" },
     { href: "/collections", label: t.nav.collections, icon: "💰", permission: "invoice.view" },
