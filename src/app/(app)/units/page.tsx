@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listUnits, createUnit, deleteUnit } from "@/lib/actions/units";
 import { getLocationTree } from "@/lib/actions/floors";
+import { getUnitViewingCounts } from "@/lib/actions/viewings";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, pickLocalized } from "@/lib/i18n";
@@ -19,6 +20,8 @@ export default async function UnitsPage() {
   const sar = currencyFormatter(locale);
   const canCreate = can("unit.create", role);
   const canDelete = can("unit.delete", role);
+  const canViewViewings = can("viewing.view", role);
+  const viewingCounts = canViewViewings ? await getUnitViewingCounts(units.map((u) => u.id)) : new Map<string, number>();
 
   return (
     <div className="space-y-6">
@@ -105,6 +108,11 @@ export default async function UnitsPage() {
                   <Link href={`/units/${u.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
                     {t.ownership.title}
                   </Link>
+                  {canViewViewings && (
+                    <Link href={`/crm/viewings?unitId=${u.id}`} className="text-brand-gold-dark hover:underline text-xs font-medium">
+                      {t.viewing.unitViewingsLink} ({viewingCounts.get(u.id) ?? 0})
+                    </Link>
+                  )}
                   {canDelete && (
                     <form
                       className="inline"

@@ -38,14 +38,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Its own navigation group (Step 26): a labeled block, not folded flat
   // into the list above, so it reads as "CRM" - only rendered at all if the
   // role has lead.view (ACCOUNTANT/no-lead-access roles see nothing here).
-  const crmNavItems: Array<{ href: string; label: string; icon: string }> = can("lead.view", role)
-    ? [
-        { href: "/crm", label: t.nav.crmDashboard, icon: "🎯" },
-        { href: "/crm/leads", label: t.nav.crmLeads, icon: "📇" },
-        { href: "/crm/pipeline", label: t.nav.crmPipeline, icon: "🧭" },
-        { href: "/crm/reports", label: t.nav.crmReports, icon: "📑" },
-      ]
-    : [];
+  const allCrmNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
+    { href: "/crm", label: t.nav.crmDashboard, icon: "🎯", permission: "lead.view" },
+    { href: "/crm/leads", label: t.nav.crmLeads, icon: "📇", permission: "lead.view" },
+    { href: "/crm/pipeline", label: t.nav.crmPipeline, icon: "🧭", permission: "lead.view" },
+    { href: "/crm/viewings", label: t.nav.crmViewings, icon: "🗝️", permission: "viewing.view" },
+    { href: "/crm/viewings/calendar", label: t.nav.crmViewingCalendar, icon: "📅", permission: "viewing.view" },
+    { href: "/crm/reports", label: t.nav.crmReports, icon: "📑", permission: "lead.view" },
+  ];
+  const crmNavItems = allCrmNavItems.filter((item) => can(item.permission, role));
 
   const brandMark = (
     <div className="flex items-center gap-2">

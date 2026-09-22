@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { assertSafeTestDatabaseUrl } from "@/lib/test-db-guard";
 import { createContractWithSchedule } from "@/lib/contract-schedule";
 import { issueInvoice } from "@/lib/invoicing";
-import type { UserRole } from "@prisma/client";
+import type { UserRole, ViewingStatus } from "@prisma/client";
 
 assertSafeTestDatabaseUrl(process.env.DATABASE_URL);
 
@@ -112,11 +112,37 @@ export async function createTestLead(organizationId: string, createdByUserId: st
   });
 }
 
+export async function createTestViewing(
+  organizationId: string,
+  leadId: string,
+  unitIds: string[],
+  createdByUserId: string,
+  overrides: Partial<{ assignedToUserId: string; scheduledStart: Date; scheduledEnd: Date; status: ViewingStatus }> = {}
+) {
+  const viewing = await prisma.viewing.create({
+    data: {
+      organizationId,
+      viewingNumber: `VIEW-${uniqueSuffix()}`,
+      leadId,
+      assignedToUserId: overrides.assignedToUserId,
+      scheduledStart: overrides.scheduledStart ?? new Date("2026-07-01T10:00:00Z"),
+      scheduledEnd: overrides.scheduledEnd ?? new Date("2026-07-01T11:00:00Z"),
+      status: overrides.status ?? "SCHEDULED",
+      createdByUserId,
+    },
+  });
+  await prisma.viewingUnit.createMany({
+    data: unitIds.map((unitId, i) => ({ organizationId, viewingId: viewing.id, unitId, sequence: i + 1 })),
+  });
+  return viewing;
+}
+
 /**
  * A fully wired organization: compound -> building -> floor -> unit, a
- * renter, an owner (100% assigned to the unit), an admin user, and the
- * matching mocked session - everything a cross-org/IDOR test needs to
- * assert that another organization's admin cannot reach any of it.
+ * renter, an owner (100% assigned to the unit), an admin user, a lead, a
+ * scheduled viewing (assigned to the org's own admin), and the matching
+ * mocked session - everything a cross-org/IDOR test needs to assert that
+ * another organization's admin cannot reach any of it.
  */
 export async function seedFullOrg(label: string) {
   const organization = await createTestOrganization(`${label} Org`);
@@ -131,6 +157,7 @@ export async function seedFullOrg(label: string) {
     data: { organizationId: organization.id, ownerId: owner.id, unitId: unit.id, ownershipPercentage: 100 },
   });
   const lead = await createTestLead(organization.id, admin.id, { fullName: `${label} Lead`, mobile: "0501234567" });
+  const viewing = await createTestViewing(organization.id, lead.id, [unit.id], admin.id, { assignedToUserId: admin.id });
 
   return {
     organization,
@@ -144,6 +171,7 @@ export async function seedFullOrg(label: string) {
     owner,
     ownership,
     lead,
+    viewing,
   };
 }
 

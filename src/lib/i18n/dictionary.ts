@@ -49,6 +49,8 @@ export interface Dictionary {
     crmLeads: string;
     crmPipeline: string;
     crmReports: string;
+    crmViewings: string;
+    crmViewingCalendar: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -621,6 +623,12 @@ export interface Dictionary {
     lostReasonNoteRequired: string;
     leadAlreadyConverted: string;
     possibleDuplicateRenter: string;
+    viewingEndAfterStart: string;
+    viewingAtLeastOneUnit: string;
+    viewingLeadNotEligible: string;
+    viewingUnitNotEligible: string;
+    viewingInvalidTransition: string;
+    viewingCancelReasonNoteRequired: string;
   };
   zatca: {
     notConfigured: string;
@@ -1072,6 +1080,163 @@ export interface Dictionary {
     colReason: string;
     colCount: string;
     colTotal: string;
+  };
+  viewingStatus: {
+    SCHEDULED: string;
+    CONFIRMED: string;
+    IN_PROGRESS: string;
+    COMPLETED: string;
+    CANCELLED: string;
+    NO_SHOW: string;
+    RESCHEDULED: string;
+  };
+  viewingOutcome: {
+    INTERESTED: string;
+    FOLLOW_UP_REQUIRED: string;
+    NOT_INTERESTED: string;
+    OFFER_REQUESTED: string;
+    RESERVATION_REQUESTED: string;
+    OTHER: string;
+  };
+  viewingCancelReason: {
+    CUSTOMER_REQUEST: string;
+    AGENT_UNAVAILABLE: string;
+    UNIT_UNAVAILABLE: string;
+    RESCHEDULED: string;
+    NO_RESPONSE: string;
+    OTHER: string;
+  };
+  viewing: {
+    conflictMessage: (viewingNumber: string, leadName: string, time: string, unitNumber?: string) => string;
+    activityScheduled: (viewingNumber: string, time: string) => string;
+    activityCompleted: (viewingNumber: string, outcomeLabel: string) => string;
+    activityCancelled: (viewingNumber: string) => string;
+    activityNoShow: (viewingNumber: string) => string;
+    activityRescheduled: (viewingNumber: string, oldTime: string, newTime: string) => string;
+
+    listTitle: string;
+    listSubtitle: string;
+    searchPlaceholder: string;
+    colViewingNumber: string;
+    colLead: string;
+    colCompound: string;
+    colUnits: string;
+    colDate: string;
+    colTime: string;
+    colAgent: string;
+    colStatus: string;
+    colOutcome: string;
+    colActions: string;
+    filterStatus: string;
+    filterOutcome: string;
+    filterAgent: string;
+    filterCompound: string;
+    filterUnit: string;
+    filterLead: string;
+    filterDateFrom: string;
+    filterDateTo: string;
+    filterToday: string;
+    filterTomorrow: string;
+    filterThisWeek: string;
+    filterMine: string;
+    filterApply: string;
+    filterAll: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    newTitle: string;
+    newSubtitle: string;
+    save: string;
+    fieldLead: string;
+    fieldAssignedAgent: string;
+    fieldScheduledStart: string;
+    fieldScheduledEnd: string;
+    fieldCustomerNotes: string;
+    sectionUnits: string;
+    addUnit: string;
+    selectedUnitsTitle: string;
+    removeUnit: string;
+    noUnitsSelected: string;
+    pickCompound: string;
+    pickBuilding: string;
+    pickFloor: string;
+    pickUnit: string;
+
+    profileBack: string;
+    profileSummaryTitle: string;
+    profileLeadTitle: string;
+    profileScheduleTitle: string;
+    profileAgentTitle: string;
+    profileUnitsTitle: string;
+    profileOutcomeTitle: string;
+    profileFeedbackTitle: string;
+    profileInternalNotesTitle: string;
+    actionConfirm: string;
+    actionStart: string;
+    actionComplete: string;
+    actionReschedule: string;
+    actionCancel: string;
+    actionNoShow: string;
+    actionReassign: string;
+    completeTitle: string;
+    fieldOutcome: string;
+    fieldFeedbackSummary: string;
+    fieldInternalNotes: string;
+    completeSubmit: string;
+    cancelTitle: string;
+    fieldCancelReason: string;
+    fieldCancelReasonNote: string;
+    cancelSubmit: string;
+    rescheduleTitle: string;
+    rescheduleSubmit: string;
+    futureOfferPlaceholder: string;
+    futureReservationPlaceholder: string;
+
+    scheduleViewingButton: string;
+    upcomingViewingsTitle: string;
+    pastViewingsTitle: string;
+    lastViewingOutcome: string;
+    nextViewingDate: string;
+    noUpcomingViewings: string;
+    noPastViewings: string;
+
+    calendarTitle: string;
+    calendarSubtitle: string;
+    calendarDay: string;
+    calendarWeek: string;
+    calendarEmpty: string;
+
+    dashboardTitle: string;
+    kpiTodayViewings: string;
+    kpiUpcomingViewings: string;
+    kpiCompletedThisMonth: string;
+    kpiCancelled: string;
+    kpiNoShows: string;
+    kpiInterestRate: string;
+    kpiOfferRequestRate: string;
+    kpiReservationRequestRate: string;
+    kpiCompletionRate: string;
+
+    reportsTitle: string;
+    reportSchedule: string;
+    reportOutcome: string;
+    reportAgentPerformance: string;
+    reportMostViewedUnits: string;
+    reportMostViewedCompounds: string;
+    reportNoShowAnalysis: string;
+    colScheduled: string;
+    colCompleted: string;
+    colCancelledCount: string;
+    colNoShowCount: string;
+    colInterested: string;
+    colOfferRequested: string;
+    colCompletionPercent: string;
+    colViewCount: string;
+    colLastViewing: string;
+
+    unitViewingsLink: string;
   };
 }
 

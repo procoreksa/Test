@@ -31,6 +31,11 @@ export function longDateTimeFormatter(locale: Locale): Intl.DateTimeFormat {
   });
 }
 
+/** Time-only, used for viewing schedule columns/calendar cells where the date is already shown separately. */
+export function shortTimeFormatter(locale: Locale): Intl.DateTimeFormat {
+  return new Intl.DateTimeFormat(intlTag(locale), { hour: "2-digit", minute: "2-digit" });
+}
+
 /**
  * Picks the right language for a bilingual data field (a property/renter's
  * name, an invoice line description, ...). These are user-entered records

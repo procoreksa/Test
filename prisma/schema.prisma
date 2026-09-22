@@ -79,6 +79,7 @@ model Organization {
   ownerLedgerEntries OwnerLedgerEntry[]
   leads              Lead[]
   leadActivities     LeadActivity[]
+  viewings           Viewing[]
 
   @@map("organizations")
 }
@@ -107,7 +108,8 @@ model User {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  assignedLeads Lead[] @relation("LeadAssignedTo")
+  assignedLeads    Lead[]    @relation("LeadAssignedTo")
+  assignedViewings Viewing[] @relation("ViewingAssignedTo")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -282,6 +284,7 @@ model Unit {
   contracts          Contract[]
   propertyOwnerships PropertyOwnership[]
   ownerLedgerEntries OwnerLedgerEntry[]
+  viewingUnits       ViewingUnit[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -1034,6 +1037,7 @@ model Lead {
   updatedAt DateTime @updatedAt
 
   activities LeadActivity[]
+  viewings   Viewing[]
 
   @@unique([organizationId, leadNumber])
   @@index([organizationId, status])
@@ -1072,4 +1076,114 @@ model LeadActivity {
   @@index([organizationId, leadId])
   @@index([organizationId, activityDate])
   @@map("lead_activities")
+}
+
+// ---------------------------------------------------------------------------
+// CRM: Viewing Management
+//
+// A Viewing is a scheduled visit by a Lead to one or more Units. This is
+// purely additive on top of the Lead/LeadActivity/Unit models - none of
+// them are redesigned. Scope is deliberately Viewing-only: the future
+// Offer/Reservation steps (Lead -> Viewing -> Offer -> Reservation ->
+// Contract) are not implemented here - see docs/VIEWING-MANAGEMENT.md,
+// "Future Offer/Reservation integration".
+// ---------------------------------------------------------------------------
+
+enum ViewingStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  RESCHEDULED // transient: set briefly by rescheduleViewing() and immediately moved back to SCHEDULED/CONFIRMED in the same transaction - see docs/VIEWING-MANAGEMENT.md, "Rescheduling"
+}
+
+enum ViewingOutcome {
+  INTERESTED
+  FOLLOW_UP_REQUIRED
+  NOT_INTERESTED
+  OFFER_REQUESTED
+  RESERVATION_REQUESTED
+  OTHER
+}
+
+enum ViewingCancelReason {
+  CUSTOMER_REQUEST
+  AGENT_UNAVAILABLE
+  UNIT_UNAVAILABLE
+  RESCHEDULED
+  NO_RESPONSE
+  OTHER
+}
+
+model Viewing {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  viewingNumber String // e.g. "VIEW-000001" - sequential per organization via the existing Counter infrastructure (key "viewing"), never a separate numbering scheme
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  // Live operational assignment - same pattern as Lead.assignedToUserId:
+  // a real relation (not a plain string), verified same-organization on
+  // every write, since the UI joins/displays/reassigns it constantly.
+  assignedToUserId String?
+  assignedToUser   User?   @relation("ViewingAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+
+  status ViewingStatus @default(SCHEDULED)
+
+  customerNotes String?
+  internalNotes String?
+
+  feedbackSummary String?
+  outcome         ViewingOutcome?
+
+  cancelReason     ViewingCancelReason?
+  cancelReasonNote String?
+
+  completedAt DateTime?
+
+  // Plain string, not a relation - mirrors Lead.createdByUserId: survives
+  // a User being removed, not a live join target.
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  units ViewingUnit[]
+
+  @@unique([organizationId, viewingNumber])
+  @@index([organizationId, scheduledStart])
+  @@index([organizationId, assignedToUserId, scheduledStart])
+  @@index([organizationId, leadId])
+  @@index([organizationId, status])
+  @@map("viewings")
+}
+
+/// Join table: a Viewing may cover more than one Unit (e.g. touring two
+/// comparable apartments back-to-back). Deliberately thin - no Unit data
+/// is duplicated here, only the linkage plus per-unit sequence/notes.
+model ViewingUnit {
+  id             String @id @default(cuid())
+  organizationId String
+
+  viewingId String
+  viewing   Viewing @relation(fields: [viewingId], references: [id], onDelete: Cascade)
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id])
+
+  sequence Int     @default(1)
+  notes    String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([viewingId, unitId])
+  @@index([organizationId, unitId])
+  @@map("viewing_units")
 }

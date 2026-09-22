@@ -37,3 +37,8 @@ export function formatReceiptNumber(seq: number, year: number): string {
 export function formatLeadNumber(seq: number): string {
   return `LEAD-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatLeadNumber() - a viewing number is not a legal/tax document series either. */
+export function formatViewingNumber(seq: number): string {
+  return `VIEW-${String(seq).padStart(6, "0")}`;
+}

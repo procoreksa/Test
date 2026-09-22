@@ -50,7 +50,13 @@ export type Permission =
   | "lead.convert"
   | "lead.archive"
   | "leadActivity.view"
-  | "leadActivity.create";
+  | "leadActivity.create"
+  | "viewing.view"
+  | "viewing.create"
+  | "viewing.update"
+  | "viewing.assign"
+  | "viewing.complete"
+  | "viewing.cancel";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -97,6 +103,12 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "lead.archive",
   "leadActivity.view",
   "leadActivity.create",
+  "viewing.view",
+  "viewing.create",
+  "viewing.update",
+  "viewing.assign",
+  "viewing.complete",
+  "viewing.cancel",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -137,6 +149,12 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "lead.archive",
   "leadActivity.view",
   "leadActivity.create",
+  "viewing.view",
+  "viewing.create",
+  "viewing.update",
+  "viewing.assign",
+  "viewing.complete",
+  "viewing.cancel",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -176,6 +194,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "ownership.view",
   "ownerLedger.view",
   "lead.view",
+  "viewing.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

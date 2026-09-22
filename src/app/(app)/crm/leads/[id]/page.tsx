@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getLeadById, updateLead, changeLeadStatus, assignLead, markLeadLost, archiveLead, convertLeadToRenter, findPossibleRenterMatches, listAssignableUsers } from "@/lib/actions/leads";
 import { createLeadActivity, listLeadActivities } from "@/lib/actions/lead-activities";
 import { getCompoundOptions } from "@/lib/actions/compounds";
+import { getViewingsForLead } from "@/lib/actions/viewings";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, longDateTimeFormatter, pickLocalized } from "@/lib/i18n";
@@ -11,7 +12,7 @@ const MOVABLE_STATUSES = ["NEW", "CONTACTED", "QUALIFIED", "VIEWING_PENDING", "V
 
 export default async function LeadProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [lead, activities, role, locale, agents, compounds, renterMatches] = await Promise.all([
+  const [lead, activities, role, locale, agents, compounds, renterMatches, viewingsSummary] = await Promise.all([
     getLeadById(id),
     listLeadActivities(id).catch(() => []),
     getCurrentUserRole(),
@@ -19,6 +20,7 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
     listAssignableUsers().catch(() => []),
     getCompoundOptions(),
     findPossibleRenterMatches(id).catch(() => []),
+    getViewingsForLead(id).catch(() => ({ upcoming: [], past: [], lastOutcome: null, nextViewingDate: null })),
   ]);
   const t = getDictionary(locale);
   const sar = currencyFormatter(locale);
@@ -31,6 +33,8 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
   const canArchive = can("lead.archive", role);
   const canLogActivity = can("leadActivity.create", role);
   const canViewActivity = can("leadActivity.view", role);
+  const canScheduleViewing = can("viewing.create", role);
+  const canViewViewings = can("viewing.view", role);
 
   const isClosed = lead.status === "WON" || lead.status === "LOST" || lead.status === "ARCHIVED";
 
@@ -90,6 +94,62 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
           </div>
         </div>
       </div>
+
+      {canViewViewings && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold text-slate-800">{t.nav.crmViewings}</h2>
+            {canScheduleViewing && !isClosed && (
+              <Link href={`/crm/viewings/new?leadId=${lead.id}`} className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-4 py-2 text-sm font-semibold">
+                {t.viewing.scheduleViewingButton}
+              </Link>
+            )}
+          </div>
+
+          <dl className="grid grid-cols-2 gap-y-2 text-sm mb-4">
+            <InfoRow label={t.viewing.lastViewingOutcome} value={viewingsSummary.lastOutcome ? t.viewingOutcome[viewingsSummary.lastOutcome] : undefined} />
+            <InfoRow label={t.viewing.nextViewingDate} value={viewingsSummary.nextViewingDate ? dateTimeFmt.format(viewingsSummary.nextViewingDate) : undefined} />
+          </dl>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.viewing.upcomingViewingsTitle}</h3>
+              {viewingsSummary.upcoming.length === 0 ? (
+                <p className="text-sm text-slate-400">{t.viewing.noUpcomingViewings}</p>
+              ) : (
+                <ul className="space-y-1">
+                  {viewingsSummary.upcoming.map((v) => (
+                    <li key={v.id} className="text-sm">
+                      <Link href={`/crm/viewings/${v.id}`} className="text-brand-gold-dark hover:underline">
+                        {v.viewingNumber}
+                      </Link>{" "}
+                      — {dateTimeFmt.format(v.scheduledStart)} — {t.viewingStatus[v.status]}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">{t.viewing.pastViewingsTitle}</h3>
+              {viewingsSummary.past.length === 0 ? (
+                <p className="text-sm text-slate-400">{t.viewing.noPastViewings}</p>
+              ) : (
+                <ul className="space-y-1">
+                  {viewingsSummary.past.map((v) => (
+                    <li key={v.id} className="text-sm">
+                      <Link href={`/crm/viewings/${v.id}`} className="text-brand-gold-dark hover:underline">
+                        {v.viewingNumber}
+                      </Link>{" "}
+                      — {dateTimeFmt.format(v.scheduledStart)} — {t.viewingStatus[v.status]}
+                      {v.outcome ? ` — ${t.viewingOutcome[v.outcome]}` : ""}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">

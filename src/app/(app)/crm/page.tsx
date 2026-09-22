@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getCrmDashboardStats } from "@/lib/actions/crm";
+import { getViewingDashboardStats } from "@/lib/actions/viewing-reports";
 import { StatCard } from "@/components/stat-card";
 import { getLocale, getDictionary } from "@/lib/i18n";
 
 export default async function CrmDashboardPage() {
-  const [stats, locale] = await Promise.all([getCrmDashboardStats(), getLocale()]);
+  const [stats, viewingStats, locale] = await Promise.all([getCrmDashboardStats(), getViewingDashboardStats(), getLocale()]);
   const t = getDictionary(locale);
 
   return (
@@ -75,12 +76,32 @@ export default async function CrmDashboardPage() {
         </div>
       </div>
 
-      <div className="flex gap-3">
+      <div>
+        <h2 className="font-semibold text-slate-800 mb-4">{t.viewing.dashboardTitle}</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard label={t.viewing.kpiTodayViewings} value={String(viewingStats.todayCount)} />
+          <StatCard label={t.viewing.kpiUpcomingViewings} value={String(viewingStats.upcomingCount)} />
+          <StatCard label={t.viewing.kpiCompletedThisMonth} value={String(viewingStats.completedThisMonth)} tone="positive" />
+          <StatCard label={t.viewing.kpiCancelled} value={String(viewingStats.cancelledThisMonth)} tone="danger" />
+          <StatCard label={t.viewing.kpiNoShows} value={String(viewingStats.noShowThisMonth)} tone="danger" />
+          <StatCard label={t.viewing.kpiCompletionRate} value={`${viewingStats.completionRate}%`} tone="positive" />
+          <StatCard label={t.viewing.kpiInterestRate} value={`${viewingStats.interestRate}%`} />
+          <StatCard label={t.viewing.kpiOfferRequestRate} value={`${viewingStats.offerRequestRate}%`} />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
         <Link href="/crm/leads" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmLeads} →
         </Link>
         <Link href="/crm/pipeline" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmPipeline} →
+        </Link>
+        <Link href="/crm/viewings" className="text-brand-gold-dark hover:underline text-sm font-medium">
+          {t.nav.crmViewings} →
+        </Link>
+        <Link href="/crm/viewings/calendar" className="text-brand-gold-dark hover:underline text-sm font-medium">
+          {t.nav.crmViewingCalendar} →
         </Link>
         <Link href="/crm/reports" className="text-brand-gold-dark hover:underline text-sm font-medium">
           {t.nav.crmReports} →

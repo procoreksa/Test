@@ -43,6 +43,8 @@ audit.view / audit.export
 
 lead.view / lead.create / lead.update / lead.assign / lead.convert / lead.archive
 leadActivity.view / leadActivity.create
+
+viewing.view / viewing.create / viewing.update / viewing.assign / viewing.complete / viewing.cancel
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -75,6 +77,16 @@ its activity interaction history, mirroring how `owner.view` and
 `ownerLedger.view` are separate grants elsewhere in this table. There is no
 `lead.delete` - leads are archived (`lead.archive`, sets `status:
 ARCHIVED`), never deleted, so no delete verb exists at all.
+
+`viewing.*` gate the Viewing Management foundation (see
+`docs/VIEWING-MANAGEMENT.md`). Policy mirrors `lead.*` exactly: OWNER/ADMIN/
+MANAGER get every viewing permission, ACCOUNTANT gets none, and VIEWER gets
+`viewing.view` only - consistent with VIEWER's `lead.view`-only grant above.
+There is no `viewing.reschedule` or `viewing.noshow` permission:
+rescheduling is gated by `viewing.update` (it's fundamentally an edit to
+the same record) and marking a no-show is gated by `viewing.cancel` (it
+closes out the viewing negatively, the same authorization tier as
+cancelling it), rather than inventing a permission per verb.
 
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
@@ -132,6 +144,12 @@ create/delete, not edit. When one is added, gate it with the matching
 | lead.archive | ✅ | ✅ | ✅ | ❌ | ❌ |
 | leadActivity.view | ✅ | ✅ | ✅ | ❌ | ❌ |
 | leadActivity.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| viewing.view | ✅ | ✅ | ✅ | ❌ | ✅ |
+| viewing.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| viewing.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| viewing.assign | ✅ | ✅ | ✅ | ❌ | ❌ |
+| viewing.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
+| viewing.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 

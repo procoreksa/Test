@@ -10,6 +10,12 @@ export default async function CrmReportsIndexPage() {
     { href: "/crm/reports/conversion", icon: "📈", title: t.crm.reportConversion },
     { href: "/crm/reports/agent-performance", icon: "🧑‍💼", title: t.crm.reportAgentPerformance },
     { href: "/crm/reports/lost-analysis", icon: "📉", title: t.crm.reportLostAnalysis },
+    { href: "/crm/reports/viewing-schedule", icon: "🗓️", title: t.viewing.reportSchedule },
+    { href: "/crm/reports/viewing-outcome", icon: "🎯", title: t.viewing.reportOutcome },
+    { href: "/crm/reports/viewing-agent-performance", icon: "🧑‍💼", title: t.viewing.reportAgentPerformance },
+    { href: "/crm/reports/most-viewed-units", icon: "🏠", title: t.viewing.reportMostViewedUnits },
+    { href: "/crm/reports/most-viewed-compounds", icon: "🏘️", title: t.viewing.reportMostViewedCompounds },
+    { href: "/crm/reports/no-show-analysis", icon: "🚫", title: t.viewing.reportNoShowAnalysis },
   ];
 
   return (
