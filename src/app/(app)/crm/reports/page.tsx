@@ -28,6 +28,8 @@ export default async function CrmReportsIndexPage() {
     { href: "/crm/reports/reservation-amount-status", icon: "💰", title: t.reservation.reportAmountStatus },
     { href: "/crm/reports/reservations-by-compound", icon: "🏘️", title: t.reservation.reportByCompound },
     { href: "/crm/reports/reservation-agent-performance", icon: "🧑‍💼", title: t.reservation.reportAgentPerformance },
+    { href: "/crm/reports/funnel", icon: "🧭", title: t.reservationContract.funnelReportTitle },
+    { href: "/crm/reports/contract-origination", icon: "🗂️", title: t.reservationContract.originationReportTitle },
   ];
 
   return (

@@ -10,6 +10,7 @@ import {
   isEffectivelyExpiredReservation,
   defaultReservationAmountStatus,
   computeReservationConfirmationRate,
+  computeReservationToContractConversionRate,
 } from "./reservation-rules";
 
 describe("defaultHoldUntil", () => {
@@ -39,8 +40,9 @@ describe("isValidReservationTransition", () => {
     expect(isValidReservationTransition("PENDING", "RELEASED")).toBe(false);
   });
 
-  it("never allows any action to set CONVERTED_TO_CONTRACT (reserved for the future Contract module)", () => {
-    for (const from of ["DRAFT", "PENDING", "CONFIRMED", "EXPIRED", "CANCELLED", "RELEASED", "CONVERTED_TO_CONTRACT"] as const) {
+  it("only CONFIRMED may move to CONVERTED_TO_CONTRACT (set exclusively by convertReservationToContract())", () => {
+    expect(isValidReservationTransition("CONFIRMED", "CONVERTED_TO_CONTRACT")).toBe(true);
+    for (const from of ["DRAFT", "PENDING", "EXPIRED", "CANCELLED", "RELEASED", "CONVERTED_TO_CONTRACT"] as const) {
       expect(isValidReservationTransition(from, "CONVERTED_TO_CONTRACT")).toBe(false);
     }
   });
@@ -122,5 +124,15 @@ describe("computeReservationConfirmationRate", () => {
     expect(computeReservationConfirmationRate(0, 0, 0)).toBe(0);
     expect(computeReservationConfirmationRate(0, 2, 3)).toBe(0);
     expect(computeReservationConfirmationRate(5, 0, 0)).toBe(100);
+  });
+});
+
+describe("computeReservationToContractConversionRate", () => {
+  it("is CONVERTED_TO_CONTRACT / (CONVERTED_TO_CONTRACT + CANCELLED + EXPIRED + RELEASED)", () => {
+    expect(computeReservationToContractConversionRate(3, 1, 0, 0)).toBe(75);
+    expect(computeReservationToContractConversionRate(0, 0, 0, 0)).toBe(0);
+    expect(computeReservationToContractConversionRate(0, 1, 1, 1)).toBe(0);
+    expect(computeReservationToContractConversionRate(4, 0, 0, 0)).toBe(100);
+    expect(computeReservationToContractConversionRate(1, 1, 1, 1)).toBe(25);
   });
 });

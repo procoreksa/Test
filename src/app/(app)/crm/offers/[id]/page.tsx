@@ -15,6 +15,7 @@ import {
 } from "@/lib/actions/offers";
 import { listLeadActivities } from "@/lib/actions/lead-activities";
 import { getActiveReservationForOffer } from "@/lib/actions/reservations";
+import { getConvertedContractForOffer } from "@/lib/actions/reservation-contract";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { canApproveDiscount } from "@/lib/crm/offer-rules";
@@ -29,6 +30,7 @@ export default async function OfferProfilePage({ params }: { params: Promise<{ i
   const [versionChain, activities] = await Promise.all([getOfferVersionChain(offer.offerNumber), listLeadActivities(offer.leadId).catch(() => [])]);
   const canViewReservation = can("reservation.view", role);
   const activeReservation = offer.status === "ACCEPTED" && canViewReservation ? await getActiveReservationForOffer(offer.id) : null;
+  const convertedContract = offer.status === "ACCEPTED" && canViewReservation && !activeReservation ? await getConvertedContractForOffer(offer.id) : null;
   const canCreateReservation = can("reservation.create", role);
   const t = getDictionary(locale);
   const dateFmt = longDateFormatter(locale);
@@ -260,6 +262,13 @@ export default async function OfferProfilePage({ params }: { params: Promise<{ i
               <dt className="text-slate-500">{t.reservation.colAmountStatus}</dt>
               <dd className="text-slate-800 font-medium">{t.reservationAmountStatus[activeReservation.reservationAmountStatus]}</dd>
             </dl>
+          ) : convertedContract ? (
+            <div className="flex items-center gap-3 text-sm">
+              <span className="text-slate-500">{t.reservationContract.sourceReservation}:</span>
+              <Link href={`/contracts/${convertedContract.id}/edit`} className="text-brand-gold-dark hover:underline font-medium">
+                {convertedContract.contractNumber}
+              </Link>
+            </div>
           ) : canCreateReservation ? (
             <Link href={`/crm/reservations/new?offerId=${offer.id}`} className="rounded-lg bg-brand-gold hover:bg-brand-gold-dark text-brand-black px-4 py-2 text-sm font-semibold">
               {t.reservation.createReservationButton}

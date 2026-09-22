@@ -61,6 +61,9 @@ export default async function CrmPipelinePage() {
                     {lead.preferredBedrooms ? ` · ${lead.preferredBedrooms} BR` : ""}
                   </p>
                   {lead.preferredCompound && <p className="text-slate-400 text-xs">{lead.preferredCompound.name}</p>}
+                  {lead.convertedContract && (
+                    <p className="text-emerald-600 text-xs font-medium">{t.reservationContract.pipelineContractBadge(lead.convertedContract.contractNumber)}</p>
+                  )}
                   <p className="text-slate-400 text-xs">{lead.assignedToUser?.name ?? t.crm.unassigned}</p>
                   {lead.nextFollowUpAt && <p className="text-amber-600 text-xs">{dateFmt.format(lead.nextFollowUpAt)}</p>}
                   {canUpdate && MOVABLE_STATUSES.includes(status as (typeof MOVABLE_STATUSES)[number]) && (

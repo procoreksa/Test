@@ -19,14 +19,15 @@ export function defaultHoldUntil(from: Date = new Date()): Date {
 // ---------------------------------------------------------------------------
 // Status transitions (Step 12) - the single source of truth for which moves
 // are legal, checked server-side before every mutating action writes
-// anything. CONVERTED_TO_CONTRACT is schema-reserved for the future
-// Contract module only - no action in this task ever sets it, so it never
-// appears as a `to` target below.
+// anything. CONFIRMED -> CONVERTED_TO_CONTRACT is set only by
+// convertReservationToContract() (see docs/RESERVATION-TO-CONTRACT.md) -
+// every other module treats CONVERTED_TO_CONTRACT as terminal, same as
+// EXPIRED/CANCELLED/RELEASED.
 // ---------------------------------------------------------------------------
 const RESERVATION_TRANSITIONS: Record<ReservationStatus, readonly ReservationStatus[]> = {
   DRAFT: ["PENDING", "CANCELLED"],
   PENDING: ["CONFIRMED", "CANCELLED", "EXPIRED"],
-  CONFIRMED: ["CANCELLED", "EXPIRED", "RELEASED"],
+  CONFIRMED: ["CANCELLED", "EXPIRED", "RELEASED", "CONVERTED_TO_CONTRACT"],
   EXPIRED: [],
   CANCELLED: [],
   RELEASED: [],
@@ -91,4 +92,16 @@ function ratePercent(numerator: number, denominator: number): number {
 /** CONFIRMED / (CONFIRMED + CANCELLED + EXPIRED) - reservations still DRAFT/PENDING haven't reached an end state yet and are excluded from the denominator, same convention as computeViewingCompletionRate(). */
 export function computeReservationConfirmationRate(confirmed: number, cancelled: number, expired: number): number {
   return ratePercent(confirmed, confirmed + cancelled + expired);
+}
+
+/**
+ * Reservation-to-Contract Conversion Rate (Step 34 of
+ * docs/RESERVATION-TO-CONTRACT.md): CONVERTED_TO_CONTRACT / (CONVERTED_TO_CONTRACT
+ * + CANCELLED + EXPIRED + RELEASED). Still-active reservations
+ * (DRAFT/PENDING/CONFIRMED) are deliberately excluded from both sides -
+ * they haven't reached an end state yet, same convention as every other
+ * rate in this file.
+ */
+export function computeReservationToContractConversionRate(converted: number, cancelled: number, expired: number, released: number): number {
+  return ratePercent(converted, converted + cancelled + expired + released);
 }

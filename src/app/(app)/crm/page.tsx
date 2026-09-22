@@ -124,6 +124,8 @@ export default async function CrmDashboardPage() {
           <StatCard label={t.reservation.kpiExpiredThisMonth} value={String(reservationStats.expiredThisMonth)} tone="danger" />
           <StatCard label={t.reservation.kpiCancelled} value={String(reservationStats.cancelledCount)} tone="danger" />
           <StatCard label={t.reservation.kpiConversionPending} value={String(reservationStats.conversionPendingCount)} />
+          <StatCard label={t.reservationContract.kpiContractsCreated} value={String(reservationStats.contractsCreatedCount)} tone="positive" />
+          <StatCard label={t.reservationContract.kpiConversionRate} value={`${reservationStats.conversionRate}%`} tone="positive" />
           <StatCard label={t.reservation.kpiAmountPending} value={sar.format(reservationStats.amountPending)} />
           <StatCard label={t.reservation.kpiAmountReceived} value={sar.format(reservationStats.amountReceived)} tone="positive" />
         </div>

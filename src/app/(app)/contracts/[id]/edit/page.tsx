@@ -52,6 +52,36 @@ export default async function EditContractPage({
         </p>
       )}
 
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h2 className="font-semibold text-slate-800 mb-3">{t.reservationContract.sourceTitle}</h2>
+        {contract.reservation ? (
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-slate-500">{t.reservationContract.sourceTitle}</dt>
+            <dd className="text-slate-800 font-medium">{t.reservationContract.sourceReservation}</dd>
+            <dt className="text-slate-500">{t.reservationContract.sourceReservationNumber}</dt>
+            <dd className="text-slate-800 font-medium">
+              <Link href={`/crm/reservations/${contract.reservation.id}`} className="text-brand-gold-dark hover:underline">
+                {contract.reservation.reservationNumber}
+              </Link>
+            </dd>
+            <dt className="text-slate-500">{t.reservationContract.sourceOfferNumber}</dt>
+            <dd className="text-slate-800 font-medium">
+              <Link href={`/crm/offers/${contract.reservation.offer.id}`} className="text-brand-gold-dark hover:underline">
+                {contract.reservation.offer.offerNumber}
+              </Link>
+            </dd>
+            <dt className="text-slate-500">{t.reservationContract.sourceLead}</dt>
+            <dd className="text-slate-800 font-medium">
+              <Link href={`/crm/leads/${contract.reservation.lead.id}`} className="text-brand-gold-dark hover:underline">
+                {contract.reservation.lead.fullName}
+              </Link>
+            </dd>
+          </dl>
+        ) : (
+          <p className="text-sm text-slate-600">{t.reservationContract.sourceManual}</p>
+        )}
+      </div>
+
       <form action={updateContract} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
         <input type="hidden" name="contractId" value={contract.id} />
 

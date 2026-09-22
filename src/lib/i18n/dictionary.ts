@@ -649,6 +649,9 @@ export interface Dictionary {
     reservationInvalidTransition: string;
     reservationCancelReasonNoteRequired: string;
     reservationCannotEdit: string;
+    reservationNotConfirmedForConversion: string;
+    reservationOfferMismatch: string;
+    offerMissingLeaseStartDate: string;
   };
   zatca: {
     notConfigured: string;
@@ -1497,6 +1500,7 @@ export interface Dictionary {
     activityCancelled: (reservationNumber: string) => string;
     activityReleased: (reservationNumber: string) => string;
     activityExpired: (reservationNumber: string) => string;
+    activityContractCreated: (contractNumber: string, unitNumber: string) => string;
 
     createReservationButton: string;
     createReservationFromLeadButton: string;
@@ -1565,7 +1569,6 @@ export interface Dictionary {
     actionRelease: string;
     actionUpdateAmountStatus: string;
     actionCreateContract: string;
-    contractNotImplemented: string;
 
     cancelTitle: string;
     fieldCancelReason: string;
@@ -1606,6 +1609,71 @@ export interface Dictionary {
     unitReservedLabel: string;
     unitReservationNumberLabel: string;
     unitHoldUntilLabel: string;
+
+    convertedContractLabel: string;
+    convertedAtLabel: string;
+    convertedRenterLabel: string;
+    viewContractLink: string;
+  };
+  reservationContract: {
+    createContractPageTitle: string;
+    createContractPageSubtitle: (reservationNumber: string) => string;
+    reviewTitle: string;
+    reviewDisclaimer: string;
+    fieldLeadTenant: string;
+    fieldUnit: string;
+    fieldCompound: string;
+    fieldOfferNumber: string;
+    fieldReservationNumber: string;
+    fieldNetAnnualRent: string;
+    fieldPaymentFrequency: string;
+    fieldSecurityDeposit: string;
+    fieldCommission: string;
+    fieldVat: string;
+    fieldContractFee: string;
+    fieldContractFeeNote: string;
+    fieldLeaseStart: string;
+    fieldLeaseEnd: string;
+    fieldSpecialTerms: string;
+    back: string;
+    submit: string;
+    alreadyConverted: string;
+
+    sourceTitle: string;
+    sourceManual: string;
+    sourceReservation: string;
+    sourceReservationNumber: string;
+    sourceOfferNumber: string;
+    sourceLead: string;
+
+    pipelineContractBadge: (contractNumber: string) => string;
+
+    leadFunnelWonTitle: string;
+    leadFunnelWonContract: string;
+    leadFunnelWonUnit: string;
+    leadFunnelWonLeaseStart: string;
+    leadFunnelWonLeaseEnd: string;
+
+    kpiContractsCreated: string;
+    kpiConversionRate: string;
+
+    funnelReportTitle: string;
+    funnelReportSubtitle: string;
+    funnelStageLead: string;
+    funnelStageViewing: string;
+    funnelStageOffer: string;
+    funnelStageReservation: string;
+    funnelStageContract: string;
+    funnelColCount: string;
+    funnelColConversion: string;
+
+    originationReportTitle: string;
+    originationReportSubtitle: string;
+    colViewingNumber: string;
+    colAnnualRent: string;
+    colStartDate: string;
+    colEndDate: string;
+    colSource: string;
   };
 }
 

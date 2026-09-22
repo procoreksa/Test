@@ -571,6 +571,10 @@ export async function getReservationById(reservationId: string) {
       offer: true,
       unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
       assignedToUser: { select: { id: true, name: true, email: true } },
+      // Set only once CONVERTED_TO_CONTRACT (see reservation-contract.ts) -
+      // the Reservation profile's post-conversion display (Step 24 of
+      // docs/RESERVATION-TO-CONTRACT.md).
+      convertedContract: { select: { id: true, contractNumber: true, status: true, startDate: true, endDate: true, renter: { select: { fullName: true, fullNameAr: true } } } },
     },
   });
 }

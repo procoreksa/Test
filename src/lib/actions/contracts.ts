@@ -245,6 +245,10 @@ export async function getContractEditContext(contractId: string) {
       include: {
         unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
         renter: true,
+        // Null for a manually created (or renewed) contract - set only when
+        // this Contract resulted from convertReservationToContract() (see
+        // docs/RESERVATION-TO-CONTRACT.md) - drives this page's "Source" box.
+        reservation: { select: { id: true, reservationNumber: true, leadId: true, offer: { select: { id: true, offerNumber: true } }, lead: { select: { id: true, fullName: true } } } },
       },
     }),
     prisma.invoice.count({ where: { organizationId, contractId, status: { not: "CANCELLED" } } }),

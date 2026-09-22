@@ -42,6 +42,7 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
   const canCreateOffer = can("offer.create", role);
   const canViewOffers = can("offer.view", role);
   const canViewReservations = can("reservation.view", role);
+  const canViewContract = can("contract.view", role);
 
   const isClosed = lead.status === "WON" || lead.status === "LOST" || lead.status === "ARCHIVED";
 
@@ -222,6 +223,25 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
               ))}
             </ul>
           )}
+        </div>
+      )}
+
+      {lead.status === "WON" && lead.convertedContract && canViewContract && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-4">{t.reservationContract.leadFunnelWonTitle}</h2>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <InfoRow
+              label={t.reservationContract.leadFunnelWonContract}
+              value={
+                <Link href={`/contracts/${lead.convertedContract.id}/edit`} className="text-brand-gold-dark hover:underline">
+                  {lead.convertedContract.contractNumber}
+                </Link>
+              }
+            />
+            <InfoRow label={t.reservationContract.leadFunnelWonUnit} value={lead.convertedContract.unit.unitNumber} />
+            <InfoRow label={t.reservationContract.leadFunnelWonLeaseStart} value={dateFmt.format(lead.convertedContract.startDate)} />
+            <InfoRow label={t.reservationContract.leadFunnelWonLeaseEnd} value={dateFmt.format(lead.convertedContract.endDate)} />
+          </dl>
         </div>
       )}
 
@@ -491,7 +511,7 @@ export default async function LeadProfilePage({ params }: { params: Promise<{ id
   );
 }
 
-function InfoRow({ label, value }: { label: string; value?: string | null }) {
+function InfoRow({ label, value }: { label: string; value?: React.ReactNode }) {
   return (
     <>
       <dt className="text-slate-500">{label}</dt>

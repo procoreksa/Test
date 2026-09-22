@@ -73,7 +73,8 @@ export type Permission =
   | "reservation.confirm"
   | "reservation.cancel"
   | "reservation.release"
-  | "reservation.amount.update";
+  | "reservation.amount.update"
+  | "reservation.convert";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -143,6 +144,7 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "reservation.cancel",
   "reservation.release",
   "reservation.amount.update",
+  "reservation.convert",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -205,7 +207,10 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "offer.reject",
   "offer.cancel",
   // MANAGER holds every reservation.* operational permission (Step 29 of
-  // the brief: "MANAGER: all operational permissions").
+  // the brief: "MANAGER: all operational permissions"), including
+  // reservation.convert - OWNER/ADMIN/MANAGER only per docs/
+  // RESERVATION-TO-CONTRACT.md Step 28 (ACCOUNTANT/VIEWER excluded, same
+  // as every other reservation mutation).
   "reservation.view",
   "reservation.create",
   "reservation.update",
@@ -213,6 +218,7 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "reservation.cancel",
   "reservation.release",
   "reservation.amount.update",
+  "reservation.convert",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,

@@ -153,6 +153,11 @@ export async function createTestOffer(
     discountPercentage: number;
     validFrom: Date;
     validUntil: Date;
+    leaseStartDate: Date | null;
+    leaseDurationMonths: number;
+    leasingCommissionAmount: number;
+    specialTerms: string;
+    paymentFrequency: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL" | "ONE_TIME";
   }> = {}
 ) {
   const annualRent = overrides.annualRent ?? 80000;
@@ -178,7 +183,11 @@ export async function createTestOffer(
       netAnnualRent,
       securityDeposit: netAnnualRent / 4,
       totalInitialPayment: netAnnualRent / 4,
-      paymentFrequency: "QUARTERLY",
+      paymentFrequency: overrides.paymentFrequency ?? "QUARTERLY",
+      leaseStartDate: overrides.leaseStartDate,
+      leaseDurationMonths: overrides.leaseDurationMonths ?? 12,
+      leasingCommissionAmount: overrides.leasingCommissionAmount ?? 0,
+      specialTerms: overrides.specialTerms,
       createdByUserId,
     },
   });
@@ -264,6 +273,50 @@ export async function seedFullOrg(label: string) {
 }
 
 export type SeededOrg = Awaited<ReturnType<typeof seedFullOrg>>;
+
+/**
+ * A fresh Unit + ACCEPTED Offer (with leaseStartDate set, since Offer's
+ * own field is nullable and createReservation()/convertReservationToContract()
+ * both need it) + CONFIRMED Reservation, with the Unit's status manually
+ * set to RESERVED - fixtures bypass the real confirmReservation() server
+ * action (which is what sets that invariant in production), so it must be
+ * set explicitly here to match what convertReservationToContract() expects
+ * to find. Always a brand-new Unit/Offer (never org.unit/org.acceptedOffer)
+ * so Reservation -> Contract conversion tests never collide with the base
+ * seedFullOrg() fixtures other tests already depend on.
+ */
+export async function createConvertibleReservation(
+  org: SeededOrg,
+  overrides: Partial<{
+    unitNumber: string;
+    annualRent: number;
+    leaseStartDate: Date;
+    leaseDurationMonths: number;
+    paymentFrequency: "MONTHLY" | "QUARTERLY" | "SEMI_ANNUAL" | "ANNUAL" | "ONE_TIME";
+    leasingCommissionAmount: number;
+    specialTerms: string;
+    reservationAmount: number;
+  }> = {}
+) {
+  const unit = await createTestUnit(org.organization.id, org.floor.id, { unitNumber: overrides.unitNumber ?? `CONV-${uniqueSuffix()}` });
+  const offer = await createTestOffer(org.organization.id, org.lead.id, unit.id, org.admin.id, {
+    assignedToUserId: org.admin.id,
+    status: "ACCEPTED",
+    annualRent: overrides.annualRent ?? 80000,
+    leaseStartDate: overrides.leaseStartDate ?? new Date("2027-06-01T00:00:00Z"),
+    leaseDurationMonths: overrides.leaseDurationMonths ?? 12,
+    paymentFrequency: overrides.paymentFrequency ?? "QUARTERLY",
+    leasingCommissionAmount: overrides.leasingCommissionAmount ?? 4000,
+    specialTerms: overrides.specialTerms,
+  });
+  const reservation = await createTestReservation(org.organization.id, org.lead.id, offer.id, unit.id, org.admin.id, {
+    assignedToUserId: org.admin.id,
+    status: "CONFIRMED",
+    reservationAmount: overrides.reservationAmount ?? 0,
+  });
+  await prisma.unit.update({ where: { id: unit.id }, data: { status: "RESERVED" } });
+  return { unit, offer, reservation };
+}
 
 /**
  * Adds a real contract (with generated schedule), an issued invoice, a

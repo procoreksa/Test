@@ -399,6 +399,17 @@ model Contract {
   renewedFromContract   Contract? @relation("ContractRenewal", fields: [renewedFromContractId], references: [id])
   renewedIntoContract   Contract? @relation("ContractRenewal")
 
+  // Reservation -> Contract conversion traceability (see
+  // docs/RESERVATION-TO-CONTRACT.md). Nullable/unique: most contracts are
+  // still created manually (source = "Manual"); a Contract created via
+  // convertReservationToContract() carries the originating Reservation's
+  // id here, and that Reservation's own convertedContractId points back -
+  // the unique constraint on both sides is the DB-level backstop against
+  // ever creating two Contracts from the same Reservation, on top of the
+  // Serializable transaction and the application-layer idempotency check.
+  reservationId String?      @unique
+  reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
+
   paymentSchedules  PaymentSchedule[]
   invoices          Invoice[]
   convertedFromLead Lead?
@@ -1433,6 +1444,20 @@ model Reservation {
   cancelledAt DateTime?
   expiredAt   DateTime?
   releasedAt  DateTime?
+
+  // Set only by convertReservationToContract() (see
+  // docs/RESERVATION-TO-CONTRACT.md) in the same transaction that flips
+  // status to CONVERTED_TO_CONTRACT. Deliberately a single physical
+  // relation, not two duplicated FK columns (Step 13 of the brief): the
+  // real foreign key lives on Contract.reservationId (nullable, unique) -
+  // `convertedContract` here is Prisma's virtual back-relation, giving
+  // "which Contract resulted from this Reservation" for free from the
+  // same column that already answers "which Reservation created this
+  // Contract" (Contract.reservation). The unique constraint on
+  // Contract.reservationId is what actually stops the DB from ever
+  // linking a second Contract to the same Reservation.
+  convertedContract Contract?
+  convertedAt       DateTime?
 
   reservationAmount       Decimal                 @default(0) @db.Decimal(12, 2)
   reservationAmountStatus ReservationAmountStatus @default(NOT_REQUIRED)

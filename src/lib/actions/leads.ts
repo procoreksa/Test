@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import type { LeadStatus, LeadSource, LeadType, Prisma } from "@prisma/client";
+import type { Lead, LeadStatus, LeadSource, LeadType, Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession } from "@/lib/session";
@@ -362,6 +362,34 @@ export async function findPossibleRenterMatches(leadId: string) {
   );
 }
 
+/**
+ * The one place "is this Renter the same person as this Lead" is decided -
+ * matches by normalized mobile or case-insensitive email, exactly as
+ * findPossibleRenterMatches() above already does for the pre-submit UI
+ * warning. Shared by convertLeadToRenter()'s own duplicate check and by
+ * resolveRenterForLead() (used by the Reservation -> Contract conversion
+ * flow - see docs/RESERVATION-TO-CONTRACT.md, "Renter conversion
+ * behavior") so there is exactly one implementation of this rule, never
+ * two that could quietly drift apart.
+ */
+async function findDuplicateRenterCandidate(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  lead: Pick<Lead, "mobile" | "email">
+) {
+  const candidates = await tx.renter.findMany({
+    where: { organizationId, OR: [{ phone: { not: null } }, { email: { not: null } }] },
+    select: { id: true, phone: true, email: true },
+  });
+  return (
+    candidates.find(
+      (r) =>
+        (r.phone && isSameMobile(r.phone, lead.mobile)) ||
+        (r.email && lead.email && r.email.trim().toLowerCase() === lead.email.trim().toLowerCase())
+    ) ?? null
+  );
+}
+
 export async function convertLeadToRenter(formData: FormData) {
   const leadId = z.string().min(1).parse(formData.get("leadId"));
   const { organizationId } = await requirePermissionAudited("lead.convert", "Lead", leadId);
@@ -385,16 +413,8 @@ export async function convertLeadToRenter(formData: FormData) {
       resolvedRenterId = renter.id;
     } else {
       if (!forceNewRenter) {
-        const candidates = await tx.renter.findMany({
-          where: { organizationId, OR: [{ phone: { not: null } }, { email: { not: null } }] },
-          select: { id: true, phone: true, email: true },
-        });
-        const hasMatch = candidates.some(
-          (r) =>
-            (r.phone && isSameMobile(r.phone, lead.mobile)) ||
-            (r.email && lead.email && r.email.trim().toLowerCase() === lead.email.trim().toLowerCase())
-        );
-        if (hasMatch) throw new Error(t.validation.possibleDuplicateRenter);
+        const duplicate = await findDuplicateRenterCandidate(tx, organizationId, lead);
+        if (duplicate) throw new Error(t.validation.possibleDuplicateRenter);
       }
       const renter = await tx.renter.create({
         data: {
@@ -432,6 +452,48 @@ export async function convertLeadToRenter(formData: FormData) {
   revalidatePath(`/crm/leads/${leadId}`);
   revalidatePath("/renters");
   return renterId;
+}
+
+/**
+ * Resolves the Renter a Lead should become as part of an automated
+ * Reservation -> Contract conversion (Step 4 of
+ * docs/RESERVATION-TO-CONTRACT.md) - never a second implementation of
+ * convertLeadToRenter()'s own logic. If the Lead already converted
+ * (convertedRenterId set), that Renter is reused outright. Otherwise the
+ * same duplicate-detection query convertLeadToRenter() uses is run; since
+ * this flow has no interactive step for a human to choose "link" vs
+ * "new" the way the CRM conversion UI does, a match is auto-linked rather
+ * than blocking contract creation, and no match creates a fresh Renter -
+ * both branches audited identically to convertLeadToRenter()'s own
+ * "new Renter" path. Does NOT set Lead.status - the caller (
+ * convertReservationToContract()) only moves the Lead to WON after the
+ * Contract itself is successfully created, in the same transaction.
+ */
+export async function resolveRenterForLead(tx: Prisma.TransactionClient, organizationId: string, lead: Lead): Promise<{ renterId: string; createdNewRenter: boolean }> {
+  if (lead.convertedRenterId) {
+    return { renterId: lead.convertedRenterId, createdNewRenter: false };
+  }
+
+  const duplicate = await findDuplicateRenterCandidate(tx, organizationId, lead);
+  if (duplicate) {
+    return { renterId: duplicate.id, createdNewRenter: false };
+  }
+
+  const renter = await tx.renter.create({
+    data: {
+      organizationId,
+      fullName: lead.fullName,
+      phone: lead.mobile,
+      email: lead.email || undefined,
+    },
+  });
+  await auditCreate(tx, {
+    entityType: "Renter",
+    entityId: renter.id,
+    entityDisplayName: renter.fullName,
+    newValues: { fullName: renter.fullName, phone: renter.phone, source: "Reservation-to-Contract conversion" },
+  });
+  return { renterId: renter.id, createdNewRenter: true };
 }
 
 export interface LeadListFilters {
@@ -492,7 +554,13 @@ export async function listLeads(filters: LeadListFilters = {}) {
   const [rows, total] = await Promise.all([
     prisma.lead.findMany({
       where,
-      include: { assignedToUser: { select: { id: true, name: true } }, preferredCompound: { select: { id: true, name: true, arabicName: true } } },
+      include: {
+        assignedToUser: { select: { id: true, name: true } },
+        preferredCompound: { select: { id: true, name: true, arabicName: true } },
+        // Only ever set for WON leads (see docs/RESERVATION-TO-CONTRACT.md)
+        // - drives the Pipeline board's "Contract: XXX" badge (Step 27).
+        convertedContract: { select: { contractNumber: true } },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
       take: PAGE_SIZE,
@@ -511,6 +579,10 @@ export async function getLeadById(leadId: string) {
       assignedToUser: { select: { id: true, name: true, email: true } },
       preferredCompound: { select: { id: true, name: true, arabicName: true } },
       convertedRenter: { select: { id: true, fullName: true } },
+      // Set only once a Reservation converts to a Contract (see
+      // docs/RESERVATION-TO-CONTRACT.md) - the Lead-profile funnel's
+      // "Lease Contract" section (Step 26).
+      convertedContract: { select: { id: true, contractNumber: true, startDate: true, endDate: true, unit: { select: { unitNumber: true } } } },
     },
   });
 }

@@ -48,7 +48,7 @@ viewing.view / viewing.create / viewing.update / viewing.assign / viewing.comple
 
 offer.view / offer.create / offer.update / offer.submit / offer.approve / offer.send / offer.revise / offer.accept / offer.reject / offer.cancel
 
-reservation.view / reservation.create / reservation.update / reservation.confirm / reservation.cancel / reservation.release / reservation.amount.update
+reservation.view / reservation.create / reservation.update / reservation.confirm / reservation.cancel / reservation.release / reservation.amount.update / reservation.convert
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -131,6 +131,13 @@ released, or lazily expired instead - all three preserve the row),
 matching the no-hard-delete policy every other CRM module already
 established.
 
+`reservation.convert` gates Reservation → Contract conversion (see
+`docs/RESERVATION-TO-CONTRACT.md`). OWNER/ADMIN/MANAGER only - the same
+three roles as every other `reservation.*` mutation; ACCOUNTANT and
+VIEWER do not get it, consistent with ACCOUNTANT's policy above (its
+`reservation.*` grant stops at `view`/`amount.update`, never an
+operational mutation) and VIEWER's read-only policy everywhere.
+
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
 future edit action on those entities should be gated by them), but as of this
@@ -210,6 +217,7 @@ create/delete, not edit. When one is added, gate it with the matching
 | reservation.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
 | reservation.release | ✅ | ✅ | ✅ | ❌ | ❌ |
 | reservation.amount.update | ✅ | ✅ | ✅ | ✅ | ❌ |
+| reservation.convert | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 

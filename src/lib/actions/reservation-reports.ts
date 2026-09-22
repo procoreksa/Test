@@ -2,7 +2,7 @@
 
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
-import { computeReservationConfirmationRate } from "@/lib/crm/reservation-rules";
+import { computeReservationConfirmationRate, computeReservationToContractConversionRate } from "@/lib/crm/reservation-rules";
 import { syncExpiredReservations } from "@/lib/actions/reservations";
 
 function startOfMonth(d: Date): Date {
@@ -28,13 +28,28 @@ export async function getReservationDashboardStats() {
   const endOfToday = new Date(startOfToday);
   endOfToday.setDate(endOfToday.getDate() + 1);
 
-  const [activeCount, confirmedCount, expiringTodayCount, expiredThisMonth, cancelledAllTime, expiredAllTime, amountPendingAgg, amountReceivedAgg] = await Promise.all([
+  const [
+    activeCount,
+    confirmedCount,
+    expiringTodayCount,
+    expiredThisMonth,
+    cancelledAllTime,
+    expiredAllTime,
+    releasedAllTime,
+    convertedAllTime,
+    contractsCreatedThisMonth,
+    amountPendingAgg,
+    amountReceivedAgg,
+  ] = await Promise.all([
     prisma.reservation.count({ where: { organizationId, status: { in: ["DRAFT", "PENDING", "CONFIRMED"] } } }),
     prisma.reservation.count({ where: { organizationId, status: "CONFIRMED" } }),
     prisma.reservation.count({ where: { organizationId, status: { in: ["PENDING", "CONFIRMED"] }, holdUntil: { gte: startOfToday, lt: endOfToday } } }),
     prisma.reservation.count({ where: { organizationId, status: "EXPIRED", expiredAt: { gte: monthStart } } }),
     prisma.reservation.count({ where: { organizationId, status: "CANCELLED" } }),
     prisma.reservation.count({ where: { organizationId, status: "EXPIRED" } }),
+    prisma.reservation.count({ where: { organizationId, status: "RELEASED" } }),
+    prisma.reservation.count({ where: { organizationId, status: "CONVERTED_TO_CONTRACT" } }),
+    prisma.reservation.count({ where: { organizationId, status: "CONVERTED_TO_CONTRACT", convertedAt: { gte: monthStart } } }),
     prisma.reservation.aggregate({ where: { organizationId, reservationAmountStatus: "PENDING" }, _sum: { reservationAmount: true } }),
     prisma.reservation.aggregate({ where: { organizationId, reservationAmountStatus: "RECEIVED" }, _sum: { reservationAmount: true } }),
   ]);
@@ -45,12 +60,20 @@ export async function getReservationDashboardStats() {
     expiringTodayCount,
     expiredThisMonth,
     cancelledCount: cancelledAllTime,
-    // "Reservation Conversion Pending" (Step 26) = confirmed reservations
-    // not yet CONVERTED_TO_CONTRACT - since no action in this task ever
-    // sets that status, every CONFIRMED reservation currently counts;
-    // this becomes meaningful once the future Contract module exists.
+    // "Reservation Conversion Pending" (Step 26/34 of
+    // docs/RESERVATION-TO-CONTRACT.md) = confirmed reservations not yet
+    // CONVERTED_TO_CONTRACT. CONFIRMED already excludes
+    // CONVERTED_TO_CONTRACT (a distinct status value), so this needs no
+    // separate subtraction.
     conversionPendingCount: confirmedCount,
     confirmationRate: computeReservationConfirmationRate(confirmedCount, cancelledAllTime, expiredAllTime),
+    // Step 34: Contracts Created from Reservations / Reservation ->
+    // Contract Conversion Rate. Active (DRAFT/PENDING/CONFIRMED)
+    // reservations are excluded from the rate's denominator - only
+    // end-state reservations count.
+    contractsCreatedCount: convertedAllTime,
+    contractsCreatedThisMonth,
+    conversionRate: computeReservationToContractConversionRate(convertedAllTime, cancelledAllTime, expiredAllTime, releasedAllTime),
     amountPending: Number(amountPendingAgg._sum.reservationAmount ?? 0),
     amountReceived: Number(amountReceivedAgg._sum.reservationAmount ?? 0),
   };
@@ -154,4 +177,84 @@ export async function getAgentReservationPerformanceReport() {
   return Array.from(byAgent.values())
     .map((a) => ({ ...a, confirmationRate: computeReservationConfirmationRate(a.confirmed, a.cancelled, a.expired) }))
     .sort((a, b) => b.total - a.total);
+}
+
+/**
+ * CRM Funnel Report (Step 35 of docs/RESERVATION-TO-CONTRACT.md): counts
+ * of Leads, Viewings, Offers, Reservations, and Contracts, plus each
+ * stage's conversion percentage from the immediately previous stage.
+ * Deliberately counts DISTINCT Leads that reached each stage (via each
+ * stage's own leadId, never a raw row count) - a Lead with two Viewings
+ * still counts once at the "Viewing" stage - so the funnel reflects
+ * actual linked records and never implies causality between unrelated
+ * rows (the brief's explicit "be precise with denominators" instruction).
+ */
+export async function getCrmFunnelReport() {
+  const { organizationId } = await requirePermission("reservation.view");
+  await syncExpiredReservations(organizationId);
+
+  const [leadCount, viewingLeadIds, offerLeadIds, reservationLeadIds, contractCount] = await Promise.all([
+    prisma.lead.count({ where: { organizationId } }),
+    prisma.viewing.findMany({ where: { organizationId }, select: { leadId: true }, distinct: ["leadId"] }),
+    prisma.leasingOffer.findMany({ where: { organizationId }, select: { leadId: true }, distinct: ["leadId"] }),
+    prisma.reservation.findMany({ where: { organizationId }, select: { leadId: true }, distinct: ["leadId"] }),
+    prisma.contract.count({ where: { organizationId, reservationId: { not: null } } }),
+  ]);
+
+  const viewingCount = viewingLeadIds.length;
+  const offerCount = offerLeadIds.length;
+  const reservationCount = reservationLeadIds.length;
+
+  const pct = (numerator: number, denominator: number) => (denominator === 0 ? 0 : Math.round((numerator / denominator) * 1000) / 10);
+
+  return [
+    { stage: "lead" as const, count: leadCount, conversionFromPrevious: null },
+    { stage: "viewing" as const, count: viewingCount, conversionFromPrevious: pct(viewingCount, leadCount) },
+    { stage: "offer" as const, count: offerCount, conversionFromPrevious: pct(offerCount, viewingCount) },
+    { stage: "reservation" as const, count: reservationCount, conversionFromPrevious: pct(reservationCount, offerCount) },
+    { stage: "contract" as const, count: contractCount, conversionFromPrevious: pct(contractCount, reservationCount) },
+  ];
+}
+
+/**
+ * Contract Origination Report (Step 36) - full traceability from Lead to
+ * Contract for every Contract created via the Reservation conversion
+ * flow, plus every manually-created Contract shown with Source =
+ * "Manual" (reservationId null). One row per Contract, using only
+ * actual linked records (the Contract's own reservationId relation),
+ * never inferred/matched by name or date.
+ */
+export async function getContractOriginationReport() {
+  const { organizationId } = await requirePermission("reservation.view");
+  const contracts = await prisma.contract.findMany({
+    where: { organizationId },
+    include: {
+      renter: { select: { fullName: true, fullNameAr: true } },
+      unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
+      reservation: {
+        select: {
+          reservationNumber: true,
+          lead: { select: { id: true, fullName: true } },
+          offer: { select: { offerNumber: true, viewing: { select: { viewingNumber: true } } } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  return contracts.map((c) => ({
+    id: c.id,
+    contractNumber: c.contractNumber,
+    leadName: c.reservation?.lead.fullName ?? null,
+    leadId: c.reservation?.lead.id ?? null,
+    viewingNumber: c.reservation?.offer.viewing?.viewingNumber ?? null,
+    offerNumber: c.reservation?.offer.offerNumber ?? null,
+    reservationNumber: c.reservation?.reservationNumber ?? null,
+    renterName: c.renter.fullNameAr ?? c.renter.fullName,
+    unitNumber: c.unit.unitNumber,
+    compoundName: c.unit.floor.building.compound.name,
+    rentAmount: Number(c.rentAmount),
+    startDate: c.startDate,
+    endDate: c.endDate,
+    source: c.reservation ? ("RESERVATION" as const) : ("MANUAL" as const),
+  }));
 }

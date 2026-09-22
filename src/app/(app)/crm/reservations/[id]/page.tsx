@@ -10,7 +10,7 @@ import {
 import { listLeadActivities } from "@/lib/actions/lead-activities";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
-import { getLocale, getDictionary, longDateTimeFormatter, currencyFormatter } from "@/lib/i18n";
+import { getLocale, getDictionary, longDateTimeFormatter, currencyFormatter, pickLocalized } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
 import { AuditTimeline } from "@/components/audit-timeline";
 
@@ -27,10 +27,12 @@ export default async function ReservationProfilePage({ params }: { params: Promi
   const canCancel = can("reservation.cancel", role);
   const canRelease = can("reservation.release", role);
   const canUpdateAmount = can("reservation.amount.update", role);
+  const canConvert = can("reservation.convert", role);
 
   const isDraft = reservation.status === "DRAFT";
   const isPending = reservation.status === "PENDING";
   const isConfirmed = reservation.status === "CONFIRMED";
+  const isConverted = reservation.status === "CONVERTED_TO_CONTRACT";
   const canCancelThis = isDraft || isPending || isConfirmed;
 
   return (
@@ -171,11 +173,39 @@ export default async function ReservationProfilePage({ params }: { params: Promi
         )}
       </div>
 
-      {reservation.status === "CONFIRMED" && (
+      {isConfirmed && canConvert && (
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-          <button disabled className="rounded-lg border border-dashed border-slate-300 text-slate-400 px-4 py-2 text-sm cursor-not-allowed">
-            {t.reservation.contractNotImplemented}
-          </button>
+          <Link
+            href={`/crm/reservations/${reservation.id}/create-contract`}
+            className="inline-block bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-4 py-2 text-sm font-semibold"
+          >
+            {t.reservation.actionCreateContract}
+          </Link>
+        </div>
+      )}
+
+      {isConverted && reservation.convertedContract && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-3">{t.reservationContract.leadFunnelWonTitle}</h2>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-slate-500">{t.reservation.convertedContractLabel}</dt>
+            <dd className="text-slate-800 font-medium">
+              <Link href={`/contracts/${reservation.convertedContract.id}/edit`} className="text-brand-gold-dark hover:underline">
+                {reservation.convertedContract.contractNumber}
+              </Link>
+            </dd>
+            <dt className="text-slate-500">{t.reservation.convertedAtLabel}</dt>
+            <dd className="text-slate-800 font-medium">{reservation.convertedAt ? dateTimeFmt.format(reservation.convertedAt) : "—"}</dd>
+            <dt className="text-slate-500">{t.reservation.convertedRenterLabel}</dt>
+            <dd className="text-slate-800 font-medium">
+              {pickLocalized(locale, reservation.convertedContract.renter.fullNameAr, reservation.convertedContract.renter.fullName)}
+            </dd>
+            <dt className="text-slate-500">{t.reservation.colStatus}</dt>
+            <dd className="text-slate-800 font-medium">{t.contractStatus[reservation.convertedContract.status]}</dd>
+          </dl>
+          <Link href={`/contracts/${reservation.convertedContract.id}/edit`} className="inline-block mt-3 text-brand-gold-dark hover:underline text-sm font-medium">
+            {t.reservation.viewContractLink} →
+          </Link>
         </div>
       )}
 
