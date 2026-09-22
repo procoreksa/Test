@@ -63,25 +63,31 @@ model Organization {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  users              User[]
-  properties         Property[]
-  renters            Renter[]
-  contracts          Contract[]
-  invoices           Invoice[]
-  payments           Payment[]
-  counters           Counter[]
-  units              Unit[]
-  compounds          Compound[]
-  buildings          Building[]
-  floors             Floor[]
-  owners             Owner[]
-  propertyOwnerships PropertyOwnership[]
-  ownerLedgerEntries OwnerLedgerEntry[]
-  leads              Lead[]
-  leadActivities     LeadActivity[]
-  viewings           Viewing[]
-  leasingOffers      LeasingOffer[]
-  reservations       Reservation[]
+  users                 User[]
+  properties            Property[]
+  renters               Renter[]
+  contracts             Contract[]
+  invoices              Invoice[]
+  payments              Payment[]
+  counters              Counter[]
+  units                 Unit[]
+  compounds             Compound[]
+  buildings             Building[]
+  floors                Floor[]
+  owners                Owner[]
+  propertyOwnerships    PropertyOwnership[]
+  ownerLedgerEntries    OwnerLedgerEntry[]
+  leads                 Lead[]
+  leadActivities        LeadActivity[]
+  viewings              Viewing[]
+  leasingOffers         LeasingOffer[]
+  reservations          Reservation[]
+  moveIns               MoveIn[]
+  moveInInspectionItems MoveInInspectionItem[]
+  moveInInventoryItems  MoveInInventoryItem[]
+  moveInMeterReadings   MoveInMeterReading[]
+  moveInKeyItems        MoveInKeyItem[]
+  moveInAttachments     MoveInAttachment[]
 
   @@map("organizations")
 }
@@ -114,6 +120,8 @@ model User {
   assignedViewings     Viewing[]      @relation("ViewingAssignedTo")
   assignedOffers       LeasingOffer[] @relation("OfferAssignedTo")
   assignedReservations Reservation[]  @relation("ReservationAssignedTo")
+  inspectedMoveIns     MoveIn[]       @relation("MoveInInspectedBy")
+  handedOverMoveIns    MoveIn[]       @relation("MoveInHandedOverBy")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -292,6 +300,7 @@ model Unit {
   viewingUnits       ViewingUnit[]
   leasingOffers      LeasingOffer[]
   reservations       Reservation[]
+  moveIns            MoveIn[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -330,6 +339,7 @@ model Renter {
   invoices          Invoice[]
   payments          Payment[]
   convertedFromLead Lead?
+  moveIns           MoveIn[]
 
   @@index([organizationId])
   @@map("renters")
@@ -413,6 +423,14 @@ model Contract {
   paymentSchedules  PaymentSchedule[]
   invoices          Invoice[]
   convertedFromLead Lead?
+  // No DB-level unique constraint here (see docs/MOVE-IN-HANDOVER.md,
+  // "Contract eligibility") - "one active/completed Move-In per Contract"
+  // is enforced the same way "one active Reservation per Offer" already
+  // is elsewhere in this schema: an application-layer predicate
+  // (blocksNewMoveInForContract()) checked inside a Serializable
+  // transaction, not a DB constraint - a Contract may have several
+  // CANCELLED MoveIn attempts before a successful one.
+  moveIns           MoveIn[]
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
@@ -1490,4 +1508,356 @@ model Reservation {
   @@index([organizationId, holdUntil])
   @@index([organizationId, createdAt])
   @@map("reservations")
+}
+
+// ---------------------------------------------------------------------------
+// Move-In & Handover Inspection (see docs/MOVE-IN-HANDOVER.md)
+//
+// Establishes the immutable-once-COMPLETED baseline of a Unit's condition at
+// delivery to the tenant - the record a future Move-Out module will compare
+// against. Purely operational: never creates/alters Invoice/Payment/
+// PaymentSchedule/OwnerLedgerEntry, and never changes Unit.status (occupancy
+// is already set at Contract creation - see Contract.moveIns above and
+// docs/MOVE-IN-HANDOVER.md, "Unit occupancy decision").
+// ---------------------------------------------------------------------------
+
+enum MoveInStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  READY_FOR_HANDOVER
+  COMPLETED
+  CANCELLED
+}
+
+enum MoveInCancelReason {
+  CONTRACT_CANCELLED
+  CUSTOMER_REQUEST
+  UNIT_NOT_READY
+  RESCHEDULED
+  DATA_ERROR
+  OTHER
+}
+
+/// Shared by MoveIn.overallCondition, MoveInInspectionItem.condition, and
+/// MoveInInventoryItem.condition (Step 11: "do not create slightly
+/// different condition systems... unless justified" - none of these three
+/// uses needs a different vocabulary).
+enum ConditionRating {
+  NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+  NOT_WORKING
+  NOT_APPLICABLE
+}
+
+/// Shared by MoveInInspectionItem.category and MoveInInventoryItem.category -
+/// an inventory item's location ("Bedroom", "Kitchen") is the same set of
+/// physical areas an inspection item's category already names, so one enum
+/// covers both rather than two parallel category systems.
+enum InspectionCategory {
+  ENTRANCE
+  LIVING_ROOM
+  DINING_ROOM
+  KITCHEN
+  BEDROOM
+  BATHROOM
+  BALCONY
+  WINDOWS_DOORS
+  FLOORING
+  WALLS_CEILINGS
+  LIGHTING
+  ELECTRICAL
+  PLUMBING
+  AIR_CONDITIONING
+  APPLIANCES
+  FURNITURE
+  SAFETY
+  OTHER
+}
+
+enum MeterType {
+  ELECTRICITY
+  WATER
+  GAS
+  OTHER
+}
+
+enum KeyType {
+  KEY
+  ACCESS_CARD
+  REMOTE
+  PARKING_REMOTE
+  OTHER
+}
+
+enum MoveInAttachmentType {
+  PHOTO
+  DOCUMENT
+  OTHER
+}
+
+model MoveIn {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "MI-000001" via the existing Counter infrastructure (key "moveIn"),
+  // never a separate numbering scheme.
+  moveInNumber String
+
+  // Required - a Move-In always traces back to one ACTIVE Contract (Step
+  // 7). unitId/renterId below are copied from the Contract at creation and
+  // never allowed to diverge (Step 50: "MoveIn Unit/Renter must derive
+  // from Contract") - kept as their own columns (not derived via the
+  // Contract relation on every read) purely for direct-filter query
+  // convenience, same pattern Reservation.unitId already established.
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  unitId     String
+  unit       Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  renterId   String
+  renter     Renter   @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  status MoveInStatus @default(DRAFT)
+
+  scheduledAt  DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  handoverDate DateTime?
+
+  // Live operational assignment - same pattern as Lead/Viewing/Offer/
+  // Reservation's own assignedToUserId: a real relation, verified
+  // same-organization on every write.
+  inspectedByUserId  String?
+  inspectedByUser    User?   @relation("MoveInInspectedBy", fields: [inspectedByUserId], references: [id], onDelete: SetNull)
+  handedOverByUserId String?
+  handedOverByUser   User?   @relation("MoveInHandedOverBy", fields: [handedOverByUserId], references: [id], onDelete: SetNull)
+
+  // Free-text tenant-representative identity captured at handover - not a
+  // User/Renter relation (the person physically present may be the tenant
+  // or an authorized representative, and is never an app user).
+  tenantRepresentativeName String?
+  tenantRepresentativeId   String? // ID/Iqama document number, free text
+
+  overallCondition ConditionRating?
+
+  tenantComments String?
+  internalNotes  String?
+
+  // Operational acknowledgement (Step 21) - deliberately NOT a legal
+  // e-signature. `tenantAcknowledgementOverride` lets authorized staff
+  // complete a handover without a tenant acknowledgement timestamp (Step
+  // 22: "tenant acknowledgement OR authorized override"), always paired
+  // with a reason and gated by the same moveIn.complete permission as
+  // completion itself.
+  tenantAcknowledgedAt                DateTime?
+  tenantAcknowledgementOverride       Boolean   @default(false)
+  tenantAcknowledgementOverrideReason String?
+  staffAcknowledgedAt                 DateTime?
+
+  // Operational flag only (Step 23) - defaulted from the originating
+  // Offer's furnishedStatus when the Contract came from a Reservation
+  // conversion (Contract.reservation.offer.furnishedStatus), staff-
+  // editable at creation for manual contracts where no such signal
+  // exists. Not a new Unit/Contract-level furnishing source of truth -
+  // scoped to this Move-In record only. Drives whether the completion
+  // validator requires at least one inventory item (Step 23).
+  isFurnished Boolean @default(false)
+
+  // Simple operational readiness confirmations (Step 34) - never a
+  // Maintenance Work Order.
+  utilitiesReady   Boolean @default(false)
+  keysReady        Boolean @default(false)
+  cleaningComplete Boolean @default(false)
+  unitReady        Boolean @default(false)
+
+  // Set true only when staff explicitly confirms there are no keys/access
+  // items to record (Step 22's "recorded or explicitly marked none") -
+  // otherwise the completion validator requires at least one MoveInKeyItem.
+  noKeysToRecord Boolean @default(false)
+
+  cancelReason     MoveInCancelReason?
+  cancelReasonNote String?
+  cancelledAt      DateTime?
+
+  // Plain string, not a relation - mirrors every other CRM module's own
+  // createdByUserId: survives a User being removed.
+  createdByUserId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inspectionItems MoveInInspectionItem[]
+  inventoryItems  MoveInInventoryItem[]
+  meterReadings   MoveInMeterReading[]
+  keyItems        MoveInKeyItem[]
+  attachments     MoveInAttachment[]
+
+  @@unique([organizationId, moveInNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, contractId])
+  @@index([organizationId, unitId])
+  @@index([organizationId, renterId])
+  @@index([organizationId, scheduledAt])
+  @@index([organizationId, handoverDate])
+  @@map("move_ins")
+}
+
+model MoveInInspectionItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveInId       String
+  moveIn         MoveIn       @relation(fields: [moveInId], references: [id], onDelete: Cascade)
+
+  category InspectionCategory
+
+  itemName   String
+  itemNameAr String?
+
+  // Null until inspected - isItemComplete()/computeInspectionProgress() in
+  // src/lib/operations/move-in-rules.ts are the single source of truth for
+  // what "complete" means, never re-derived ad hoc elsewhere.
+  condition ConditionRating?
+
+  // False for an item the default template includes but this specific
+  // Unit doesn't have (Step 9: "do not assume every Unit has every area") -
+  // excluded from the progress denominator entirely, same as an item whose
+  // condition is separately set to NOT_APPLICABLE.
+  isApplicable Boolean @default(true)
+
+  notes             String?
+  requiresAttention Boolean @default(false)
+
+  // Display/entry order within its category - set from the default
+  // template's own ordering at creation (Step 12).
+  sequence Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments MoveInAttachment[]
+
+  @@index([organizationId, moveInId])
+  @@index([moveInId, category])
+  @@map("move_in_inspection_items")
+}
+
+model MoveInInventoryItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveInId       String
+  moveIn         MoveIn       @relation(fields: [moveInId], references: [id], onDelete: Cascade)
+
+  // Reuses InspectionCategory (see enum comment) rather than a second
+  // furniture-specific category enum.
+  category InspectionCategory
+  itemName String
+
+  quantity Int @default(1)
+
+  condition ConditionRating?
+
+  serialNumber String?
+  brand        String?
+  model        String?
+  notes        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments MoveInAttachment[]
+
+  @@index([organizationId, moveInId])
+  @@map("move_in_inventory_items")
+}
+
+model MoveInMeterReading {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveInId       String
+  moveIn         MoveIn       @relation(fields: [moveInId], references: [id], onDelete: Cascade)
+
+  meterType     MeterType
+  meterNumber   String?
+  reading       Decimal   @db.Decimal(12, 2)
+  unitOfMeasure String?
+  readingDate   DateTime  @default(now())
+  notes         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, moveInId])
+  @@map("move_in_meter_readings")
+}
+
+model MoveInKeyItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveInId       String
+  moveIn         MoveIn       @relation(fields: [moveInId], references: [id], onDelete: Cascade)
+
+  keyType     KeyType
+  description String
+  quantity    Int     @default(1)
+  identifier  String?
+
+  // Whether this item is expected back at a future Move-Out (Step 60's
+  // "Keys Issued vs Keys Returned" comparison) - true for almost everything
+  // handed over at Move-In.
+  returnedExpected Boolean @default(true)
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, moveInId])
+  @@map("move_in_key_items")
+}
+
+/// Metadata-only (Step 19/51): no storage architecture exists in this
+/// codebase today beyond the 1MB base64-in-DB organization logo, which
+/// this module deliberately does NOT reuse (Move-In can accumulate dozens
+/// of photos - storing them as Postgres bytes is explicitly out of scope).
+/// `storageKey`/`fileUrl` are nullable placeholders for a future object-
+/// storage integration; every row created today is a caption/filename
+/// reference only, with no binary content stored anywhere. See
+/// docs/MOVE-IN-HANDOVER.md, "Attachment/photo strategy".
+model MoveInAttachment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveInId       String
+  moveIn         MoveIn       @relation(fields: [moveInId], references: [id], onDelete: Cascade)
+
+  // At most one of these two is set - a photo can document one specific
+  // checklist/inventory line, or the Move-In as a whole when both are null.
+  inspectionItemId String?
+  inspectionItem   MoveInInspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
+  inventoryItemId  String?
+  inventoryItem    MoveInInventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  attachmentType MoveInAttachmentType
+
+  fileName   String
+  mimeType   String
+  fileSize   Int?
+  storageKey String? // nullable - populated once real object storage is integrated (see model doc comment)
+
+  caption String?
+
+  uploadedByUserId String
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, moveInId])
+  @@map("move_in_attachments")
 }

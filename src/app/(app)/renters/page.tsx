@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { listRenters, createRenter, deleteRenter } from "@/lib/actions/renters";
+import { getMoveInStatusForRenters } from "@/lib/actions/move-ins";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
@@ -8,6 +10,8 @@ export default async function RentersPage() {
   const t = getDictionary(locale);
   const canCreate = can("renter.create", role);
   const canDelete = can("renter.delete", role);
+  const canViewMoveIns = can("moveIn.view", role);
+  const moveInByRenter: Awaited<ReturnType<typeof getMoveInStatusForRenters>> = canViewMoveIns ? await getMoveInStatusForRenters(renters.map((r) => r.id)) : new Map();
 
   return (
     <div className="space-y-6">
@@ -78,7 +82,16 @@ export default async function RentersPage() {
                     <span className="text-slate-400 text-xs">{t.renters.individualBadge}</span>
                   )}
                 </td>
-                <td className="px-5 py-3 text-slate-500">{r.phone || r.email || t.common.none}</td>
+                <td className="px-5 py-3 text-slate-500">
+                  {r.phone || r.email || t.common.none}
+                  {canViewMoveIns && moveInByRenter.get(r.id) && (
+                    <div className="mt-1">
+                      <Link href={`/operations/move-ins/${moveInByRenter.get(r.id)!.moveInId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
+                        {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveInByRenter.get(r.id)!.status]}
+                      </Link>
+                    </div>
+                  )}
+                </td>
                 <td className="px-5 py-3 text-left">
                   {canDelete && (
                     <form

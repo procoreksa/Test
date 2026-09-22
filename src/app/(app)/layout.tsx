@@ -50,6 +50,15 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   const crmNavItems = allCrmNavItems.filter((item) => can(item.permission, role));
 
+  // Its own navigation group (Step 58 of docs/MOVE-IN-HANDOVER.md), separate
+  // from CRM - Move-In/handover is post-Contract leasing-operations work,
+  // not CRM pipeline work. Never folds into the CRM group above.
+  const allOperationsNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
+    { href: "/operations", label: t.nav.operationsDashboard, icon: "🏗️", permission: "moveIn.view" },
+    { href: "/operations/move-ins", label: t.nav.operationsMoveIns, icon: "🔑", permission: "moveIn.view" },
+  ];
+  const operationsNavItems = allOperationsNavItems.filter((item) => can(item.permission, role));
+
   const brandMark = (
     <div className="flex items-center gap-2">
       <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
@@ -87,6 +96,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.nav.crmGroupLabel}</p>
                   {crmNavItems.map((crmItem) => (
                     <NavLink key={crmItem.href} {...crmItem} />
+                  ))}
+                </div>
+              )}
+              {item.href === "/renters" && operationsNavItems.length > 0 && (
+                <div className="pt-3 mt-2 border-t border-brand-black-line">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.nav.operationsGroupLabel}</p>
+                  {operationsNavItems.map((opItem) => (
+                    <NavLink key={opItem.href} {...opItem} />
                   ))}
                 </div>
               )}

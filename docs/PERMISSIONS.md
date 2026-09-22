@@ -49,6 +49,8 @@ viewing.view / viewing.create / viewing.update / viewing.assign / viewing.comple
 offer.view / offer.create / offer.update / offer.submit / offer.approve / offer.send / offer.revise / offer.accept / offer.reject / offer.cancel
 
 reservation.view / reservation.create / reservation.update / reservation.confirm / reservation.cancel / reservation.release / reservation.amount.update / reservation.convert
+
+moveIn.view / moveIn.create / moveIn.update / moveIn.start / moveIn.complete / moveIn.cancel / moveInInspection.update
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -138,6 +140,28 @@ VIEWER do not get it, consistent with ACCOUNTANT's policy above (its
 `reservation.*` grant stops at `view`/`amount.update`, never an
 operational mutation) and VIEWER's read-only policy everywhere.
 
+`moveIn.*`/`moveInInspection.update` gate the Move-In & Handover
+Inspection foundation (see `docs/MOVE-IN-HANDOVER.md`). MANAGER holds
+every `moveIn.*`/`moveInInspection.*` permission, matching its full
+operational access to every other leasing-operations module in this
+table (`contract.*`, `reservation.*`, etc.) - Move-In/handover is
+day-to-day operations work, not CRM pipeline work. ACCOUNTANT gets only
+`moveIn.view` (operational visibility, matching its broad `*.view` access
+elsewhere - e.g. `contract.view`, `ownerLedger.view`), no mutation
+permission at all. VIEWER gets `moveIn.view` only, same read-only pattern
+as everywhere else in this table. `moveInInspection.update` is a
+deliberately separate permission from `moveIn.update` (Step 44 of the
+brief) - it specifically gates checklist/inventory/meter/key/attachment
+data entry (the actual physical inspection work), while `moveIn.update`
+gates higher-level record fields (scheduling, readiness flags,
+acknowledgements). In practice every role that gets one gets the other
+(OWNER/ADMIN/MANAGER), but keeping them separate matches the brief's own
+instruction and leaves room for a future narrower "inspector" role to
+hold only `moveInInspection.update` without full `moveIn.update`. There
+is no `moveIn.delete`: a Move-In row is never deleted (only cancelled,
+`moveIn.cancel`, which preserves the row), matching the no-hard-delete
+policy every other module in this table already established.
+
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
 future edit action on those entities should be gated by them), but as of this
@@ -218,6 +242,13 @@ create/delete, not edit. When one is added, gate it with the matching
 | reservation.release | ✅ | ✅ | ✅ | ❌ | ❌ |
 | reservation.amount.update | ✅ | ✅ | ✅ | ✅ | ❌ |
 | reservation.convert | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveIn.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| moveIn.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveIn.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveIn.start | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveIn.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveIn.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveInInspection.update | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 

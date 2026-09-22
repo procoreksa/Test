@@ -376,3 +376,30 @@ export async function seedFinancialsForOrg(org: SeededOrg) {
 }
 
 export type SeededFinancials = Awaited<ReturnType<typeof seedFinancialsForOrg>>;
+
+/**
+ * A fresh Unit + ACTIVE Contract (with generated schedule) for Move-In
+ * tests (docs/MOVE-IN-HANDOVER.md) - uses the real createContractWithSchedule()
+ * service directly (bypassing the server action, same as seedFinancialsForOrg())
+ * so Contract.status/Unit.status land exactly as production contract
+ * creation leaves them (ACTIVE/OCCUPIED). Always a brand-new Unit (never
+ * org.unit) so Move-In tests never collide with other fixtures that already
+ * depend on org.unit's own state.
+ */
+export async function createTestContract(
+  org: SeededOrg,
+  overrides: Partial<{ unitNumber: string; renterId: string; rentAmount: number; startDate: Date; endDate: Date }> = {}
+) {
+  const unit = await createTestUnit(org.organization.id, org.floor.id, { unitNumber: overrides.unitNumber ?? `CTR-${uniqueSuffix()}` });
+  const contract = await createContractWithSchedule(prisma, org.organization.id, {
+    unitId: unit.id,
+    renterId: overrides.renterId ?? org.renter.id,
+    startDate: overrides.startDate ?? new Date("2027-01-01"),
+    endDate: overrides.endDate ?? new Date("2028-01-01"),
+    rentAmount: overrides.rentAmount ?? 12000,
+    paymentFrequency: "ANNUAL",
+    extraChargesMode: "ONE_TIME",
+    vatApplicable: false,
+  });
+  return { unit, contract };
+}

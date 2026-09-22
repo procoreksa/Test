@@ -3,6 +3,7 @@ import { listUnits, createUnit, deleteUnit } from "@/lib/actions/units";
 import { getLocationTree } from "@/lib/actions/floors";
 import { getUnitViewingCounts } from "@/lib/actions/viewings";
 import { getActiveReservationsForUnits } from "@/lib/actions/reservations";
+import { getMoveInStatusForUnits } from "@/lib/actions/move-ins";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
@@ -25,8 +26,10 @@ export default async function UnitsPage() {
   const canDelete = can("unit.delete", role);
   const canViewViewings = can("viewing.view", role);
   const canViewReservations = can("reservation.view", role);
+  const canViewMoveIns = can("moveIn.view", role);
   const viewingCounts = canViewViewings ? await getUnitViewingCounts(units.map((u) => u.id)) : new Map<string, number>();
   const reservationsByUnit = canViewReservations ? await getActiveReservationsForUnits(units.map((u) => u.id)) : new Map();
+  const moveInByUnit: Awaited<ReturnType<typeof getMoveInStatusForUnits>> = canViewMoveIns ? await getMoveInStatusForUnits(units.map((u) => u.id)) : new Map();
 
   return (
     <div className="space-y-6">
@@ -113,6 +116,17 @@ export default async function UnitsPage() {
                 </td>
                 <td className="px-5 py-3 text-slate-500">
                   {u.contracts[0] ? pickLocalized(locale, u.contracts[0].renter.fullNameAr, u.contracts[0].renter.fullName) : t.common.none}
+                  {canViewMoveIns && u.status === "OCCUPIED" && (
+                    <div className="mt-1">
+                      {moveInByUnit.get(u.id) ? (
+                        <Link href={`/operations/move-ins/${moveInByUnit.get(u.id)!.moveInId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
+                          {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveInByUnit.get(u.id)!.status]}
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-slate-400 whitespace-nowrap">{t.moveIn.noMoveInYet}</span>
+                      )}
+                    </div>
+                  )}
                 </td>
                 <td className="px-5 py-3 text-left space-x-2 rtl:space-x-reverse">
                   <Link href={`/units/${u.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">

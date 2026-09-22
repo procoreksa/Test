@@ -3,9 +3,10 @@ import { format } from "date-fns";
 import { getContractEditContext, updateContract } from "@/lib/actions/contracts";
 import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
+import { getMoveInForContract } from "@/lib/actions/move-ins";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
-import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
+import { getLocale, getDictionary, pickLocalized, shortDateFormatter } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
 import { AuditTimeline } from "@/components/audit-timeline";
 
@@ -21,6 +22,10 @@ export default async function EditContractPage({
     getCurrentUserRole(),
   ]);
   const t = getDictionary(locale);
+  const dateFmt = shortDateFormatter(locale);
+  const canViewMoveIns = can("moveIn.view", role);
+  const canCreateMoveIn = can("moveIn.create", role);
+  const moveIn = canViewMoveIns ? await getMoveInForContract(contract.id) : null;
 
   const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
@@ -81,6 +86,42 @@ export default async function EditContractPage({
           <p className="text-sm text-slate-600">{t.reservationContract.sourceManual}</p>
         )}
       </div>
+
+      {canViewMoveIns && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-3">{t.moveIn.sectionOverview}</h2>
+          {moveIn ? (
+            <dl className="grid grid-cols-2 gap-y-2 text-sm">
+              <dt className="text-slate-500">{t.moveIn.fieldMoveInNumber}</dt>
+              <dd className="text-slate-800 font-medium">
+                <Link href={`/operations/move-ins/${moveIn.id}`} className="text-brand-gold-dark hover:underline">
+                  {moveIn.moveInNumber}
+                </Link>
+              </dd>
+              <dt className="text-slate-500">{t.moveIn.contractStatusLabel}</dt>
+              <dd className="text-slate-800 font-medium">{t.moveInStatus[moveIn.status]}</dd>
+              <dt className="text-slate-500">{t.moveIn.fieldScheduledAt}</dt>
+              <dd className="text-slate-800 font-medium">{moveIn.scheduledAt ? dateFmt.format(moveIn.scheduledAt) : t.moveIn.notSet}</dd>
+              <dt className="text-slate-500">{t.moveIn.fieldHandoverDate}</dt>
+              <dd className="text-slate-800 font-medium">{moveIn.handoverDate ? dateFmt.format(moveIn.handoverDate) : t.moveIn.notSet}</dd>
+            </dl>
+          ) : (
+            <p className="text-sm text-slate-600">{t.moveIn.noMoveInYet}</p>
+          )}
+          {moveIn ? (
+            <Link href={`/operations/move-ins/${moveIn.id}`} className="inline-block mt-3 text-sm text-brand-gold-dark hover:underline font-medium">
+              {t.moveIn.viewMoveInButton}
+            </Link>
+          ) : (
+            canCreateMoveIn &&
+            contract.status === "ACTIVE" && (
+              <Link href={`/operations/move-ins/new?contractId=${contract.id}`} className="inline-block mt-3 text-sm text-brand-gold-dark hover:underline font-medium">
+                {t.moveIn.createMoveInButton}
+              </Link>
+            )
+          )}
+        </div>
+      )}
 
       <form action={updateContract} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
         <input type="hidden" name="contractId" value={contract.id} />

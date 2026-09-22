@@ -53,6 +53,9 @@ export interface Dictionary {
     crmViewingCalendar: string;
     crmOffers: string;
     crmReservations: string;
+    operationsGroupLabel: string;
+    operationsDashboard: string;
+    operationsMoveIns: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -652,6 +655,14 @@ export interface Dictionary {
     reservationNotConfirmedForConversion: string;
     reservationOfferMismatch: string;
     offerMissingLeaseStartDate: string;
+    moveInContractNotEligible: string;
+    moveInAlreadyExistsForContract: string;
+    moveInInvalidTransition: string;
+    moveInNotEditable: string;
+    moveInChecklistIncomplete: string;
+    moveInCompletionMissingRequirements: string;
+    moveInOverrideReasonRequired: string;
+    moveInCancelNoteRequired: string;
   };
   zatca: {
     notConfigured: string;
@@ -1674,6 +1685,206 @@ export interface Dictionary {
     colStartDate: string;
     colEndDate: string;
     colSource: string;
+  };
+  moveInStatus: Record<"DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "READY_FOR_HANDOVER" | "COMPLETED" | "CANCELLED", string>;
+  moveInCancelReason: Record<"CONTRACT_CANCELLED" | "CUSTOMER_REQUEST" | "UNIT_NOT_READY" | "RESCHEDULED" | "DATA_ERROR" | "OTHER", string>;
+  conditionRating: Record<"NEW" | "EXCELLENT" | "GOOD" | "FAIR" | "POOR" | "DAMAGED" | "NOT_WORKING" | "NOT_APPLICABLE", string>;
+  inspectionCategory: Record<
+    "ENTRANCE" | "LIVING_ROOM" | "DINING_ROOM" | "KITCHEN" | "BEDROOM" | "BATHROOM" | "BALCONY" | "WINDOWS_DOORS" | "FLOORING" | "WALLS_CEILINGS" | "LIGHTING" | "ELECTRICAL" | "PLUMBING" | "AIR_CONDITIONING" | "APPLIANCES" | "FURNITURE" | "SAFETY" | "OTHER",
+    string
+  >;
+  meterType: Record<"ELECTRICITY" | "WATER" | "GAS" | "OTHER", string>;
+  keyType: Record<"KEY" | "ACCESS_CARD" | "REMOTE" | "PARKING_REMOTE" | "OTHER", string>;
+  missingRequirement: Record<
+    "HANDOVER_DATE" | "INSPECTION_INCOMPLETE" | "REQUIRED_METERS_MISSING" | "KEYS_NOT_RECORDED" | "INVENTORY_REQUIRED_FOR_FURNISHED_UNIT" | "TENANT_ACKNOWLEDGEMENT_MISSING" | "STAFF_ACKNOWLEDGEMENT_MISSING",
+    string
+  >;
+  moveIn: {
+    listTitle: string;
+    listSubtitle: string;
+    newTitle: string;
+    searchPlaceholder: string;
+    filterStatus: string;
+    filterCompound: string;
+    filterInspector: string;
+    filterScheduledFrom: string;
+    filterScheduledTo: string;
+    filterHandoverFrom: string;
+    filterHandoverTo: string;
+    filterToday: string;
+    filterUpcoming: string;
+    filterCompleted: string;
+    filterOverdue: string;
+    filterAll: string;
+    filterApply: string;
+    colMoveInNumber: string;
+    colContract: string;
+    colUnit: string;
+    colCompound: string;
+    colRenter: string;
+    colStatus: string;
+    colScheduled: string;
+    colHandover: string;
+    colProgress: string;
+    colInspector: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    selectContract: string;
+    contractSearchPlaceholder: string;
+    noEligibleContracts: string;
+    scheduledAtLabel: string;
+    isFurnishedLabel: string;
+    createButton: string;
+
+    sectionOverview: string;
+    sectionChecklist: string;
+    sectionInventory: string;
+    sectionMeters: string;
+    sectionKeys: string;
+    sectionAttachments: string;
+    sectionAcknowledgement: string;
+    sectionReadiness: string;
+    sectionDefects: string;
+
+    fieldMoveInNumber: string;
+    fieldContract: string;
+    fieldUnit: string;
+    fieldRenter: string;
+    fieldCompound: string;
+    fieldBuilding: string;
+    fieldFloor: string;
+    fieldStatus: string;
+    fieldScheduledAt: string;
+    fieldStartedAt: string;
+    fieldHandoverDate: string;
+    fieldCompletedAt: string;
+    fieldInspector: string;
+    fieldHandedOverBy: string;
+    fieldOverallCondition: string;
+    fieldTenantComments: string;
+    fieldInternalNotes: string;
+    fieldIsFurnished: string;
+    notSet: string;
+
+    scheduleButton: string;
+    startButton: string;
+    markReadyButton: string;
+    completeButton: string;
+    cancelButton: string;
+    saveButton: string;
+    addButton: string;
+
+    progressLabel: (completed: number, total: number, percent: number) => string;
+
+    notesLabel: string;
+    requiresAttentionLabel: string;
+
+    inventoryCategoryLabel: string;
+    inventoryItemNameLabel: string;
+    inventoryQuantityLabel: string;
+    inventoryConditionLabel: string;
+    inventorySerialNumberLabel: string;
+    inventoryBrandLabel: string;
+    inventoryModelLabel: string;
+    addInventoryButton: string;
+    inventoryEmpty: string;
+
+    meterTypeLabel: string;
+    meterNumberLabel: string;
+    meterReadingLabel: string;
+    meterUnitOfMeasureLabel: string;
+    addMeterButton: string;
+    meterEmpty: string;
+    meterRequiredNotice: string;
+
+    keyTypeLabel: string;
+    keyDescriptionLabel: string;
+    keyQuantityLabel: string;
+    keyIdentifierLabel: string;
+    keyReturnedExpectedLabel: string;
+    addKeyButton: string;
+    keyEmpty: string;
+    noKeysToRecordLabel: string;
+
+    attachmentEmpty: string;
+    attachmentNote: string;
+
+    tenantRepresentativeNameLabel: string;
+    tenantRepresentativeIdLabel: string;
+    tenantAcknowledgedAtLabel: string;
+    recordTenantAcknowledgementButton: string;
+    overrideLabel: string;
+    overrideReasonLabel: string;
+    saveOverrideButton: string;
+    staffAcknowledgedAtLabel: string;
+    recordStaffAcknowledgementButton: string;
+    acknowledgementDisclaimer: string;
+
+    utilitiesReadyLabel: string;
+    keysReadyLabel: string;
+    cleaningCompleteLabel: string;
+    unitReadyLabel: string;
+    saveReadinessButton: string;
+
+    defectSummaryTitle: string;
+    defectTotalItems: string;
+    defectRequiresAttention: string;
+    defectDamaged: string;
+    defectNotWorking: string;
+    defectPoor: string;
+    defectNoticeNotBlocking: string;
+
+    cancelTitle: string;
+    cancelReasonLabel: string;
+    cancelNoteLabel: string;
+    confirmCancelButton: string;
+
+    missingRequirementsTitle: string;
+    completionReadyNotice: string;
+
+    contractStatusLabel: string;
+    createMoveInButton: string;
+    viewMoveInButton: string;
+    noMoveInYet: string;
+
+    reportTitle: string;
+    reportSubtitle: (moveInNumber: string) => string;
+    reportOrgLabel: string;
+    reportContractLabel: string;
+    reportLeaseDatesLabel: string;
+    reportChecklistSummary: string;
+    reportDefectsSection: string;
+    reportNoDefects: string;
+    reportAcknowledgementSection: string;
+    reportNotLegalSignatureNotice: string;
+    reportPrintedOn: string;
+
+    activityCompleted: (moveInNumber: string) => string;
+  };
+  operations: {
+    dashboardTitle: string;
+    dashboardSubtitle: string;
+    kpiToday: string;
+    kpiUpcoming: string;
+    kpiInProgress: string;
+    kpiReadyForHandover: string;
+    kpiCompletedThisMonth: string;
+    kpiUnitsWithDefects: string;
+    kpiOverdue: string;
+    goToMoveIns: string;
+
+    reportsTitle: string;
+    reportsSubtitle: string;
+    reportSchedule: string;
+    reportCompletion: string;
+    reportUnitCondition: string;
+    reportHandoverDefects: string;
+    reportMeterReading: string;
+    reportKeysHandover: string;
+    reportFurnishedInventory: string;
   };
 }
 

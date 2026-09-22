@@ -74,7 +74,14 @@ export type Permission =
   | "reservation.cancel"
   | "reservation.release"
   | "reservation.amount.update"
-  | "reservation.convert";
+  | "reservation.convert"
+  | "moveIn.view"
+  | "moveIn.create"
+  | "moveIn.update"
+  | "moveIn.start"
+  | "moveIn.complete"
+  | "moveIn.cancel"
+  | "moveInInspection.update";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -145,6 +152,13 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "reservation.release",
   "reservation.amount.update",
   "reservation.convert",
+  "moveIn.view",
+  "moveIn.create",
+  "moveIn.update",
+  "moveIn.start",
+  "moveIn.complete",
+  "moveIn.cancel",
+  "moveInInspection.update",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -219,6 +233,17 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "reservation.release",
   "reservation.amount.update",
   "reservation.convert",
+  // MANAGER holds every moveIn.*/moveInInspection.* permission (Step 44 of
+  // docs/MOVE-IN-HANDOVER.md: "MANAGER: all") - Move-In/handover is
+  // day-to-day leasing-operations work, the same tier as Contract
+  // create/update/renew/terminate above.
+  "moveIn.view",
+  "moveIn.create",
+  "moveIn.update",
+  "moveIn.start",
+  "moveIn.complete",
+  "moveIn.cancel",
+  "moveInInspection.update",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -253,6 +278,11 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   // explicit Step 29 instruction. See docs/RESERVATION-MANAGEMENT.md.
   "reservation.view",
   "reservation.amount.update",
+  // Step 44: "ACCOUNTANT: moveIn.view only if operational visibility is
+  // useful" - granted, matching ACCOUNTANT's own broad *.view visibility
+  // into the Contract lifecycle elsewhere in this table (contract.view,
+  // ownerLedger.view, etc.); no moveIn.* mutation permission at all.
+  "moveIn.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -272,6 +302,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "viewing.view",
   "offer.view",
   "reservation.view",
+  "moveIn.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

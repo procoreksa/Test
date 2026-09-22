@@ -58,3 +58,8 @@ export function formatOfferNumber(seq: number): string {
 export function formatReservationNumber(seq: number): string {
   return `RES-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatReservationNumber() - a Move-In number is not a legal/tax document series either. */
+export function formatMoveInNumber(seq: number): string {
+  return `MI-${String(seq).padStart(6, "0")}`;
+}
