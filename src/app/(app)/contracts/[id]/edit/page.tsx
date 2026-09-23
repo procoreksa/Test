@@ -4,6 +4,7 @@ import { getContractEditContext, updateContract } from "@/lib/actions/contracts"
 import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
 import { getMoveInForContract } from "@/lib/actions/move-ins";
+import { getMoveOutForContract } from "@/lib/actions/move-outs";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized, shortDateFormatter } from "@/lib/i18n";
@@ -26,6 +27,9 @@ export default async function EditContractPage({
   const canViewMoveIns = can("moveIn.view", role);
   const canCreateMoveIn = can("moveIn.create", role);
   const moveIn = canViewMoveIns ? await getMoveInForContract(contract.id) : null;
+  const canViewMoveOuts = can("moveOut.view", role);
+  const canCreateMoveOut = can("moveOut.create", role);
+  const moveOut = canViewMoveOuts ? await getMoveOutForContract(contract.id) : null;
 
   const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
@@ -117,6 +121,42 @@ export default async function EditContractPage({
             contract.status === "ACTIVE" && (
               <Link href={`/operations/move-ins/new?contractId=${contract.id}`} className="inline-block mt-3 text-sm text-brand-gold-dark hover:underline font-medium">
                 {t.moveIn.createMoveInButton}
+              </Link>
+            )
+          )}
+        </div>
+      )}
+
+      {canViewMoveOuts && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-3">{t.moveOut.sectionSummary}</h2>
+          {moveOut ? (
+            <dl className="grid grid-cols-2 gap-y-2 text-sm">
+              <dt className="text-slate-500">{t.moveOut.fieldMoveOutNumber}</dt>
+              <dd className="text-slate-800 font-medium">
+                <Link href={`/operations/move-outs/${moveOut.id}`} className="text-brand-gold-dark hover:underline">
+                  {moveOut.moveOutNumber}
+                </Link>
+              </dd>
+              <dt className="text-slate-500">{t.moveOut.contractStatusLabel}</dt>
+              <dd className="text-slate-800 font-medium">{t.moveOutStatus[moveOut.status]}</dd>
+              <dt className="text-slate-500">{t.moveOut.fieldScheduledAt}</dt>
+              <dd className="text-slate-800 font-medium">{moveOut.scheduledAt ? dateFmt.format(moveOut.scheduledAt) : t.moveOut.notSet}</dd>
+              <dt className="text-slate-500">{t.moveOut.fieldVacateDate}</dt>
+              <dd className="text-slate-800 font-medium">{moveOut.vacateDate ? dateFmt.format(moveOut.vacateDate) : t.moveOut.notSet}</dd>
+            </dl>
+          ) : (
+            <p className="text-sm text-slate-600">{t.moveOut.noMoveOutYet}</p>
+          )}
+          {moveOut ? (
+            <Link href={`/operations/move-outs/${moveOut.id}`} className="inline-block mt-3 text-sm text-brand-gold-dark hover:underline font-medium">
+              {t.moveOut.viewMoveOutButton}
+            </Link>
+          ) : (
+            canCreateMoveOut &&
+            (contract.status === "ACTIVE" || contract.status === "TERMINATED") && (
+              <Link href={`/operations/move-outs/new?contractId=${contract.id}`} className="inline-block mt-3 text-sm text-brand-gold-dark hover:underline font-medium">
+                {t.moveOut.createMoveOutButton}
               </Link>
             )
           )}

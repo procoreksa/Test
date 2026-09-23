@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getOperationsDashboard } from "@/lib/actions/move-ins";
 import { getMaintenanceDashboardKpis } from "@/lib/actions/maintenance";
+import { getMoveOutDashboardKpis } from "@/lib/actions/move-outs";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
@@ -9,8 +10,13 @@ export default async function OperationsDashboardPage() {
   const [role, locale] = await Promise.all([getCurrentUserRole(), getLocale()]);
   const t = getDictionary(locale);
   const canViewMaintenance = can("maintenance.view", role);
+  const canViewMoveOuts = can("moveOut.view", role);
 
-  const [kpis, maintenanceKpis] = await Promise.all([getOperationsDashboard(), canViewMaintenance ? getMaintenanceDashboardKpis() : null]);
+  const [kpis, maintenanceKpis, moveOutKpis] = await Promise.all([
+    getOperationsDashboard(),
+    canViewMaintenance ? getMaintenanceDashboardKpis() : null,
+    canViewMoveOuts ? getMoveOutDashboardKpis() : null,
+  ]);
   const moneyFmt = currencyFormatter(locale);
 
   const cards: Array<{ label: string; value: number; tone: string }> = [
@@ -89,6 +95,55 @@ export default async function OperationsDashboardPage() {
         </>
       )}
 
+      {moveOutKpis && (
+        <>
+          <div className="flex items-center justify-between pt-2">
+            <h2 className="text-lg font-bold text-slate-900">{t.operations.moveOutSectionTitle}</h2>
+            <Link href="/operations/move-outs" className="text-sm text-brand-gold-dark hover:underline font-medium">
+              {t.operations.goToMoveOuts} →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsToday}</p>
+              <p className="text-3xl font-bold mt-2 text-slate-900">{moveOutKpis.moveOutsToday}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsUpcoming}</p>
+              <p className="text-3xl font-bold mt-2 text-slate-900">{moveOutKpis.upcomingThisWeek}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsInProgress}</p>
+              <p className="text-3xl font-bold mt-2 text-brand-gold-dark">{moveOutKpis.inProgress}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsPendingFindingsReview}</p>
+              <p className="text-3xl font-bold mt-2 text-amber-600">{moveOutKpis.pendingFindingsReview}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsReadyForClosure}</p>
+              <p className="text-3xl font-bold mt-2 text-emerald-600">{moveOutKpis.readyForClosure}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsCompletedThisMonth}</p>
+              <p className="text-3xl font-bold mt-2 text-emerald-600">{moveOutKpis.completedThisMonth}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsOverdue}</p>
+              <p className="text-3xl font-bold mt-2 text-red-600">{moveOutKpis.overdueMoveOuts}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsWithFindings}</p>
+              <p className="text-3xl font-bold mt-2 text-amber-600">{moveOutKpis.moveOutsWithFindings}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.operations.kpiMoveOutsWithMaintenance}</p>
+              <p className="text-3xl font-bold mt-2 text-sky-600">{moveOutKpis.moveOutsWithMaintenanceRequests}</p>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="flex flex-wrap gap-4">
         <Link href="/operations/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
           {t.operations.reportsTitle} →
@@ -96,6 +151,11 @@ export default async function OperationsDashboardPage() {
         {canViewMaintenance && (
           <Link href="/operations/maintenance/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
             {t.maintenance.reportsTitle} →
+          </Link>
+        )}
+        {moveOutKpis && (
+          <Link href="/operations/move-outs/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
+            {t.moveOut.listTitle} {t.operations.reportsTitle} →
           </Link>
         )}
       </div>

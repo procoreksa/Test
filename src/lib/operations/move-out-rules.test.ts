@@ -15,6 +15,8 @@ import {
   diffInventoryItems,
   computeMeterConsumption,
   compareInspectionCondition,
+  computeConditionComparisonLabel,
+  isMoveOutOverdue,
   computeDefectSummary,
   type MoveOutCompletionInput,
   type KeyReconciliationResult,
@@ -396,5 +398,62 @@ describe("compareInspectionCondition", () => {
   it("treats null vs a set condition as changed", () => {
     expect(compareInspectionCondition(null, "GOOD").changed).toBe(true);
     expect(compareInspectionCondition(null, null).changed).toBe(false);
+  });
+});
+
+describe("computeConditionComparisonLabel", () => {
+  it("returns NO_BASELINE when there is no Move-In condition to compare against", () => {
+    expect(computeConditionComparisonLabel(null, "GOOD")).toBe("NO_BASELINE");
+    expect(computeConditionComparisonLabel(null, null)).toBe("NO_BASELINE");
+  });
+
+  it("returns NOT_COMPARABLE when the Move-Out side has not been inspected yet", () => {
+    expect(computeConditionComparisonLabel("GOOD", null)).toBe("NOT_COMPARABLE");
+  });
+
+  it("returns NOT_COMPARABLE when either side is NOT_APPLICABLE", () => {
+    expect(computeConditionComparisonLabel("NOT_APPLICABLE", "GOOD")).toBe("NOT_COMPARABLE");
+    expect(computeConditionComparisonLabel("GOOD", "NOT_APPLICABLE")).toBe("NOT_COMPARABLE");
+  });
+
+  it("returns UNCHANGED when the condition is identical", () => {
+    expect(computeConditionComparisonLabel("GOOD", "GOOD")).toBe("UNCHANGED");
+  });
+
+  it("returns DETERIORATED when the condition got worse", () => {
+    expect(computeConditionComparisonLabel("GOOD", "FAIR")).toBe("DETERIORATED");
+    expect(computeConditionComparisonLabel("NEW", "DAMAGED")).toBe("DETERIORATED");
+    expect(computeConditionComparisonLabel("EXCELLENT", "NOT_WORKING")).toBe("DETERIORATED");
+  });
+
+  it("returns IMPROVED when the condition got better", () => {
+    expect(computeConditionComparisonLabel("FAIR", "GOOD")).toBe("IMPROVED");
+    expect(computeConditionComparisonLabel("DAMAGED", "NEW")).toBe("IMPROVED");
+  });
+
+  it("treats DAMAGED and NOT_WORKING as equally severe (no ranking between them)", () => {
+    expect(computeConditionComparisonLabel("DAMAGED", "NOT_WORKING")).toBe("UNCHANGED");
+    expect(computeConditionComparisonLabel("NOT_WORKING", "DAMAGED")).toBe("UNCHANGED");
+  });
+});
+
+describe("isMoveOutOverdue", () => {
+  const now = new Date("2027-06-15T00:00:00Z");
+
+  it("is overdue when scheduledAt has passed and status is still non-terminal", () => {
+    for (const status of ["DRAFT", "SCHEDULED", "IN_PROGRESS", "PENDING_FINDINGS_REVIEW", "READY_FOR_CLOSURE"] as const) {
+      expect(isMoveOutOverdue(new Date("2027-06-14T00:00:00Z"), status, now)).toBe(true);
+    }
+  });
+
+  it("is never overdue once COMPLETED or CANCELLED, even if scheduledAt has long passed", () => {
+    for (const status of ["COMPLETED", "CANCELLED"] as const) {
+      expect(isMoveOutOverdue(new Date("2020-01-01T00:00:00Z"), status, now)).toBe(false);
+    }
+  });
+
+  it("is not overdue when scheduledAt is null or in the future", () => {
+    expect(isMoveOutOverdue(null, "SCHEDULED", now)).toBe(false);
+    expect(isMoveOutOverdue(new Date("2027-06-16T00:00:00Z"), "SCHEDULED", now)).toBe(false);
   });
 });

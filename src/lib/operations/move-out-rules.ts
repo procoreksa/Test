@@ -368,3 +368,54 @@ export interface InspectionConditionComparison {
 export function compareInspectionCondition(moveInCondition: ConditionRating | null, moveOutCondition: ConditionRating | null): InspectionConditionComparison {
   return { moveInCondition, moveOutCondition, changed: moveInCondition !== moveOutCondition };
 }
+
+// ---------------------------------------------------------------------------
+// Condition-comparison label (Move-Out Management Phase 3, UI presentation
+// helper - not a lifecycle/domain rule change to the Phase 2 backend, purely
+// a pure classification for display). Ranks ConditionRating from best (NEW)
+// to worst (DAMAGED/NOT_WORKING treated as equally severe - this is an
+// operational observation, never a financial/liability determination: see
+// docs/MOVE-OUT-MANAGEMENT.md, "Finding does not equal liability").
+// ---------------------------------------------------------------------------
+export type ConditionComparisonLabel = "IMPROVED" | "UNCHANGED" | "DETERIORATED" | "NO_BASELINE" | "NOT_COMPARABLE";
+
+const CONDITION_SEVERITY: Record<Exclude<ConditionRating, "NOT_APPLICABLE">, number> = {
+  NEW: 0,
+  EXCELLENT: 1,
+  GOOD: 2,
+  FAIR: 3,
+  POOR: 4,
+  DAMAGED: 5,
+  NOT_WORKING: 5,
+};
+
+/**
+ * Classifies the Move-In -> Move-Out condition delta for one inspection
+ * item into a small, non-financial vocabulary. NO_BASELINE means there is
+ * no Move-In condition to compare against at all (no linked baseline item -
+ * e.g. this Move-Out had no originating Move-In). NOT_COMPARABLE covers
+ * "not yet inspected on the Move-Out side" and either side being
+ * NOT_APPLICABLE, which carries no meaningful severity to rank.
+ */
+export function computeConditionComparisonLabel(moveInCondition: ConditionRating | null, moveOutCondition: ConditionRating | null): ConditionComparisonLabel {
+  if (moveInCondition === null) return "NO_BASELINE";
+  if (moveOutCondition === null) return "NOT_COMPARABLE";
+  if (moveInCondition === "NOT_APPLICABLE" || moveOutCondition === "NOT_APPLICABLE") return "NOT_COMPARABLE";
+
+  const before = CONDITION_SEVERITY[moveInCondition];
+  const after = CONDITION_SEVERITY[moveOutCondition];
+  if (after > before) return "DETERIORATED";
+  if (after < before) return "IMPROVED";
+  return "UNCHANGED";
+}
+
+// ---------------------------------------------------------------------------
+// Overdue (Move-Out Management Phase 3, requirement: one centralized
+// definition, never duplicated across list/dashboard/reports) - mirrors
+// isMoveInOverdue() exactly: scheduledAt has passed AND the record hasn't
+// reached a terminal state yet.
+// ---------------------------------------------------------------------------
+export function isMoveOutOverdue(scheduledAt: Date | null, status: MoveOutStatus, now: Date = new Date()): boolean {
+  if (!scheduledAt) return false;
+  return scheduledAt < now && !isMoveOutTerminal(status);
+}

@@ -127,6 +127,18 @@ export default async function MaintenanceRequestDetailPage({ params }: { params:
             </Section>
           )}
 
+          {request.moveOut && (
+            <Section title={t.maintenance.sectionMoveOutSource}>
+              <p className="text-sm text-slate-700">
+                {t.maintenance.moveOutSourceLabel} —{" "}
+                <Link href={`/operations/move-outs/${request.moveOut.id}`} className="text-brand-gold-dark hover:underline">
+                  {request.moveOut.moveOutNumber}
+                </Link>
+                {request.moveOutInspectionItem && <span className="text-slate-500"> ({request.moveOutInspectionItem.itemName})</span>}
+              </p>
+            </Section>
+          )}
+
           <Section title={t.maintenance.sectionWorkOrder}>
             {request.workOrders.length === 0 ? (
               <p className="text-sm text-slate-400">{t.maintenance.noWorkOrderYet}</p>

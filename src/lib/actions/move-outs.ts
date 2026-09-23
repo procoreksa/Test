@@ -15,6 +15,7 @@ import {
   isFindingsReviewEligible,
   isReadyForClosureEligible,
   isUnsafeToVacate,
+  isMoveOutOverdue,
   reconcileKeyReturns,
   validateMoveOutCompletion,
   computeInspectionProgress,
@@ -34,11 +35,25 @@ const FULL_MOVE_OUT_INCLUDE = {
   inspectedByUser: { select: { id: true, name: true } },
   handedOverByUser: { select: { id: true, name: true } },
   findingsReviewedByUser: { select: { id: true, name: true } },
-  inspectionItems: { orderBy: [{ category: "asc" }, { sequence: "asc" }] as const },
+  inspectionItems: {
+    orderBy: [{ category: "asc" }, { sequence: "asc" }] as const,
+    // Baseline condition for the direct before/after delta (UI presentation
+    // only - never written to, see docs/MOVE-OUT-MANAGEMENT.md), plus the
+    // Maintenance Requests already traced to this finding (UI traceability
+    // only - never re-derived, see createMaintenanceRequestFromMoveOut()).
+    include: {
+      moveInInspectionItem: { select: { condition: true } },
+      maintenanceRequests: { select: { id: true, requestNumber: true, status: true } },
+    },
+  },
   inventoryItems: { orderBy: { createdAt: "asc" } as const },
   meterReadings: { orderBy: { createdAt: "asc" } as const },
   keyItems: { orderBy: { createdAt: "asc" } as const },
   attachments: { orderBy: { createdAt: "asc" } as const },
+  maintenanceRequests: {
+    orderBy: { reportedAt: "asc" } as const,
+    select: { id: true, requestNumber: true, status: true, priority: true, category: true, title: true },
+  },
 } satisfies Prisma.MoveOutInclude;
 
 /** Contract statuses eligible to start a Move-Out (Decision 2): ACTIVE (handover may be prepared before the Contract formally ends - including the existing expiry-gap window) or TERMINATED. DRAFT and RENEWED are never eligible. */
@@ -760,6 +775,7 @@ export async function getMoveOutById(moveOutId: string) {
   const defects = computeDefectSummary(moveOut.inspectionItems);
   const findingsReviewEligible = isFindingsReviewEligible(moveOut.inspectionItems);
   const readyForClosureEligible = isReadyForClosureEligible(moveOut.findingsReviewedAt);
+  const overdue = isMoveOutOverdue(moveOut.scheduledAt, moveOut.status);
 
   // Baseline comparison against the linked Move-In, when one exists - reads
   // only, never written back to any MoveIn* table.
@@ -806,6 +822,7 @@ export async function getMoveOutById(moveOutId: string) {
     findingsReviewEligible,
     readyForClosureEligible,
     completion,
+    overdue,
     baselineMoveIn,
     inventoryDiff,
     meterConsumption,
@@ -820,13 +837,22 @@ export interface MoveOutListFilters {
   buildingId?: string;
   unitId?: string;
   renterId?: string;
+  contractId?: string;
+  inspectedByUserId?: string;
   scheduledFrom?: Date;
   scheduledTo?: Date;
   vacateFrom?: Date;
   vacateTo?: Date;
+  hasFindings?: boolean;
+  hasMaintenanceRequests?: boolean;
   completedOnly?: boolean;
+  cancelledOnly?: boolean;
+  overdueOnly?: boolean;
   page?: number;
 }
+
+/** Applicable-item findings, same definition computeDefectSummary() itself uses (requiresAttention or a DAMAGED/NOT_WORKING/POOR condition) - never duplicated as a separate formula. */
+const FINDING_CONDITIONS = ["DAMAGED", "NOT_WORKING", "POOR"] as const;
 
 export async function listMoveOuts(filters: MoveOutListFilters = {}) {
   const { organizationId } = await requirePermission("moveOut.view");
@@ -834,21 +860,34 @@ export async function listMoveOuts(filters: MoveOutListFilters = {}) {
 
   let statusFilter = (filters.status as MoveOutStatus) || undefined;
   if (filters.completedOnly) statusFilter = "COMPLETED";
+  if (filters.cancelledOnly) statusFilter = "CANCELLED";
 
   const where: Prisma.MoveOutWhereInput = {
     organizationId,
     status: statusFilter,
     unitId: filters.unitId || undefined,
     renterId: filters.renterId || undefined,
+    contractId: filters.contractId || undefined,
+    inspectedByUserId: filters.inspectedByUserId || undefined,
     unit: filters.compoundId || filters.buildingId ? { floor: { buildingId: filters.buildingId || undefined, building: filters.compoundId ? { compoundId: filters.compoundId } : undefined } } : undefined,
-    scheduledAt: filters.scheduledFrom || filters.scheduledTo ? { gte: filters.scheduledFrom, lt: filters.scheduledTo } : undefined,
+    scheduledAt: filters.overdueOnly
+      ? { lt: new Date() }
+      : filters.scheduledFrom || filters.scheduledTo
+        ? { gte: filters.scheduledFrom, lt: filters.scheduledTo }
+        : undefined,
+    ...(filters.overdueOnly ? { status: { notIn: ["COMPLETED", "CANCELLED"] } } : {}),
     vacateDate: filters.vacateFrom || filters.vacateTo ? { gte: filters.vacateFrom, lt: filters.vacateTo } : undefined,
+    ...(filters.hasFindings
+      ? { inspectionItems: { some: { isApplicable: true, OR: [{ requiresAttention: true }, { condition: { in: [...FINDING_CONDITIONS] } }] } } }
+      : {}),
+    ...(filters.hasMaintenanceRequests ? { maintenanceRequests: { some: {} } } : {}),
     ...(filters.search
       ? {
           OR: [
             { moveOutNumber: { contains: filters.search, mode: "insensitive" as const } },
             { renter: { fullName: { contains: filters.search, mode: "insensitive" as const } } },
             { unit: { unitNumber: { contains: filters.search, mode: "insensitive" as const } } },
+            { contract: { contractNumber: { contains: filters.search, mode: "insensitive" as const } } },
           ],
         }
       : {}),
@@ -862,7 +901,8 @@ export async function listMoveOuts(filters: MoveOutListFilters = {}) {
         unit: { include: { floor: { include: { building: { include: { compound: true } } } } } },
         renter: { select: { id: true, fullName: true, fullNameAr: true } },
         inspectedByUser: { select: { id: true, name: true } },
-        inspectionItems: { select: { isApplicable: true, condition: true } },
+        inspectionItems: { select: { isApplicable: true, condition: true, requiresAttention: true } },
+        _count: { select: { maintenanceRequests: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * PAGE_SIZE,
@@ -871,7 +911,12 @@ export async function listMoveOuts(filters: MoveOutListFilters = {}) {
     prisma.moveOut.count({ where }),
   ]);
 
-  const rowsWithProgress = rows.map((row) => ({ ...row, progress: computeInspectionProgress(row.inspectionItems) }));
+  const rowsWithProgress = rows.map((row) => ({
+    ...row,
+    progress: computeInspectionProgress(row.inspectionItems),
+    defects: computeDefectSummary(row.inspectionItems),
+    overdue: isMoveOutOverdue(row.scheduledAt, row.status),
+  }));
 
   return { rows: rowsWithProgress, total, page, pageSize: PAGE_SIZE, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
@@ -913,4 +958,106 @@ export async function getMoveOutForContract(contractId: string) {
     select: { id: true, moveOutNumber: true, status: true, scheduledAt: true, vacateDate: true, completedAt: true },
   });
   return moveOuts.find((m) => m.status !== "CANCELLED") ?? moveOuts[0] ?? null;
+}
+
+/** Bulk Move-Out status for a list of Units (Units-list integration) - one query pair for the whole page, mirroring getMoveInStatusForUnits()'s own bulk pattern rather than N+1 per-row lookups. */
+export async function getMoveOutStatusForUnits(unitIds: string[]) {
+  const { organizationId } = await requirePermission("moveOut.view");
+  const map = new Map<string, { moveOutId: string; moveOutNumber: string; status: MoveOutStatus; vacateDate: Date | null } | null>();
+  if (unitIds.length === 0) return map;
+
+  const moveOuts = await prisma.moveOut.findMany({
+    where: { organizationId, unitId: { in: unitIds } },
+    orderBy: { createdAt: "desc" },
+    select: { unitId: true, id: true, moveOutNumber: true, status: true, vacateDate: true },
+  });
+
+  const byUnit = new Map<string, typeof moveOuts>();
+  for (const m of moveOuts) {
+    const arr = byUnit.get(m.unitId) ?? [];
+    arr.push(m);
+    byUnit.set(m.unitId, arr);
+  }
+  for (const [unitId, list] of byUnit) {
+    const moveOut = list.find((m) => m.status !== "CANCELLED") ?? list[0] ?? null;
+    map.set(unitId, moveOut ? { moveOutId: moveOut.id, moveOutNumber: moveOut.moveOutNumber, status: moveOut.status, vacateDate: moveOut.vacateDate } : null);
+  }
+  return map;
+}
+
+/** Bulk Move-Out status for a list of Renters (Renters-list integration). */
+export async function getMoveOutStatusForRenters(renterIds: string[]) {
+  const { organizationId } = await requirePermission("moveOut.view");
+  const map = new Map<string, { moveOutId: string; moveOutNumber: string; status: MoveOutStatus; vacateDate: Date | null } | null>();
+  if (renterIds.length === 0) return map;
+
+  const moveOuts = await prisma.moveOut.findMany({
+    where: { organizationId, renterId: { in: renterIds } },
+    orderBy: { createdAt: "desc" },
+    select: { renterId: true, id: true, moveOutNumber: true, status: true, vacateDate: true },
+  });
+
+  const byRenter = new Map<string, typeof moveOuts>();
+  for (const m of moveOuts) {
+    const arr = byRenter.get(m.renterId) ?? [];
+    arr.push(m);
+    byRenter.set(m.renterId, arr);
+  }
+  for (const [renterId, list] of byRenter) {
+    const moveOut = list.find((m) => m.status !== "CANCELLED") ?? list[0] ?? null;
+    map.set(renterId, moveOut ? { moveOutId: moveOut.id, moveOutNumber: moveOut.moveOutNumber, status: moveOut.status, vacateDate: moveOut.vacateDate } : null);
+  }
+  return map;
+}
+
+/**
+ * Operations dashboard KPIs (requirement: bounded DB aggregates, no
+ * unbounded history reads) - mirrors getOperationsDashboard()'s
+ * (move-ins.ts) and getMaintenanceDashboardKpis()'s (maintenance.ts) own
+ * bounded-count pattern exactly.
+ */
+export async function getMoveOutDashboardKpis() {
+  const { organizationId } = await requirePermission("moveOut.view");
+
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const endOfToday = new Date(startOfToday);
+  endOfToday.setDate(endOfToday.getDate() + 1);
+  const endOfWeek = new Date(startOfToday);
+  endOfWeek.setDate(endOfWeek.getDate() + 7);
+  const startOfMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth(), 1);
+  const startOfNextMonth = new Date(startOfToday.getFullYear(), startOfToday.getMonth() + 1, 1);
+
+  const [today, upcoming, inProgress, pendingFindingsReview, readyForClosure, completedThisMonth, notTerminal, withFindings, withMaintenance] = await Promise.all([
+    prisma.moveOut.count({ where: { organizationId, scheduledAt: { gte: startOfToday, lt: endOfToday } } }),
+    prisma.moveOut.count({ where: { organizationId, scheduledAt: { gte: endOfToday, lt: endOfWeek } } }),
+    prisma.moveOut.count({ where: { organizationId, status: "IN_PROGRESS" } }),
+    prisma.moveOut.count({ where: { organizationId, status: "PENDING_FINDINGS_REVIEW" } }),
+    prisma.moveOut.count({ where: { organizationId, status: "READY_FOR_CLOSURE" } }),
+    prisma.moveOut.count({ where: { organizationId, status: "COMPLETED", completedAt: { gte: startOfMonth, lt: startOfNextMonth } } }),
+    // Overdue = scheduledAt < now AND not terminal (isMoveOutOverdue()'s own
+    // definition) - computed over a bounded, already-narrow set, never the
+    // whole table.
+    prisma.moveOut.count({ where: { organizationId, scheduledAt: { lt: new Date() }, status: { notIn: ["COMPLETED", "CANCELLED"] } } }),
+    prisma.moveOut.count({
+      where: {
+        organizationId,
+        status: { notIn: ["CANCELLED"] },
+        inspectionItems: { some: { isApplicable: true, OR: [{ requiresAttention: true }, { condition: { in: [...FINDING_CONDITIONS] } }] } },
+      },
+    }),
+    prisma.moveOut.count({ where: { organizationId, status: { notIn: ["CANCELLED"] }, maintenanceRequests: { some: {} } } }),
+  ]);
+
+  return {
+    moveOutsToday: today,
+    upcomingThisWeek: upcoming,
+    inProgress,
+    pendingFindingsReview,
+    readyForClosure,
+    completedThisMonth,
+    overdueMoveOuts: notTerminal,
+    moveOutsWithFindings: withFindings,
+    moveOutsWithMaintenanceRequests: withMaintenance,
+  };
 }

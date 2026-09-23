@@ -394,14 +394,15 @@ manually reviewed before applying:
 
 ## 19. Tests
 
-- **Pure rules** (`move-out-rules.test.ts`, 47 tests): every valid/invalid
+- **Pure rules** (`move-out-rules.test.ts`, 57 tests): every valid/invalid
   transition (including an exhaustive all-pairs check), terminal-state
   immutability, editability, the shared one-active/renewal-conflict
   predicate, findings-review eligibility, key reconciliation (including
   case/whitespace-insensitivity and partial returns), completion
   validation (every requirement individually and combined), the
   conflicting-occupancy predicate, inventory/meter/inspection baseline
-  diffing.
+  diffing, `computeConditionComparisonLabel()` (Phase 3), and
+  `isMoveOutOverdue()` (Phase 3).
 - **Lifecycle** (`move-out-lifecycle.db.test.ts`): full happy path for
   both `ACTIVE`- and `TERMINATED`-Contract eligibility, idempotent
   completion, post-completion immutability, `reopenMoveOutStage()`,
@@ -432,23 +433,187 @@ manually reviewed before applying:
 
 ## 20. Remaining architectural risks & future scope
 
-- **No UI/report/dashboard work was done in this phase**, per its own
-  explicit scope-stop instruction. The core architecture, invariants, and
-  server-action layer are complete and fully tested; pages (list, new,
-  profile/inspection workspace, print report), an operations-dashboard
-  section, reports, i18n page-level dictionary strings, and navigation
-  integration remain future work - mirroring exactly how Move-In &
-  Maintenance each split their own "core" phase from their later "pages/
-  i18n/reports" phase.
 - **The Contract-expiry gap remains unfixed** (Decision 5, §14,
-  `docs/TECHNICAL-DEBT.md`) - by design, not an oversight.
+  `docs/TECHNICAL-DEBT.md`) - by design, not an oversight, and Phase 3's
+  UI work did not touch it (it never blocked the UI).
 - **Security-deposit settlement remains entirely out of scope**
   (Decision 4) - no refund/deduction/credit-note/damage-billing mechanism
-  exists yet; damages are operational records only.
+  exists yet; damages are operational records only. Phase 3's UI
+  reinforces this at every surface (see §21 below).
 - **No inventory-based completion gate exists** (unlike Move-In's
   furnished-unit inventory requirement) - this was a deliberate choice
   since no equivalent decision was made requiring one, not an oversight.
 
 Core architecture and invariants are green (schema validated, `tsc`/
 `eslint`/unit tests/real-DB tests all passing - see the final report for
-exact counts). **Ready for the UI/report phase, pending approval.**
+exact counts).
+
+## 21. Phase 3 - UI, operational workspace, reports & printable report
+
+Phase 3 built the entire UI/operational layer on top of the Phase 2
+backend above, without changing a single lifecycle rule, permission
+mapping, or adding any new status. Every mutation in the UI calls an
+existing Phase 2 (or Phase-2-pattern) server action directly; the UI
+never writes to `Unit.status`, never re-derives eligibility/condition-
+comparison/overdue logic locally, and never introduces a financial
+concept.
+
+1. **Navigation**: `Move-Outs` and `Reports` (Move-Out reports landing)
+   added to the Operations nav group in `src/app/(app)/layout.tsx`,
+   immediately after `Move-Ins`, mirroring how `Maintenance Reports`
+   already has its own nav entry (unlike the Move-In reports landing,
+   which is reachable only via a dashboard link - both existing
+   precedents are preserved, one per module).
+2. **List** (`/operations/move-outs`): server-side-paginated, search +
+   status + compound filters, plus `hasFindings` / `hasMaintenanceRequests`
+   / `completedOnly` / `cancelledOnly` / `overdueOnly` checkboxes, all
+   pushed into `listMoveOuts()`'s `where` clause - never client-side
+   filtered. The "overdue" badge here, on the dashboard, and in the
+   workspace all call the single `isMoveOutOverdue()` pure function added
+   to `move-out-rules.ts`; it is never re-implemented inline.
+3. **Creation** (`/operations/move-outs/new`): Contract-first, exact
+   mirror of Move-In's own `new/page.tsx` - `?contractId=` prefill,
+   `listEligibleContractsForMoveOut()` (Phase 2, unmodified), a
+   `createMoveOutAndRedirect()` wrapper action for the redirect. No
+   eligibility rule is re-derived in the page; ineligible contracts are
+   simply absent from the server-returned list.
+4. **Workspace** (`/operations/move-outs/[id]`): Summary, Lifecycle
+   status/actions, Contract link, Tenant/Unit, Move-In Baseline (read-
+   only, id/number only - never any Move-In field value that could imply
+   the UI edits it), Findings Summary, a conditional Findings Review
+   panel (`PENDING_FINDINGS_REVIEW` only), the full Inspection Checklist
+   with a per-item Move-In-condition vs Move-Out-condition comparison
+   (via `computeConditionComparisonLabel()`, the same new pure function
+   the reports and print report also call), Inventory Comparison, Meter
+   Readings, Keys & Access, Maintenance Requests (linked, read-only),
+   Attachments, Acknowledgements, `AuditTimeline`, and a print-report
+   link. Status-workflow buttons are gated strictly by `moveOut.status`
+   plus the existing `can(permission, role)` checks - no new transition
+   is invented, and the Completion button is additionally disabled by
+   `completion.canComplete` (Phase 2's own `validateMoveOutCompletion()`).
+5. **Condition-comparison vocabulary**: `IMPROVED` / `UNCHANGED` /
+   `DETERIORATED` / `NO_BASELINE` / `NOT_COMPARABLE`, computed by the new
+   `computeConditionComparisonLabel()` (severity-ranked, `NOT_APPLICABLE`
+   excluded as `NOT_COMPARABLE`) - the single source for this label
+   everywhere it appears (workspace, print report, Unit Condition report,
+   Findings report).
+6. **Maintenance-from-finding**: the workspace is the first UI in the
+   codebase to wire up `createMaintenanceRequestFromMoveOut()` (it existed
+   in Phase 2 but had no caller), shown inline on a checklist item only
+   when `requiresAttention && !item.maintenanceRequests.length`. A thin
+   `createMaintenanceRequestFromFinding()` wrapper in the page revalidates
+   the Move-Out path after the shared action returns (the shared action
+   itself only revalidates the Maintenance paths).
+7. **Completion Preview**: a `<details>/<summary>` popover (the same
+   confirmation-UI pattern Move-In's own Cancel flow already established -
+   no new modal library), showing the completion-preview title/body and
+   the explicit statement that completion does **not** settle a deposit,
+   charge the tenant, create an invoice, post accounting, or determine
+   liability, plus any outstanding `MissingRequirement` reasons, before
+   the real `completeMoveOut()` call.
+8. **Vacancy-conflict UX**: `completeMoveOut()`'s occupancy-conflict check
+   (§8) is never bypassed or weakened. A live test (temporarily flipping a
+   second Contract on the same Unit to `ACTIVE`, then completing via the
+   UI) confirmed the safety net holds end-to-end: the transaction is
+   rejected, `Move-Out.status` stays `READY_FOR_CLOSURE`, `completedAt`
+   stays null, and `Unit.status` stays unchanged - no partial write. The
+   error currently surfaces via the same generic Next.js error boundary
+   every other uncaught server-action error in this codebase surfaces
+   through (see §22, technical debt - this is a pre-existing, app-wide
+   gap, not new to Move-Out).
+9. **Completed state**: read-only banner, no editable checklist/inventory/
+   meter/key/acknowledgement forms render once `status === "COMPLETED"`
+   (`editable` only spans `IN_PROGRESS`/`PENDING_FINDINGS_REVIEW`, exactly
+   as Phase 2 already defines editability).
+10. **Cancel UI**: the same `<details>` popover pattern as Move-In/
+    Maintenance, calling the existing `cancelMoveOut()` - never deletes
+    the record.
+11. **Integrations**: a Move-Out card on the Contract edit page (mirrors
+    the existing Move-In card), Move-Out status badges on the Units and
+    Renters list pages (via the new `getMoveOutStatusForUnits()` /
+    `getMoveOutStatusForRenters()` bulk lookups, shown only for `OCCUPIED`
+    units - exactly Move-In's own precedent), a read-only "Related
+    Move-Out" block on the Move-In workspace page, and a "Move-Out
+    Source" traceability section on the Maintenance Request detail page
+    (mirrors the existing "Move-In Source" section, using the
+    `moveOut`/`moveOutInspectionItem` relations Phase 2 already included).
+12. **Operations Dashboard**: a new Move-Outs KPI section
+    (`getMoveOutDashboardKpis()`, nine bounded `prisma.count()` aggregates
+    run via `Promise.all`) appended after the existing Move-In/Maintenance
+    sections - neither of which was altered.
+13. **Move-Out reports** (`/operations/move-outs/reports`, its own landing
+    page): Schedule, Completion, Unit Condition, **Findings** (never
+    "Tenant Damage Charges" - see §22 below), Inventory Variance, Meter
+    Reading, Keys & Access, and Maintenance Findings - all backed by the
+    new `src/lib/actions/move-out-reports.ts`, all org-scoped via
+    `requirePermission("moveOut.view")`, all calling the same centralized
+    `diffInventoryItems()` / `reconcileKeyReturns()` /
+    `computeConditionComparisonLabel()` Phase 2/Phase 3 pure functions
+    rather than re-deriving any comparison. Consistent with Move-In's own
+    report precedent (`move-in-reports.ts`), these are unpaginated
+    `findMany` queries - the same volume assumption Move-In's reports
+    already make, not a new inconsistency.
+14. **Printable report** (`/operations/move-outs/[id]/report`): title
+    "Move-Out Final Inspection & Unit Handover Report" /
+    "تقرير الفحص النهائي وإخلاء الوحدة", full header (org, Move-Out #,
+    Contract #, Tenant, Unit+location, lease term, handover date, vacate
+    date, inspection date, inspector, status), the condition-comparison
+    table (Category/Item/Move-In Condition/Move-Out Condition/Condition
+    Change/Requires Attention/Notes), Inventory Comparison, Meter
+    Readings, Keys & Access, Findings Summary, linked Maintenance
+    Requests only (never unrelated history), Acknowledgement, and the
+    exact required bilingual disclaimer verbatim in both locales. Uses
+    the existing `PrintButton`/`.no-print` browser-print architecture -
+    no PDF library introduced.
+15. **i18n**: every new string added to the `Dictionary` interface and
+    both `en.ts`/`ar.ts` (TypeScript's structural check enforces 1:1 key
+    parity); the Arabic terms the spec suggested were used verbatim where
+    given.
+16. **RBAC**: unchanged from Phase 2 - `permissions.ts` was not modified
+    in this phase. The UI's `can()` checks are usability-only; every
+    mutation is still gated server-side by the same
+    `requirePermission()`/`requirePermissionAudited()` calls Phase 2
+    already put in each action.
+17. **Live verification**: a full English lifecycle (create → schedule →
+    start → inspect, including one deliberately deteriorated item →
+    inventory/meters/keys → vacate date → findings review → Maintenance
+    Request from a finding → Ready for Closure → Completion Preview →
+    Complete) was driven end-to-end in a real browser against the
+    real dev database, confirming `Unit.status` → `VACANT`, the
+    read-only completed state, every cross-page integration, the print
+    report (including the verbatim disclaimer and the absence of any
+    forbidden liability/charge/deduction vocabulary outside that
+    disclaimer), the dashboard KPIs, and all 8 reports - zero console/
+    page errors throughout. The same set of pages was re-verified in
+    Arabic (RTL layout, exact bilingual report title/disclaimer, no
+    leftover untranslated/`undefined` text). The vacancy-conflict path
+    (§8 above) was also verified live. All fixtures created purely for
+    this verification (a second test Move-Out and a temporary duplicate
+    Contract) were cleaned up afterward via the app's own Cancel action
+    and a direct delete of the fabricated fixture row, respectively - no
+    real seed data was altered beyond the one Move-In/Move-Out pair
+    deliberately taken to completion as the demonstrated example.
+18. **No backend defect was found or fixed in this phase.** Step 2's
+    document/regression-test/smallest-safe-fix/rerun protocol was never
+    invoked because no genuine Phase 2 defect surfaced; every apparent
+    issue encountered during UI construction traced back to either a
+    UI-side selector/wiring detail (fixed in the UI layer only) or the
+    pre-existing, app-wide lack of a server-action error boundary (§22,
+    documented as technical debt, not fixed - fixing it is a UI-
+    architecture change spanning every existing module, not a Move-Out
+    concern).
+
+## 22. Phase 3 technical debt (new)
+
+- **No React error boundary / graceful server-action error UI exists
+  anywhere in this codebase** (Move-In, Move-Out, Contracts, everywhere).
+  An uncaught error thrown by a `"use server"` action bound directly to a
+  `<form action={...}>` - including Move-Out's own controlled
+  vacancy-conflict rejection - surfaces as Next.js's generic "This page
+  couldn't load" client error boundary rather than an in-page banner. The
+  safety invariant itself is never compromised (the throw still aborts
+  the transaction with no partial write), only the presentation is
+  generic. Fixing this well would mean introducing `error.tsx` boundaries
+  and/or a `useActionState` pattern across every mutating form in the
+  entire application - a cross-cutting UI-architecture change, not a
+  Move-Out-specific fix, and out of this phase's scope.

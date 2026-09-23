@@ -60,6 +60,8 @@ export interface Dictionary {
     operationsMaintenanceWorkOrders: string;
     operationsMaintenanceVendors: string;
     operationsMaintenanceReports: string;
+    operationsMoveOuts: string;
+    operationsReports: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -1773,6 +1775,14 @@ export interface Dictionary {
   maintenanceAttachmentType: Record<"PHOTO" | "VIDEO" | "DOCUMENT" | "INVOICE_COPY" | "QUOTE" | "OTHER", string>;
   maintenanceAttachmentStage: Record<"BEFORE" | "DURING" | "AFTER" | "GENERAL", string>;
   maintenanceSlaStatus: Record<"ON_TRACK" | "AT_RISK" | "BREACHED" | "MET", string>;
+  moveOutStatus: Record<"DRAFT" | "SCHEDULED" | "IN_PROGRESS" | "PENDING_FINDINGS_REVIEW" | "READY_FOR_CLOSURE" | "COMPLETED" | "CANCELLED", string>;
+  moveOutCancelReason: Record<"CONTRACT_REINSTATED" | "TENANT_REQUEST" | "RESCHEDULED" | "DATA_ERROR" | "OTHER", string>;
+  conditionComparison: Record<"IMPROVED" | "UNCHANGED" | "DETERIORATED" | "NO_BASELINE" | "NOT_COMPARABLE", string>;
+  moveOutMissingRequirement: Record<
+    "VACATE_DATE_MISSING" | "INSPECTION_INCOMPLETE" | "FINDINGS_NOT_REVIEWED" | "REQUIRED_METERS_MISSING" | "KEYS_NOT_RECONCILED" | "TENANT_ACKNOWLEDGEMENT_MISSING" | "STAFF_ACKNOWLEDGEMENT_MISSING",
+    string
+  >;
+  inventoryDiffStatus: Record<"MATCHED" | "QUANTITY_MISMATCH" | "MISSING_AT_MOVE_OUT" | "ADDED_AT_MOVE_OUT", string>;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -1938,6 +1948,203 @@ export interface Dictionary {
 
     activityCompleted: (moveInNumber: string) => string;
   };
+  moveOut: {
+    listTitle: string;
+    listSubtitle: string;
+    newTitle: string;
+    searchPlaceholder: string;
+    filterStatus: string;
+    filterCompound: string;
+    filterContract: string;
+    filterInspector: string;
+    filterScheduledFrom: string;
+    filterScheduledTo: string;
+    filterVacateFrom: string;
+    filterVacateTo: string;
+    filterHasFindings: string;
+    filterHasMaintenance: string;
+    filterCompletedOnly: string;
+    filterCancelledOnly: string;
+    filterOverdueOnly: string;
+    filterAll: string;
+    filterApply: string;
+    colMoveOutNumber: string;
+    colUnit: string;
+    colRenter: string;
+    colContract: string;
+    colCompound: string;
+    colScheduled: string;
+    colVacate: string;
+    colStatus: string;
+    colProgress: string;
+    colFindings: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    selectContract: string;
+    contractSearchPlaceholder: string;
+    noEligibleContracts: string;
+    scheduledAtLabel: string;
+    createButton: string;
+
+    sectionSummary: string;
+    sectionMoveInBaseline: string;
+    sectionChecklist: string;
+    sectionInventory: string;
+    sectionMeters: string;
+    sectionKeys: string;
+    sectionFindingsSummary: string;
+    sectionMaintenanceRequests: string;
+    sectionAttachments: string;
+    sectionAcknowledgement: string;
+    sectionFindingsReview: string;
+    sectionReadiness: string;
+    sectionCompletionPreview: string;
+
+    fieldMoveOutNumber: string;
+    fieldContract: string;
+    fieldUnit: string;
+    fieldRenter: string;
+    fieldCompound: string;
+    fieldInspector: string;
+    fieldHandedOverBy: string;
+    fieldScheduledAt: string;
+    fieldStartedAt: string;
+    fieldVacateDate: string;
+    fieldCompletedAt: string;
+    fieldFindingsReviewedAt: string;
+    fieldFindingsReviewedBy: string;
+    fieldTenantComments: string;
+    notSet: string;
+
+    startButton: string;
+    advanceToFindingsReviewButton: string;
+    reviewFindingsButton: string;
+    reopenButton: string;
+    completeButton: string;
+    cancelButton: string;
+    saveButton: string;
+    addButton: string;
+
+    progressLabel: (completed: number, total: number, percent: number) => string;
+
+    notesLabel: string;
+    requiresAttentionLabel: string;
+
+    noMoveInBaseline: string;
+    moveInConditionLabel: string;
+    moveOutConditionLabel: string;
+    conditionChangeLabel: string;
+
+    inventoryCategoryLabel: string;
+    inventoryItemNameLabel: string;
+    inventoryMoveInQtyLabel: string;
+    inventoryMoveOutQtyLabel: string;
+    inventoryQuantityLabel: string;
+    inventoryConditionLabel: string;
+    inventoryBrandLabel: string;
+    addInventoryButton: string;
+    inventoryEmpty: string;
+
+    meterTypeLabel: string;
+    meterNumberLabel: string;
+    meterMoveInReadingLabel: string;
+    meterMoveOutReadingLabel: string;
+    meterReadingLabel: string;
+    meterDifferenceLabel: string;
+    meterUnitOfMeasureLabel: string;
+    addMeterButton: string;
+    meterEmpty: string;
+    meterRequiredNotice: string;
+
+    keyTypeLabel: string;
+    keyDescriptionLabel: string;
+    keyQuantityLabel: string;
+    keyIssuedLabel: string;
+    keyReturnedLabel: string;
+    keyDifferenceLabel: string;
+    keyFullyReturnedLabel: string;
+    addKeyButton: string;
+    keyEmpty: string;
+    noKeysToReturnLabel: string;
+
+    attachmentEmpty: string;
+    attachmentNote: string;
+
+    findingsTotalItems: string;
+    findingsDeteriorated: string;
+    findingsDamaged: string;
+    findingsNotWorking: string;
+    findingsPoor: string;
+    findingsRequiresAttention: string;
+    findingsMaintenanceCreated: string;
+    findingsNoticeNotLiability: string;
+
+    createMaintenanceRequestButton: string;
+    maintenanceEmpty: string;
+    maintenanceColRequestNumber: string;
+    maintenanceColStatus: string;
+    maintenanceColPriority: string;
+    maintenanceColCategory: string;
+    maintenanceColCreatedAt: string;
+
+    tenantRepresentativeNameLabel: string;
+    tenantRepresentativeIdLabel: string;
+    tenantAcknowledgedAtLabel: string;
+    recordTenantAcknowledgementButton: string;
+    overrideLabel: string;
+    overrideReasonLabel: string;
+    saveOverrideButton: string;
+    staffAcknowledgedAtLabel: string;
+    recordStaffAcknowledgementButton: string;
+    acknowledgementDisclaimer: string;
+
+    cancelTitle: string;
+    cancelReasonLabel: string;
+    cancelNoteLabel: string;
+    confirmCancelButton: string;
+
+    missingRequirementsTitle: string;
+
+    readinessChecklistTitle: string;
+    readinessInspectionComplete: string;
+    readinessFindingsReviewed: string;
+    readinessMetersRecorded: string;
+    readinessKeysRecorded: string;
+    readinessVacateDateRecorded: string;
+    readinessAcknowledgementsComplete: string;
+
+    completionPreviewTitle: string;
+    completionPreviewBody: string;
+    completionPreviewNotDeposit: string;
+    completionConfirmButton: string;
+
+    vacancyConflictNotice: string;
+    completedReadOnlyNotice: string;
+
+    contractStatusLabel: string;
+    createMoveOutButton: string;
+    viewMoveOutButton: string;
+    noMoveOutYet: string;
+
+    reportTitle: string;
+    reportSubtitle: (moveOutNumber: string) => string;
+    reportOrgLabel: string;
+    reportContractLabel: string;
+    reportLeaseDatesLabel: string;
+    reportInspectionDateLabel: string;
+    reportConditionComparisonSection: string;
+    reportFindingsSummarySection: string;
+    reportNoFindings: string;
+    reportMaintenanceSection: string;
+    reportDisclaimer: string;
+    reportAcknowledgementSection: string;
+    reportNotLegalSignatureNotice: string;
+    reportPrintedOn: string;
+    reportDurationDaysLabel: string;
+  };
   operations: {
     dashboardTitle: string;
     dashboardSubtitle: string;
@@ -1968,6 +2175,28 @@ export interface Dictionary {
     kpiCompletedAwaitingVerification: string;
     kpiClosedThisMonth: string;
     kpiMaintenanceCostThisMonth: string;
+
+    moveOutSectionTitle: string;
+    goToMoveOuts: string;
+    kpiMoveOutsToday: string;
+    kpiMoveOutsUpcoming: string;
+    kpiMoveOutsInProgress: string;
+    kpiMoveOutsPendingFindingsReview: string;
+    kpiMoveOutsReadyForClosure: string;
+    kpiMoveOutsCompletedThisMonth: string;
+    kpiMoveOutsOverdue: string;
+    kpiMoveOutsWithFindings: string;
+    kpiMoveOutsWithMaintenance: string;
+
+    reportMoveOutSchedule: string;
+    reportMoveOutCompletion: string;
+    reportMoveOutUnitCondition: string;
+    reportMoveOutFindings: string;
+    reportInventoryVariance: string;
+    reportMoveOutMeterReading: string;
+    reportMoveOutKeysAccess: string;
+    reportMoveOutMaintenanceFindings: string;
+    reportsMoveOutSubtitle: string;
   };
   maintenance: {
     slaResponseDue: string;
@@ -2041,6 +2270,7 @@ export interface Dictionary {
     sectionDescription: string;
     sectionAttachments: string;
     sectionMoveInSource: string;
+    sectionMoveOutSource: string;
     sectionTriage: string;
     sectionWorkOrder: string;
     sectionActivity: string;
@@ -2057,6 +2287,7 @@ export interface Dictionary {
     cancelNoteLabel: string;
     confirmCancelButton: string;
     moveInSourceLabel: string;
+    moveOutSourceLabel: string;
 
     // Work Orders list/detail
     workOrdersListTitle: string;

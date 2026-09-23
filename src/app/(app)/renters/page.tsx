@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listRenters, createRenter, deleteRenter } from "@/lib/actions/renters";
 import { getMoveInStatusForRenters } from "@/lib/actions/move-ins";
+import { getMoveOutStatusForRenters } from "@/lib/actions/move-outs";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
@@ -11,7 +12,9 @@ export default async function RentersPage() {
   const canCreate = can("renter.create", role);
   const canDelete = can("renter.delete", role);
   const canViewMoveIns = can("moveIn.view", role);
+  const canViewMoveOuts = can("moveOut.view", role);
   const moveInByRenter: Awaited<ReturnType<typeof getMoveInStatusForRenters>> = canViewMoveIns ? await getMoveInStatusForRenters(renters.map((r) => r.id)) : new Map();
+  const moveOutByRenter: Awaited<ReturnType<typeof getMoveOutStatusForRenters>> = canViewMoveOuts ? await getMoveOutStatusForRenters(renters.map((r) => r.id)) : new Map();
 
   return (
     <div className="space-y-6">
@@ -88,6 +91,13 @@ export default async function RentersPage() {
                     <div className="mt-1">
                       <Link href={`/operations/move-ins/${moveInByRenter.get(r.id)!.moveInId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
                         {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveInByRenter.get(r.id)!.status]}
+                      </Link>
+                    </div>
+                  )}
+                  {canViewMoveOuts && moveOutByRenter.get(r.id) && (
+                    <div className="mt-1">
+                      <Link href={`/operations/move-outs/${moveOutByRenter.get(r.id)!.moveOutId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
+                        {t.moveOut.contractStatusLabel}: {t.moveOutStatus[moveOutByRenter.get(r.id)!.status]}
                       </Link>
                     </div>
                   )}

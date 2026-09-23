@@ -18,6 +18,7 @@ import {
   cancelMoveIn,
   setHandoverDate,
 } from "@/lib/actions/move-ins";
+import { getMoveOutForContract } from "@/lib/actions/move-outs";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, longDateTimeFormatter, pickLocalized } from "@/lib/i18n";
@@ -45,6 +46,8 @@ export default async function MoveInProfilePage({ params }: { params: Promise<{ 
   const canComplete = can("moveIn.complete", role);
   const canCancel = can("moveIn.cancel", role);
   const canInspect = can("moveInInspection.update", role);
+  const canViewMoveOuts = can("moveOut.view", role);
+  const relatedMoveOut = canViewMoveOuts ? await getMoveOutForContract(moveIn.contract.id) : null;
   const editable = moveIn.status === "IN_PROGRESS" || moveIn.status === "READY_FOR_HANDOVER";
 
   const itemsByCategory = new Map<InspectionCategory, typeof moveIn.inspectionItems>();
@@ -183,6 +186,22 @@ export default async function MoveInProfilePage({ params }: { params: Promise<{ 
           </p>
         )}
       </section>
+
+      {canViewMoveOuts && relatedMoveOut && (
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-3">{t.moveOut.sectionSummary}</h2>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-slate-500">{t.moveOut.fieldMoveOutNumber}</dt>
+            <dd className="text-slate-800 font-medium">
+              <Link href={`/operations/move-outs/${relatedMoveOut.id}`} className="text-brand-gold-dark hover:underline">
+                {relatedMoveOut.moveOutNumber}
+              </Link>
+            </dd>
+            <dt className="text-slate-500">{t.moveOut.contractStatusLabel}</dt>
+            <dd className="text-slate-800 font-medium">{t.moveOutStatus[relatedMoveOut.status]}</dd>
+          </dl>
+        </section>
+      )}
 
       {/* Defect summary */}
       <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
