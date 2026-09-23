@@ -2,10 +2,12 @@ import Link from "next/link";
 import { getOwnerById, updateOwner, deleteOwner } from "@/lib/actions/owners";
 import { listOwnedAssets } from "@/lib/actions/ownership";
 import { getOwnerBalance, listOwnerLedger, postManualLedgerEntry, reverseLedgerEntry } from "@/lib/actions/owner-ledger";
+import { getOwnerPortalAccountForOwner } from "@/lib/actions/owner-portal-account";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { AuditTimeline } from "@/components/audit-timeline";
+import { OwnerPortalAccountPanel } from "@/components/owner-portal-account-panel";
 
 function assetLabel(
   locale: Awaited<ReturnType<typeof getLocale>>,
@@ -41,6 +43,8 @@ export default async function OwnerProfilePage({ params }: { params: Promise<{ i
   const canPostLedger = can("ownerLedger.create", role);
   const canReverseLedger = can("ownerLedger.reverse", role);
   const recentLedger = [...ledger].slice(-10).reverse();
+  const canViewPortalAccount = can("ownerPortalAccount.view", role);
+  const portalAccount = canViewPortalAccount ? await getOwnerPortalAccountForOwner(owner.id) : null;
 
   return (
     <div className="space-y-6">
@@ -258,6 +262,51 @@ export default async function OwnerProfilePage({ params }: { params: Promise<{ i
             </div>
           </form>
         </div>
+      )}
+
+      {canViewPortalAccount && (
+        <OwnerPortalAccountPanel
+          ownerId={owner.id}
+          defaultEmail={owner.email ?? ""}
+          account={
+            portalAccount
+              ? {
+                  id: portalAccount.id,
+                  email: portalAccount.email,
+                  phone: portalAccount.phone,
+                  status: portalAccount.status,
+                  lastLoginLabel: portalAccount.lastLoginAt ? dateFmt.format(portalAccount.lastLoginAt) : null,
+                }
+              : null
+          }
+          perms={{
+            canView: canViewPortalAccount,
+            canCreate: can("ownerPortalAccount.create", role),
+            canActivate: can("ownerPortalAccount.activate", role),
+            canSuspend: can("ownerPortalAccount.suspend", role),
+            canDisable: can("ownerPortalAccount.disable", role),
+            canResetPassword: can("ownerPortalAccount.resetPassword", role),
+          }}
+          t={{
+            sectionPortalAccess: t.ownerPortal.sectionPortalAccess,
+            noPortalAccountNotice: t.ownerPortal.noPortalAccountNotice,
+            accountStatusLabel: t.ownerPortal.accountStatusLabel,
+            lastLoginLabel: t.ownerPortal.lastLoginLabel,
+            neverLoggedInValue: t.ownerPortal.neverLoggedInValue,
+            createAccountButton: t.ownerPortal.createAccountButton,
+            activateAccountButton: t.ownerPortal.activateAccountButton,
+            suspendAccountButton: t.ownerPortal.suspendAccountButton,
+            disableAccountButton: t.ownerPortal.disableAccountButton,
+            resetPasswordButton: t.ownerPortal.resetPasswordButton,
+            temporaryPasswordNotice: t.ownerPortal.temporaryPasswordNotice,
+            temporaryPasswordLabel: t.ownerPortal.temporaryPasswordLabel,
+            copyOncePasswordWarning: t.ownerPortal.copyOncePasswordWarning,
+            closeButton: t.ownerPortal.closeButton,
+            fieldEmail: t.ownerPortal.fieldEmail,
+            fieldPhone: t.ownerPortal.fieldPhone,
+            statusLabels: t.ownerPortalAccountStatus,
+          }}
+        />
       )}
 
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">

@@ -1805,6 +1805,7 @@ export interface Dictionary {
   settlementDisputeStatus: Record<"NONE" | "RAISED" | "UNDER_REVIEW" | "RESOLVED", string>;
   settlementRefundStatus: Record<"PENDING" | "APPROVED" | "PAID" | "CANCELLED", string>;
   tenantPortalAccountStatus: Record<"INVITED" | "ACTIVE" | "SUSPENDED" | "DISABLED", string>;
+  ownerPortalAccountStatus: Record<"INVITED" | "ACTIVE" | "SUSPENDED" | "DISABLED", string>;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -2755,6 +2756,172 @@ export interface Dictionary {
     mustChangePasswordNotice: string;
 
     // Internal admin integration (Contract/Renter page)
+    sectionPortalAccess: string;
+    noPortalAccountNotice: string;
+    accountStatusLabel: string;
+    lastLoginLabel: string;
+    neverLoggedInValue: string;
+    createAccountButton: string;
+    activateAccountButton: string;
+    suspendAccountButton: string;
+    disableAccountButton: string;
+    resetPasswordButton: string;
+    temporaryPasswordNotice: string;
+    temporaryPasswordLabel: string;
+    copyOncePasswordWarning: string;
+    closeButton: string;
+  };
+  ownerPortal: {
+    // Errors / validation
+    notFoundTitle: string;
+    notFoundMessage: string;
+    notFoundBackLink: string;
+    accountAlreadyExists: string;
+    emailAlreadyInUse: string;
+    ownerNotFound: string;
+    accountNotFound: string;
+    invalidAccountTransition: string;
+    currentPasswordIncorrect: string;
+    loginError: string;
+
+    // Brand / shell
+    portalTitle: string;
+    signOut: string;
+
+    // Nav
+    navDashboard: string;
+    navProperties: string;
+    navUnits: string;
+    navContracts: string;
+    navFinancials: string;
+    navLedger: string;
+    navStatements: string;
+    navMaintenance: string;
+    navProfile: string;
+
+    // Login
+    loginTitle: string;
+    loginSubtitle: string;
+    loginEmail: string;
+    loginPassword: string;
+    loginSubmit: string;
+
+    // Dashboard
+    dashboardTitle: string;
+    dashboardSubtitle: string;
+    cardProperties: string;
+    cardUnits: string;
+    cardOccupied: string;
+    cardVacant: string;
+    cardOccupancyRate: string;
+    cardActiveContracts: string;
+    cardMonthlyIncome: string;
+    cardMonthlyExpenses: string;
+    cardNetPosition: string;
+    cardOutstandingBalance: string;
+    cardOpenMaintenance: string;
+
+    // Portfolio / Properties
+    propertiesTitle: string;
+    propertiesSubtitle: string;
+    colCompound: string;
+    colBuilding: string;
+    colUnits: string;
+    colOwnershipPercentage: string;
+    ownershipPercentageNotice: string;
+    emptyProperties: string;
+    propertyDetailTitle: string;
+
+    // Units
+    unitsTitle: string;
+    colUnit: string;
+    colFloor: string;
+    colOccupancyStatus: string;
+    unitDetailTitle: string;
+    fieldOwnershipPercentage: string;
+    fieldEffectiveOwnership: string;
+    moveInStatusLabel: string;
+    moveOutStatusLabel: string;
+    emptyUnits: string;
+
+    // Contracts
+    contractsTitle: string;
+    colContractNumber: string;
+    colTenant: string;
+    colStartDate: string;
+    colEndDate: string;
+    colRent: string;
+    colPaymentFrequency: string;
+    colStatus: string;
+    contractDetailTitle: string;
+    emptyContracts: string;
+
+    // Financial Summary
+    financialsTitle: string;
+    financialsSubtitle: string;
+    cardCurrentBalance: string;
+    cardMonthToDateIncome: string;
+    cardMonthToDateExpenses: string;
+    cardYearToDateIncome: string;
+    cardYearToDateExpenses: string;
+    cardNetMovement: string;
+    recentLedgerEntriesTitle: string;
+
+    // Ledger
+    ledgerTitle: string;
+    ledgerSubtitle: string;
+    colDate: string;
+    colType: string;
+    colDescription: string;
+    colProperty: string;
+    colDebit: string;
+    colCredit: string;
+    colRunningBalance: string;
+    emptyLedger: string;
+
+    // Statement
+    statementTitle: string;
+    statementFrom: string;
+    statementTo: string;
+    statementGenerateButton: string;
+    openingBalanceLabel: string;
+    closingBalanceLabel: string;
+    totalIncomeLabel: string;
+    totalExpensesLabel: string;
+    totalDistributionsLabel: string;
+    netMovementLabel: string;
+    printStatementButton: string;
+
+    // Maintenance
+    maintenanceTitle: string;
+    maintenanceSubtitle: string;
+    colRequestNumber: string;
+    colCategory: string;
+    colPriority: string;
+    colReportedDate: string;
+    maintenanceDetailTitle: string;
+    workOrderStatusLabel: string;
+    completionDateLabel: string;
+    costResponsibilityLabel: string;
+    operationalMaintenanceCostLabel: string;
+    operationalMaintenanceCostNotice: string;
+    ownerExpenseLabel: string;
+    ownerExpenseNotice: string;
+    emptyMaintenance: string;
+
+    // Profile
+    profileTitle: string;
+    fieldFullName: string;
+    fieldEmail: string;
+    fieldPhone: string;
+    saveButton: string;
+    changePasswordTitle: string;
+    fieldCurrentPassword: string;
+    fieldNewPassword: string;
+    changePasswordButton: string;
+    mustChangePasswordNotice: string;
+
+    // Internal admin integration (Owner profile page)
     sectionPortalAccess: string;
     noPortalAccountNotice: string;
     accountStatusLabel: string;

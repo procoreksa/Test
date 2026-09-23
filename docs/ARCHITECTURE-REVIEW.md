@@ -106,7 +106,7 @@ there is no separate "funnel orchestrator" object; each module knows how
 to advance the Lead one step forward. Reservation creation, confirmation,
 and Reservation→Contract conversion all run inside `Serializable`
 transactions (the codebase's chosen concurrency strategy for every
-check-conflicts-then-write critical section - see §12 below).
+check-conflicts-then-write critical section - see §14 below).
 
 ## 8. Financial core
 
@@ -181,7 +181,39 @@ settlement-visibility policy, and the real-DB isolation test suite
 (`src/lib/actions/__dbtests__/tenant-portal-*.db.test.ts`) that verifies
 it end-to-end, including same-organization tenant-to-tenant isolation.
 
-## 12. Shared domain services (not tied to one module)
+## 12. Owner Portal: a third, independent authentication principal
+
+The Owner Portal (`docs/OWNER-PORTAL.md`) is the second externally-facing
+surface, structurally parallel to §11 but for a different principal:
+`src/lib/owner-auth.ts` constructs a third, fully independent
+`NextAuth({...})` instance - its own JWT claim shape
+(`{ owner: { id, organizationId, ownerId, email } }`), its own signing
+secret (`OWNER_AUTH_SECRET`, or a distinct `AUTH_SECRET`-derived suffix if
+unset - never equal to either the internal or the tenant secret), its own
+cookie name (`owner-portal.session-token`), and its own `basePath`
+(`/api/owner-portal-auth`). No `OWNER_PORTAL`/`PROPERTY_OWNER` value was
+added to `UserRole`, and `TenantPortalAccount` was not extended with a
+`principalType` union either - an owner's identity and entitlement
+question are structurally different from both an internal `User` and a
+tenant `Renter`.
+
+Its authorization boundary (`src/lib/owner-session.ts`) is stricter than
+§11's in one specific way: entitlement is never "does this owner belong to
+this organization" (§3's own principle, applied here too) *or* "does this
+Contract/Renter reference this owner" - it is always re-derived through
+the existing `PropertyOwnership` → `getEffectiveOwners()` inheritance
+chain (§6), the exact same Unit → Building → Compound override resolver
+every internal ownership screen and report already uses. No second
+ownership engine exists; the Owner Portal only ever reads through this one
+resolver. Ledger visibility is scoped even more narrowly still -
+`entry.ownerId` match only, never asset-based - so two owners who
+legitimately co-own the same Unit never see each other's financial
+history. See `docs/OWNER-PORTAL.md` for the full entitlement architecture,
+the ownership-override/shared-ownership/revocation semantics, and the
+real-DB isolation test suite
+(`src/lib/actions/__dbtests__/owner-portal-*.db.test.ts`).
+
+## 13. Shared domain services (not tied to one module)
 
 - `src/lib/numbering.ts` - the one `Counter`-table-backed sequence
   generator every module's human-readable number (`LEAD-`, `VIEW-`,
@@ -195,7 +227,7 @@ it end-to-end, including same-organization tenant-to-tenant isolation.
 - `src/lib/unit-location.ts` - the one Compound/Building display-label
   function.
 
-## 13. Concurrency strategy
+## 14. Concurrency strategy
 
 Postgres `SERIALIZABLE` transactions are this codebase's deliberate,
 consistently-applied answer to every "read some aggregate/existence check,
@@ -206,7 +238,7 @@ single-row updates with no such check (those need no more than Postgres's
 default `READ COMMITTED`). See `docs/SECURITY-REVIEW.md`
 §"Concurrency audit" for the case-by-case necessity review.
 
-## 14. Database access pattern
+## 15. Database access pattern
 
 No repository/DAO layer - Server Actions call `prisma.*`/`tx.*` directly.
 Every module that reuses one Prisma sub-query pattern for multiple call
@@ -217,7 +249,7 @@ with a per-module `PAGE_SIZE` constant (uniformly 25) - there is no shared
 pagination helper, but the pattern itself is consistent everywhere it's
 needed (Leads, Viewings, Offers, Reservations, Move-Ins, Audit Logs).
 
-## 15. What this map deliberately does not cover
+## 16. What this map deliberately does not cover
 
 Page-by-page UI component inventory, the exact Tailwind design tokens,
 and the CRM/Operations report catalog are already documented in each

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { defaultLedgerSide, allocateIncomeToOwners, allocateExpenseToOwners } from "@/lib/owner-allocation";
+import { summarizeOwnerLedgerEntries } from "@/lib/owner-ledger-rules";
 import type { AssetLevel } from "@/lib/ownership";
 import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 
@@ -275,25 +276,5 @@ export async function getOwnerBalance(ownerId: string) {
     select: { debit: true, credit: true, entryType: true },
   });
 
-  let totalIncome = new Prisma.Decimal(0);
-  let totalExpenses = new Prisma.Decimal(0);
-  let totalDistributions = new Prisma.Decimal(0);
-  let balance = new Prisma.Decimal(0);
-
-  for (const e of entries) {
-    balance = balance.plus(e.credit).minus(e.debit);
-    if (e.entryType === "RENT_INCOME" || e.entryType === "OTHER_INCOME") totalIncome = totalIncome.plus(e.credit);
-    if (
-      e.entryType === "MANAGEMENT_FEE" ||
-      e.entryType === "MAINTENANCE_EXPENSE" ||
-      e.entryType === "UTILITY_EXPENSE" ||
-      e.entryType === "SERVICE_EXPENSE" ||
-      e.entryType === "GOVERNMENT_FEE" ||
-      e.entryType === "OTHER_EXPENSE"
-    )
-      totalExpenses = totalExpenses.plus(e.debit);
-    if (e.entryType === "OWNER_DISTRIBUTION") totalDistributions = totalDistributions.plus(e.debit);
-  }
-
-  return { balance, totalIncome, totalExpenses, totalDistributions };
+  return summarizeOwnerLedgerEntries(entries);
 }

@@ -63,6 +63,8 @@ moveOut.view / moveOut.create / moveOut.update / moveOut.start / moveOut.complet
 securityDeposit.view / securityDeposit.create / securityDeposit.assess / securityDeposit.review / securityDeposit.approve / securityDeposit.post / securityDeposit.refund.view / securityDeposit.refund.manage / securityDeposit.dispute.manage
 
 tenantPortalAccount.view / tenantPortalAccount.create / tenantPortalAccount.activate / tenantPortalAccount.suspend / tenantPortalAccount.disable / tenantPortalAccount.resetPassword
+
+ownerPortalAccount.view / ownerPortalAccount.create / ownerPortalAccount.activate / ownerPortalAccount.suspend / ownerPortalAccount.disable / ownerPortalAccount.resetPassword
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -320,6 +322,12 @@ create/delete, not edit. When one is added, gate it with the matching
 | tenantPortalAccount.suspend | ✅ | ✅ | ✅ | ❌ | ❌ |
 | tenantPortalAccount.disable | ✅ | ✅ | ❌ | ❌ | ❌ |
 | tenantPortalAccount.resetPassword | ✅ | ✅ | ❌ | ❌ | ❌ |
+| ownerPortalAccount.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| ownerPortalAccount.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| ownerPortalAccount.activate | ✅ | ✅ | ✅ | ❌ | ❌ |
+| ownerPortalAccount.suspend | ✅ | ✅ | ✅ | ❌ | ❌ |
+| ownerPortalAccount.disable | ✅ | ✅ | ❌ | ❌ | ❌ |
+| ownerPortalAccount.resetPassword | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -395,6 +403,13 @@ Notes on judgment calls made while encoding the brief's policy:
   elsewhere. There is no `tenantPortalAccount.delete` - an account is never
   deleted, only suspended/disabled, matching this table's no-hard-delete
   policy.
+
+- **`ownerPortalAccount.*` follows `tenantPortalAccount.*` exactly**
+  (see `docs/OWNER-PORTAL.md` §30) - the same MANAGER
+  create/activate/suspend tier, the same OWNER/ADMIN-only disable/
+  resetPassword tier, and the same universal `.view`. No
+  `ownerPortalAccount.delete` exists, for the identical no-hard-delete
+  reason.
 
 - **`property.delete` / `unit.delete` / `renter.delete` are OWNER/ADMIN-only.**
   The brief listed `property.delete` etc. as permission keys to define but

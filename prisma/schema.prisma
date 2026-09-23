@@ -103,6 +103,7 @@ model Organization {
   securityDepositRefunds         SecurityDepositRefund[]
   securityDepositSettlementNotes SecurityDepositSettlementNote[]
   tenantPortalAccounts           TenantPortalAccount[]
+  ownerPortalAccounts            OwnerPortalAccount[]
 
   @@map("organizations")
 }
@@ -762,8 +763,9 @@ model Owner {
   updatedBy String?
   deletedAt DateTime?
 
-  ownerships    PropertyOwnership[]
-  ledgerEntries OwnerLedgerEntry[]
+  ownerships         PropertyOwnership[]
+  ledgerEntries      OwnerLedgerEntry[]
+  ownerPortalAccount OwnerPortalAccount?
 
   @@index([organizationId])
   @@index([organizationId, deletedAt])
@@ -3265,4 +3267,60 @@ model TenantPortalAccount {
   @@unique([organizationId, emailNormalized])
   @@index([organizationId, status])
   @@map("tenant_portal_accounts")
+}
+
+enum OwnerPortalAccountStatus {
+  INVITED // created by staff, temporary credential issued, never logged in yet
+  ACTIVE
+  SUSPENDED // reversible - staff-initiated, access stops immediately
+  DISABLED // terminal in practice - never deleted
+}
+
+/// One per Owner (V1: `ownerId @unique` - see docs/OWNER-PORTAL.md, "Account
+/// cardinality", for the documented future multi-representative/family-
+/// office/fund extension). Deliberately NOT a User and NOT a
+/// TenantPortalAccount: an owner is neither an internal staff user nor a
+/// tenant principal. This table grants zero internal permissions, and
+/// internal RBAC (`Permission`/`ROLE_PERMISSIONS`) never reads from it.
+/// Every authorization check derives access from OwnerPortalAccount ->
+/// Owner -> PropertyOwnership (via the existing getEffectiveOwners()
+/// resolver) -> resource, never from a client-supplied id or
+/// organizationId alone.
+model OwnerPortalAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  ownerId String @unique
+  owner   Owner  @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+
+  email           String
+  emailNormalized String // lowercase/trimmed, matches the internal User.email / TenantPortalAccount.emailNormalized convention
+
+  phone String?
+
+  passwordHash String
+
+  status OwnerPortalAccountStatus @default(INVITED)
+
+  mustChangePassword Boolean @default(true)
+
+  lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
+
+  // Plain string, not a relation - survives the creating/managing internal
+  // User being removed, same convention as TenantPortalAccount.createdByUserId.
+  createdByUserId String
+
+  suspendedAt       DateTime?
+  suspendedByUserId String?
+  disabledAt        DateTime?
+  disabledByUserId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, emailNormalized])
+  @@index([organizationId, status])
+  @@map("owner_portal_accounts")
 }

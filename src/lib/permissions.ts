@@ -120,7 +120,13 @@ export type Permission =
   | "tenantPortalAccount.activate"
   | "tenantPortalAccount.suspend"
   | "tenantPortalAccount.disable"
-  | "tenantPortalAccount.resetPassword";
+  | "tenantPortalAccount.resetPassword"
+  | "ownerPortalAccount.view"
+  | "ownerPortalAccount.create"
+  | "ownerPortalAccount.activate"
+  | "ownerPortalAccount.suspend"
+  | "ownerPortalAccount.disable"
+  | "ownerPortalAccount.resetPassword";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -237,6 +243,12 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "tenantPortalAccount.suspend",
   "tenantPortalAccount.disable",
   "tenantPortalAccount.resetPassword",
+  "ownerPortalAccount.view",
+  "ownerPortalAccount.create",
+  "ownerPortalAccount.activate",
+  "ownerPortalAccount.suspend",
+  "ownerPortalAccount.disable",
+  "ownerPortalAccount.resetPassword",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -375,6 +387,14 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "tenantPortalAccount.create",
   "tenantPortalAccount.activate",
   "tenantPortalAccount.suspend",
+  // Owner Portal account administration (docs/OWNER-PORTAL.md, "Internal
+  // account administration"): same higher-trust split as Tenant Portal
+  // above - MANAGER can create/activate/suspend, but disabling an account
+  // permanently and resetting an owner's credential stay OWNER/ADMIN-only.
+  "ownerPortalAccount.view",
+  "ownerPortalAccount.create",
+  "ownerPortalAccount.activate",
+  "ownerPortalAccount.suspend",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -434,6 +454,7 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.refund.view",
   "securityDeposit.refund.manage",
   "tenantPortalAccount.view",
+  "ownerPortalAccount.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -459,6 +480,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.view",
   "securityDeposit.refund.view",
   "tenantPortalAccount.view",
+  "ownerPortalAccount.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

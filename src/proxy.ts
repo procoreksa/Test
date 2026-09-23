@@ -16,6 +16,14 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Same reasoning as /portal above, for the Owner Portal's own independent
+  // principal (src/lib/owner-auth.ts, src/app/owner-portal/(portal)/layout.tsx,
+  // docs/OWNER-PORTAL.md) - an owner is neither an internal staff user nor a
+  // tenant, and must never be checked against the internal session either.
+  if (req.nextUrl.pathname.startsWith("/owner-portal")) {
+    return NextResponse.next();
+  }
+
   const isLoggedIn = Boolean(req.auth);
   const isLoginPage = req.nextUrl.pathname.startsWith("/login");
 

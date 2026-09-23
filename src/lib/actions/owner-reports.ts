@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
 import { pickEffectiveOwnershipLevel, type AssetLevel, type OwnershipRow } from "@/lib/ownership";
 import { INSTALLMENTS_PER_YEAR } from "@/lib/lease-math";
+import { buildOwnerStatement } from "@/lib/owner-ledger-rules";
 
 export interface OwnerStatementFilters {
   ownerId: string;
@@ -52,46 +53,31 @@ export async function getOwnerStatement(filters: OwnerStatementFilters) {
     }),
   ]);
 
-  const openingBalance = openingEntries.reduce((sum, e) => sum.plus(e.credit).minus(e.debit), new Prisma.Decimal(0));
-
-  let running = openingBalance;
-  let totalIncome = new Prisma.Decimal(0);
-  let totalExpenses = new Prisma.Decimal(0);
-  let totalDistributions = new Prisma.Decimal(0);
-
-  const rows: OwnerStatementRow[] = periodEntries.map((e) => {
-    running = running.plus(e.credit).minus(e.debit);
-    if (e.entryType === "RENT_INCOME" || e.entryType === "OTHER_INCOME") totalIncome = totalIncome.plus(e.credit);
-    if (
-      e.entryType === "MANAGEMENT_FEE" ||
-      e.entryType === "MAINTENANCE_EXPENSE" ||
-      e.entryType === "UTILITY_EXPENSE" ||
-      e.entryType === "SERVICE_EXPENSE" ||
-      e.entryType === "GOVERNMENT_FEE" ||
-      e.entryType === "OTHER_EXPENSE"
-    )
-      totalExpenses = totalExpenses.plus(e.debit);
-    if (e.entryType === "OWNER_DISTRIBUTION") totalDistributions = totalDistributions.plus(e.debit);
-
-    return {
-      date: e.entryDate,
-      reference: e.referenceId ?? e.referenceType ?? e.entryType,
-      description: e.description,
-      descriptionAr: e.descriptionAr,
-      debit: e.debit,
-      credit: e.credit,
-      runningBalance: running,
-    };
-  });
+  // Shared math with the Owner Portal's own statement action - see
+  // src/lib/owner-ledger-rules.ts's doc comment. This internal report keeps
+  // its own `reference` column (raw referenceId/referenceType/entryType),
+  // which the pure helper deliberately omits since it's not owner-safe
+  // (docs/OWNER-PORTAL.md, "Ledger fields") - zipped back on by index here,
+  // since buildOwnerStatement() preserves periodEntries' order.
+  const statement = buildOwnerStatement(openingEntries, periodEntries);
+  const rows: OwnerStatementRow[] = statement.rows.map((row, i) => ({
+    date: row.date,
+    reference: periodEntries[i].referenceId ?? periodEntries[i].referenceType ?? periodEntries[i].entryType,
+    description: row.description,
+    descriptionAr: row.descriptionAr,
+    debit: row.debit,
+    credit: row.credit,
+    runningBalance: row.runningBalance,
+  }));
 
   return {
     owner,
     rows,
-    openingBalance,
-    closingBalance: running,
-    totalIncome,
-    totalExpenses,
-    totalDistributions,
+    openingBalance: statement.openingBalance,
+    closingBalance: statement.closingBalance,
+    totalIncome: statement.totalIncome,
+    totalExpenses: statement.totalExpenses,
+    totalDistributions: statement.totalDistributions,
   };
 }
 
