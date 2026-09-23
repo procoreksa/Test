@@ -704,6 +704,8 @@ export interface Dictionary {
     moveOutOverrideReasonRequired: string;
     moveOutCancelNoteRequired: string;
     moveOutUnsafeToVacate: string;
+    moveOutBlockedByActiveCorporateAllocations: string;
+    contractTerminationBlockedByActiveCorporateAllocations: string;
     contractRenewalBlockedByMoveOut: string;
     settlementMoveOutNotEligible: string;
     settlementAlreadyExistsForMoveOut: string;
@@ -932,6 +934,8 @@ export interface Dictionary {
     ISSUE: string;
     CANCEL: string;
     VOID: string;
+    END: string;
+    TRANSFER: string;
     PAYMENT_RECORDED: string;
     PAYMENT_REVERSED: string;
     OWNERSHIP_ASSIGNED: string;
@@ -1782,7 +1786,7 @@ export interface Dictionary {
   maintenanceRequestStatus: Record<"OPEN" | "TRIAGED" | "WORK_ORDER_CREATED" | "RESOLVED" | "CANCELLED", string>;
   maintenanceWorkOrderStatus: Record<"DRAFT" | "ASSIGNED" | "SCHEDULED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "VERIFIED" | "CLOSED" | "CANCELLED", string>;
   maintenanceRequestSource: Record<"INTERNAL" | "TENANT" | "MOVE_IN_INSPECTION" | "MOVE_OUT_INSPECTION" | "MANAGEMENT" | "SECURITY" | "HOUSEKEEPING" | "OTHER", string>;
-  maintenanceReportedByType: Record<"STAFF" | "TENANT" | "OWNER" | "SECURITY" | "HOUSEKEEPING" | "MANAGEMENT" | "OTHER", string>;
+  maintenanceReportedByType: Record<"STAFF" | "TENANT" | "OWNER" | "SECURITY" | "HOUSEKEEPING" | "MANAGEMENT" | "CORPORATE_OCCUPANT" | "OTHER", string>;
   maintenanceHoldReason: Record<"WAITING_FOR_PART" | "WAITING_FOR_VENDOR" | "WAITING_FOR_TENANT" | "WAITING_FOR_APPROVAL" | "ACCESS_UNAVAILABLE" | "OTHER", string>;
   maintenanceCancelReason: Record<"DUPLICATE" | "NOT_NEEDED" | "TENANT_WITHDREW" | "RESOLVED_INFORMALLY" | "DATA_ERROR" | "OTHER", string>;
   maintenanceWorkLogType: Record<"NOTE" | "STATUS_UPDATE" | "DIAGNOSIS" | "WORK_PERFORMED" | "CUSTOMER_UPDATE" | "INTERNAL_NOTE" | "OTHER", string>;
@@ -1806,6 +1810,10 @@ export interface Dictionary {
   settlementRefundStatus: Record<"PENDING" | "APPROVED" | "PAID" | "CANCELLED", string>;
   tenantPortalAccountStatus: Record<"INVITED" | "ACTIVE" | "SUSPENDED" | "DISABLED", string>;
   ownerPortalAccountStatus: Record<"INVITED" | "ACTIVE" | "SUSPENDED" | "DISABLED", string>;
+  corporateAccountStatus: Record<"PROSPECT" | "ACTIVE" | "INACTIVE" | "SUSPENDED", string>;
+  corporateContactType: Record<"PRIMARY" | "HR" | "ADMINISTRATION" | "FINANCE" | "HOUSING_COORDINATOR" | "EMERGENCY" | "OTHER", string>;
+  corporateOccupantStatus: Record<"ACTIVE" | "INACTIVE" | "LEFT_COMPANY", string>;
+  corporateHousingAllocationStatus: Record<"PLANNED" | "ACTIVE" | "ENDED" | "CANCELLED", string>;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -2936,6 +2944,193 @@ export interface Dictionary {
     temporaryPasswordLabel: string;
     copyOncePasswordWarning: string;
     closeButton: string;
+  };
+  corporateHousing: {
+    // Generic list/filter controls
+    searchLabel: string;
+    filterAll: string;
+    filterApply: string;
+    previousLabel: string;
+    nextLabel: string;
+
+    // Errors / validation
+    renterNotFound: string;
+    renterNotCorporate: string;
+    accountAlreadyExists: string;
+    accountNotFound: string;
+    contactNotFound: string;
+    occupantNotFound: string;
+    contractNotFound: string;
+    contractNotEligible: string;
+    allocationDatesInvalid: string;
+    occupantOverlap: string;
+    allocationNotFound: string;
+    allocationInvalidTransition: string;
+    allocationUnsafe: string;
+
+    // Nav / shell
+    navDashboard: string;
+    navAccounts: string;
+    navOccupants: string;
+    navAllocations: string;
+    navReports: string;
+
+    // Dashboard
+    dashboardTitle: string;
+    dashboardSubtitle: string;
+    cardActiveAccounts: string;
+    cardCorporateContracts: string;
+    cardCorporateLeasedUnits: string;
+    cardActiveOccupants: string;
+    cardActiveAllocations: string;
+    cardPlannedArrivals: string;
+    cardPlannedDepartures: string;
+    cardUnallocatedUnits: string;
+    cardAllocationRate: string;
+    cardOpenMaintenance: string;
+    cardContractsExpiringSoon: string;
+
+    // Accounts list/profile
+    accountsTitle: string;
+    accountsSubtitle: string;
+    newAccountButton: string;
+    createAccountTitle: string;
+    colAccountNumber: string;
+    colDisplayName: string;
+    colStatus: string;
+    colAccountManager: string;
+    colActiveContracts: string;
+    colActiveAllocations: string;
+    emptyAccounts: string;
+    accountProfileTitle: string;
+    sectionAccountSummary: string;
+    sectionCorporateRenter: string;
+    sectionContacts: string;
+    sectionContracts: string;
+    sectionUnits: string;
+    sectionOccupants: string;
+    sectionActiveAllocations: string;
+    sectionUpcomingAllocations: string;
+    sectionAllocationHistory: string;
+    sectionFinancialSnapshot: string;
+    sectionMaintenanceSnapshot: string;
+    sectionAudit: string;
+    fieldDisplayName: string;
+    fieldStatus: string;
+    fieldIndustry: string;
+    fieldWebsite: string;
+    fieldAccountManager: string;
+    fieldNotes: string;
+    fieldCorporateRenter: string;
+    saveButton: string;
+
+    // Contacts
+    addContactButton: string;
+    editContactButton: string;
+    fieldContactName: string;
+    fieldJobTitle: string;
+    fieldDepartment: string;
+    fieldEmail: string;
+    fieldPhone: string;
+    fieldContactType: string;
+    fieldIsPrimary: string;
+    activateContactButton: string;
+    deactivateContactButton: string;
+    emptyContacts: string;
+
+    // Occupants
+    occupantsTitle: string;
+    occupantsSubtitle: string;
+    newOccupantButton: string;
+    colEmployeeNumber: string;
+    colOccupantName: string;
+    colCorporateAccount: string;
+    colCurrentHousing: string;
+    emptyOccupants: string;
+    occupantProfileTitle: string;
+    sectionEmployeeSummary: string;
+    sectionContactDetails: string;
+    sectionCurrentAllocation: string;
+    sectionMaintenanceReported: string;
+    fieldFullName: string;
+    fieldFullNameAr: string;
+    fieldNationality: string;
+    fieldEmergencyContactName: string;
+    fieldEmergencyContactPhone: string;
+    noCurrentAllocation: string;
+
+    // Allocations
+    allocationsTitle: string;
+    allocationsSubtitle: string;
+    newAllocationButton: string;
+    colAllocationNumber: string;
+    colOccupant: string;
+    colContract: string;
+    colUnit: string;
+    colStartDate: string;
+    colPlannedEndDate: string;
+    colActualEndDate: string;
+    emptyAllocations: string;
+    allocationWorkspaceTitle: string;
+    sectionAllocationSummary: string;
+    sectionMoveInContext: string;
+    sectionMaintenanceContext: string;
+    fieldCorporateAccount: string;
+    fieldOccupant: string;
+    fieldContract: string;
+    fieldStartDate: string;
+    fieldPlannedEndDate: string;
+    fieldBedroomNumber: string;
+    fieldRoomLabel: string;
+    createAllocationButton: string;
+    activateAllocationButton: string;
+    endAllocationButton: string;
+    cancelAllocationButton: string;
+    transferOccupantButton: string;
+    confirmEndAllocationButton: string;
+    confirmCancelAllocationButton: string;
+    transferPageTitle: string;
+    fieldNewContract: string;
+    fieldNewStartDate: string;
+    fieldNewPlannedEndDate: string;
+    submitTransferButton: string;
+
+    // Reports
+    reportsTitle: string;
+    reportAccountSummary: string;
+    reportOccupancy: string;
+    reportOccupantAllocation: string;
+    reportPlannedArrivals: string;
+    reportPlannedDepartures: string;
+    reportContractExpiry: string;
+    reportUnallocatedUnits: string;
+    reportMaintenance: string;
+    reportFinancialSnapshot: string;
+    colContractValue: string;
+    colInvoiced: string;
+    colPaid: string;
+    colOutstanding: string;
+    colOverdue: string;
+    colCorporateContractCount: string;
+    colCorporateUnitCount: string;
+    colUnitsWithAllocation: string;
+    colUnallocatedUnitCount: string;
+    colAllocationRate: string;
+
+    // Printable roster
+    rosterTitle: string;
+    printRosterButton: string;
+
+    // Maintenance integration
+    reportedByCorporateOccupantLabel: string;
+
+    // Integration cards on existing Contract/Unit/Renter/Maintenance pages
+    contractIntegrationTitle: string;
+    unitIntegrationTitle: string;
+    renterIntegrationTitle: string;
+    viewCorporateAccountButton: string;
+    currentAllocationLabel: string;
+    maintenanceTraceabilityTitle: string;
   };
 }
 

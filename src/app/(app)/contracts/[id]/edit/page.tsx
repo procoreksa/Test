@@ -7,6 +7,7 @@ import { getMoveInForContract } from "@/lib/actions/move-ins";
 import { getMoveOutForContract } from "@/lib/actions/move-outs";
 import { getSettlementForContract, getDepositPositionForContract } from "@/lib/actions/security-deposits";
 import { getTenantPortalAccountForRenter } from "@/lib/actions/tenant-portal-account";
+import { getCorporateHousingContextForContract } from "@/lib/actions/corporate-allocations";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized, shortDateFormatter, currencyFormatter } from "@/lib/i18n";
@@ -39,6 +40,8 @@ export default async function EditContractPage({
   const depositPosition = canViewSettlement ? await getDepositPositionForContract(contract.id) : null;
   const canViewPortalAccount = can("tenantPortalAccount.view", role);
   const portalAccount = canViewPortalAccount ? await getTenantPortalAccountForRenter(contract.renterId) : null;
+  const canViewCorporateHousing = can("corporateHousing.view", role);
+  const corporateHousing = canViewCorporateHousing ? await getCorporateHousingContextForContract(contract.id) : null;
 
   const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
@@ -194,6 +197,34 @@ export default async function EditContractPage({
             )}
           </dl>
           {depositPosition.isOverCollected && <p className="text-xs text-amber-600 mt-3">{t.securityDeposit.depositOverCollectedNotice}</p>}
+        </div>
+      )}
+
+      {canViewCorporateHousing && corporateHousing && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-3">{t.corporateHousing.contractIntegrationTitle}</h2>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm mb-3">
+            <dt className="text-slate-500">{t.corporateHousing.colCorporateAccount}</dt>
+            <dd className="text-slate-800 font-medium">
+              <Link href={`/corporate-housing/accounts/${corporateHousing.corporateAccount.id}`} className="text-brand-gold-dark hover:underline">
+                {corporateHousing.corporateAccount.accountNumber} — {corporateHousing.corporateAccount.displayName}
+              </Link>
+            </dd>
+          </dl>
+          {corporateHousing.allocations.length > 0 ? (
+            <ul className="space-y-1">
+              {corporateHousing.allocations.map((a) => (
+                <li key={a.id} className="text-sm">
+                  <Link href={`/corporate-housing/allocations/${a.id}`} className="text-brand-gold-dark hover:underline">
+                    {a.allocationNumber}
+                  </Link>{" "}
+                  — {pickLocalized(locale, a.occupant.fullNameAr, a.occupant.fullName)} — {t.corporateHousingAllocationStatus[a.status]}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-slate-500">{t.corporateHousing.emptyAllocations}</p>
+          )}
         </div>
       )}
 

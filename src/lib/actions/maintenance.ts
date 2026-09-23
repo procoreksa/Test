@@ -61,6 +61,15 @@ const REQUEST_FULL_INCLUDE = {
   moveInInspectionItem: { select: { id: true, itemName: true, itemNameAr: true, category: true } },
   moveOut: { select: { id: true, moveOutNumber: true } },
   moveOutInspectionItem: { select: { id: true, itemName: true, itemNameAr: true, category: true } },
+  corporateOccupant: {
+    select: {
+      id: true,
+      fullName: true,
+      fullNameAr: true,
+      employeeNumber: true,
+      corporateAccount: { select: { id: true, accountNumber: true, displayName: true } },
+    },
+  },
   attachments: { orderBy: { createdAt: "asc" as const } },
   workOrders: { orderBy: { createdAt: "desc" as const } },
 } satisfies Prisma.MaintenanceRequestInclude;

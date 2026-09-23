@@ -65,6 +65,12 @@ securityDeposit.view / securityDeposit.create / securityDeposit.assess / securit
 tenantPortalAccount.view / tenantPortalAccount.create / tenantPortalAccount.activate / tenantPortalAccount.suspend / tenantPortalAccount.disable / tenantPortalAccount.resetPassword
 
 ownerPortalAccount.view / ownerPortalAccount.create / ownerPortalAccount.activate / ownerPortalAccount.suspend / ownerPortalAccount.disable / ownerPortalAccount.resetPassword
+
+corporateHousing.view / corporateHousingReports.view
+corporateAccount.create / corporateAccount.update
+corporateContact.manage
+corporateOccupant.create / corporateOccupant.update
+corporateAllocation.create / corporateAllocation.update / corporateAllocation.activate / corporateAllocation.end / corporateAllocation.cancel / corporateAllocation.transfer
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -328,6 +334,19 @@ create/delete, not edit. When one is added, gate it with the matching
 | ownerPortalAccount.suspend | ✅ | ✅ | ✅ | ❌ | ❌ |
 | ownerPortalAccount.disable | ✅ | ✅ | ❌ | ❌ | ❌ |
 | ownerPortalAccount.resetPassword | ✅ | ✅ | ❌ | ❌ | ❌ |
+| corporateHousing.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| corporateHousingReports.view | ✅ | ✅ | ✅ | ✅ | ❌ |
+| corporateAccount.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAccount.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateContact.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateOccupant.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateOccupant.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAllocation.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAllocation.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAllocation.activate | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAllocation.end | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAllocation.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| corporateAllocation.transfer | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -431,6 +450,33 @@ Notes on judgment calls made while encoding the brief's policy:
   but only `ownerLedger.view`, while ACCOUNTANT gets the reverse emphasis
   (`ownerLedger.create`/`ownerLedger.reverse` but only `ownership.view`, no
   `ownership.manage`) - this was explicit in the brief's own role policy.
+
+- **Corporate Housing (docs/CORPORATE-HOUSING.md).** No new role was
+  introduced, and the internal `OWNER` role here is unrelated to the
+  Owner Portal's own external principal (an owner never receives any
+  `corporateAccount.*`/`corporateAllocation.*` permission - see
+  `docs/CORPORATE-HOUSING.md` §21). OWNER/ADMIN hold every permission.
+  MANAGER holds the full day-to-day operational set - every
+  `corporateAccount.*`/`corporateContact.manage`/`corporateOccupant.*`/
+  `corporateAllocation.*` permission - the same tier as its existing
+  Contract/Move-In/Maintenance access. ACCOUNTANT gets `corporateHousing.view`
+  + `corporateHousingReports.view` only (it can see accounts, occupants,
+  allocations and every report, including the Corporate Financial
+  Snapshot, but cannot create or mutate anything) - matching its
+  established "broad `*.view`, narrow mutation" posture everywhere else in
+  this table. VIEWER gets `corporateHousing.view` only (read-only
+  operational data, no reports), the same read-only pattern as every other
+  module. There is no `corporateAccount.delete`/`corporateOccupant.delete`/
+  `corporateAllocation.delete` - every entity here is deactivated or moved
+  to a terminal status instead (`INACTIVE`/`SUSPENDED` for an Account,
+  `LEFT_COMPANY` for an Occupant, `ENDED`/`CANCELLED` for an Allocation),
+  matching this table's no-hard-delete policy. `corporateAllocation.end`
+  and `corporateAllocation.cancel` are kept separate from
+  `corporateAllocation.update` (there is no general-purpose allocation
+  edit action at all - only the specific lifecycle transitions) since
+  ending a live allocation and cancelling a never-started one are
+  distinct, independently auditable actions, mirroring how `contract.terminate`
+  is kept separate from `contract.update`.
 
 ## 4. How to protect a new server action
 

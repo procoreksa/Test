@@ -152,3 +152,22 @@ describe("Financial read-only regression: nothing in this file ever creates or m
     expect(await prisma.securityDepositRefund.count({ where: { organizationId: org.organization.id } })).toBe(0);
   });
 });
+
+describe("Corporate Housing privacy regression: the Tenant Portal never gains access to CorporateOccupant data through Maintenance", () => {
+  it("an injected corporateOccupantId is silently dropped (the create schema has no such field) and the tenant-facing DTO never exposes any corporate field", async () => {
+    const { seedCorporateAccount, createTestCorporateOccupant } = await import("./db-test-helpers");
+    const { account: corpAccount } = await seedCorporateAccount(org, { displayName: "Tenant-Portal-Invisible Corp" });
+    const occupant = await createTestCorporateOccupant(org.organization.id, corpAccount.id, { fullName: "Confidential Corporate Occupant" });
+
+    const { createTenantMaintenanceRequest, getTenantMaintenanceRequestDetail } = await import("@/lib/actions/portal/maintenance");
+    const requestId = await createTenantMaintenanceRequest(fd({ category: "GENERAL", title: "Injection attempt", corporateOccupantId: occupant.id }));
+
+    const created = await prisma.maintenanceRequest.findUniqueOrThrow({ where: { id: requestId } });
+    expect(created.corporateOccupantId).toBeNull();
+
+    const detail = await getTenantMaintenanceRequestDetail(requestId);
+    expect("corporateOccupantId" in detail).toBe(false);
+    expect("corporateOccupant" in detail).toBe(false);
+    expect(JSON.stringify(detail)).not.toContain("Confidential Corporate Occupant");
+  });
+});

@@ -683,6 +683,20 @@ export async function completeMoveOut(moveOutId: string): Promise<string> {
         throw new Error(t.validation.moveOutUnsafeToVacate);
       }
 
+      // Corporate Housing boundary (docs/CORPORATE-HOUSING.md, "Move-Out
+      // boundary"): a Contract with any still-live (PLANNED/ACTIVE)
+      // corporate housing allocation may not be Moved Out until those
+      // allocations are explicitly ended first - preferred for
+      // auditability over silently orphaning an active occupancy record.
+      // This is the only Corporate Housing touch point in this file; it
+      // never otherwise changes Move-Out's own behavior.
+      const activeCorporateAllocationCount = await tx.corporateHousingAllocation.count({
+        where: { organizationId, contractId: moveOut.contractId, status: { in: ["PLANNED", "ACTIVE"] } },
+      });
+      if (activeCorporateAllocationCount > 0) {
+        throw new Error(t.validation.moveOutBlockedByActiveCorporateAllocations);
+      }
+
       const updated = await tx.moveOut.update({
         where: { id: moveOutId },
         data: {

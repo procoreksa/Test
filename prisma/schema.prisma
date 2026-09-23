@@ -104,6 +104,10 @@ model Organization {
   securityDepositSettlementNotes SecurityDepositSettlementNote[]
   tenantPortalAccounts           TenantPortalAccount[]
   ownerPortalAccounts            OwnerPortalAccount[]
+  corporateAccounts              CorporateAccount[]
+  corporateContacts              CorporateContact[]
+  corporateOccupants             CorporateOccupant[]
+  corporateHousingAllocations    CorporateHousingAllocation[]
 
   @@map("organizations")
 }
@@ -155,6 +159,8 @@ model User {
   postedSettlements    SecurityDepositSettlement[]  @relation("SettlementPostedBy")
   cancelledSettlements SecurityDepositSettlement[]  @relation("SettlementCancelledBy")
   approvedLiabilities  MoveOutLiabilityAssessment[] @relation("AssessmentApprovedBy")
+
+  managedCorporateAccounts CorporateAccount[] @relation("CorporateAccountManager")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -329,16 +335,17 @@ model Unit {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts                  Contract[]
-  propertyOwnerships         PropertyOwnership[]
-  ownerLedgerEntries         OwnerLedgerEntry[]
-  viewingUnits               ViewingUnit[]
-  leasingOffers              LeasingOffer[]
-  reservations               Reservation[]
-  moveIns                    MoveIn[]
-  maintenanceRequests        MaintenanceRequest[]
-  moveOuts                   MoveOut[]
-  securityDepositSettlements SecurityDepositSettlement[]
+  contracts                   Contract[]
+  propertyOwnerships          PropertyOwnership[]
+  ownerLedgerEntries          OwnerLedgerEntry[]
+  viewingUnits                ViewingUnit[]
+  leasingOffers               LeasingOffer[]
+  reservations                Reservation[]
+  moveIns                     MoveIn[]
+  maintenanceRequests         MaintenanceRequest[]
+  moveOuts                    MoveOut[]
+  securityDepositSettlements  SecurityDepositSettlement[]
+  corporateHousingAllocations CorporateHousingAllocation[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -382,6 +389,7 @@ model Renter {
   moveOuts                   MoveOut[]
   securityDepositSettlements SecurityDepositSettlement[]
   tenantPortalAccount        TenantPortalAccount?
+  corporateAccount           CorporateAccount?
 
   @@index([organizationId])
   @@map("renters")
@@ -477,6 +485,7 @@ model Contract {
   moveOuts                     MoveOut[]
   securityDepositSettlements   SecurityDepositSettlement[]
   securityDepositLedgerEntries SecurityDepositLedgerEntry[]
+  corporateHousingAllocations  CorporateHousingAllocation[]
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
@@ -2339,6 +2348,7 @@ enum MaintenanceReportedByType {
   SECURITY
   HOUSEKEEPING
   MANAGEMENT
+  CORPORATE_OCCUPANT
   OTHER
 }
 
@@ -2484,6 +2494,16 @@ model MaintenanceRequest {
   reportedByName   String?
   reportedByPhone  String?
   reportedAt       DateTime                  @default(now())
+
+  // Corporate Housing traceability only (docs/CORPORATE-HOUSING.md,
+  // "Occupant reporter architecture") - a CorporateOccupant is never a
+  // Renter/Contract party/Invoice customer; this is a read-only pointer so
+  // internal staff can see which employee reported an issue, set only when
+  // reportedByType = CORPORATE_OCCUPANT. onDelete: SetNull mirrors
+  // reportedByUserId's own pattern - deleting the occupant record must
+  // never cascade-delete Maintenance history.
+  corporateOccupantId String?
+  corporateOccupant   CorporateOccupant? @relation(fields: [corporateOccupantId], references: [id], onDelete: SetNull)
 
   preferredVisitDate  DateTime?
   preferredTimeWindow String?
@@ -3323,4 +3343,236 @@ model OwnerPortalAccount {
   @@unique([organizationId, emailNormalized])
   @@index([organizationId, status])
   @@map("owner_portal_accounts")
+}
+
+// ---------------------------------------------------------------------------
+// Corporate Housing (docs/CORPORATE-HOUSING.md) - a B2B operational layer on
+// top of the existing Renter/Contract/Unit architecture, never a second
+// leasing engine. CorporateAccount wraps an existing Renter (the legal, VAT-
+// registered corporate customer already fully supported by Invoice/Payment)
+// rather than duplicating it. CorporateOccupant (an employee physically
+// residing in a Unit) is deliberately NOT a Renter, Contract party, Invoice
+// customer, or Payment customer - it is a pure operational record.
+// CorporateHousingAllocation ("this occupant is assigned to this corporate-
+// leased Unit for this period") is deliberately NOT a lease, sublease,
+// financial contract, invoice, or payment schedule - it never touches
+// Unit.status or Contract.status, and never creates/mutates a MoveIn/MoveOut.
+// ---------------------------------------------------------------------------
+
+enum CorporateAccountStatus {
+  PROSPECT
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+/// The commercial B2B customer. Wraps an existing corporate Renter
+/// (`renterId @unique` - one CorporateAccount per Renter, V1) rather than
+/// duplicating fullName/vatNumber/contact fields already authoritatively
+/// stored there - see docs/CORPORATE-HOUSING.md, "Corporate Account vs
+/// Renter". A Renter with no CorporateAccount row is simply not (yet)
+/// managed as a corporate account; nothing elsewhere in the codebase reads
+/// this table to make that determination.
+model CorporateAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  renterId String @unique
+  renter   Renter @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  // "CHA-ACC-000001"-style via the existing Counter infrastructure (key
+  // "corporateAccount") - no year component, matching every other
+  // non-tax-document sequence in this schema (Lead/Viewing/Offer/
+  // Reservation/MoveIn/MaintenanceRequest numbers).
+  accountNumber String
+
+  // Denormalized from Renter.fullName at creation for fast list display
+  // (avoids a join on every /corporate-housing/accounts row); kept in sync
+  // by the update action whenever the account (not the Renter directly) is
+  // edited. The Renter's own fullName remains authoritative for anything
+  // financial (invoices/statements).
+  displayName String
+
+  status CorporateAccountStatus @default(PROSPECT)
+
+  industry String?
+  website  String?
+
+  accountManagerUserId String?
+  accountManagerUser   User?   @relation("CorporateAccountManager", fields: [accountManagerUserId], references: [id], onDelete: SetNull)
+
+  notes String?
+
+  createdByUserId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contacts    CorporateContact[]
+  occupants   CorporateOccupant[]
+  allocations CorporateHousingAllocation[]
+
+  @@unique([organizationId, accountNumber])
+  @@index([organizationId, status])
+  @@map("corporate_accounts")
+}
+
+enum CorporateContactType {
+  PRIMARY
+  HR
+  ADMINISTRATION
+  FINANCE
+  HOUSING_COORDINATOR
+  EMERGENCY
+  OTHER
+}
+
+/// Lightweight corporate contacts - no login account in this phase (see
+/// docs/CORPORATE-HOUSING.md, "Future Corporate Portal"). Deactivated
+/// (`isActive = false`), never hard-deleted, matching this schema's
+/// no-hard-delete-for-history convention.
+model CorporateContact {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  corporateAccountId String
+  corporateAccount   CorporateAccount @relation(fields: [corporateAccountId], references: [id], onDelete: Cascade)
+
+  name       String
+  jobTitle   String?
+  department String?
+  email      String?
+  phone      String?
+
+  contactType CorporateContactType @default(OTHER)
+
+  isPrimary Boolean @default(false)
+  isActive  Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, corporateAccountId])
+  @@map("corporate_contacts")
+}
+
+enum CorporateOccupantStatus {
+  ACTIVE
+  INACTIVE
+  LEFT_COMPANY
+}
+
+/// An employee/occupant physically residing in a corporate-leased Unit -
+/// deliberately NOT a Renter (see docs/CORPORATE-HOUSING.md, "Corporate
+/// Occupant vs Renter"): never a Contract party, Invoice customer, or
+/// Payment customer. Status is the employee's own operational state, kept
+/// deliberately independent of any CorporateHousingAllocation's own
+/// lifecycle (an employee can be ACTIVE with zero current allocation, e.g.
+/// between assignments).
+model CorporateOccupant {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  corporateAccountId String
+  corporateAccount   CorporateAccount @relation(fields: [corporateAccountId], references: [id], onDelete: Cascade)
+
+  employeeNumber String?
+  fullName       String
+  fullNameAr     String?
+
+  email String?
+  phone String?
+
+  nationality String?
+
+  jobTitle   String?
+  department String?
+
+  status CorporateOccupantStatus @default(ACTIVE)
+
+  // Deliberately minimal PII (docs/CORPORATE-HOUSING.md, "PII policy") - no
+  // passport/national-ID scans, no medical data, no salary, no bank
+  // details; only what an operational housing-allocation record needs.
+  emergencyContactName  String?
+  emergencyContactPhone String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  allocations         CorporateHousingAllocation[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@index([organizationId, corporateAccountId, status])
+  @@map("corporate_occupants")
+}
+
+enum CorporateHousingAllocationStatus {
+  PLANNED
+  ACTIVE
+  ENDED
+  CANCELLED
+}
+
+/// "This occupant is assigned to this corporate-leased Unit for this
+/// period" - deliberately NOT a lease/sublease/financial contract/invoice/
+/// payment schedule (docs/CORPORATE-HOUSING.md, "Allocation vs Contract").
+/// `contractId`/`unitId` are re-verified consistent
+/// (contract.unitId === unitId, contract.renterId === account.renterId,
+/// every organizationId matching) by the server on every write - never
+/// trusted from a client-supplied combination. Ending/cancelling an
+/// allocation never mutates Unit.status, Contract.status, MoveIn, or
+/// MoveOut - those remain governed exclusively by their own existing
+/// workflows.
+model CorporateHousingAllocation {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  corporateAccountId String
+  corporateAccount   CorporateAccount @relation(fields: [corporateAccountId], references: [id], onDelete: Restrict)
+
+  occupantId String
+  occupant   CorporateOccupant @relation(fields: [occupantId], references: [id], onDelete: Restrict)
+
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  unitId String
+  unit   Unit   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+
+  // "CHA-000001" via the existing Counter infrastructure (key
+  // "corporateHousingAllocation") - no year component, matching
+  // formatMoveInNumber()/formatMaintenanceRequestNumber()'s own convention.
+  allocationNumber String
+
+  startDate      DateTime
+  plannedEndDate DateTime?
+  actualEndDate  DateTime?
+
+  status CorporateHousingAllocationStatus @default(PLANNED)
+
+  bedroomNumber String?
+  roomLabel     String?
+
+  notes String?
+
+  createdByUserId String
+  endedByUserId   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, allocationNumber])
+  @@index([organizationId, corporateAccountId, status])
+  @@index([organizationId, occupantId, status])
+  @@index([organizationId, contractId, status])
+  @@index([organizationId, unitId, status])
+  @@index([organizationId, startDate])
+  @@index([organizationId, plannedEndDate])
+  @@map("corporate_housing_allocations")
 }

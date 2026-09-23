@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getMaintenanceRequestById, triageMaintenanceRequest, cancelMaintenanceRequest, createWorkOrderFromRequest, listAssignableUsers } from "@/lib/actions/maintenance";
+import { getCorporateHousingContextForMaintenanceRequest } from "@/lib/actions/corporate-allocations";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, longDateTimeFormatter, pickLocalized } from "@/lib/i18n";
@@ -17,6 +18,11 @@ export default async function MaintenanceRequestDetailPage({ params }: { params:
   const canTriage = can("maintenance.request.triage", role);
   const canCancel = can("maintenance.request.cancel", role);
   const canCreateWorkOrder = can("maintenance.workOrder.create", role);
+  const canViewCorporateHousing = can("corporateHousing.view", role);
+  const corporateAllocation =
+    canViewCorporateHousing && request.corporateOccupant && request.unit
+      ? await getCorporateHousingContextForMaintenanceRequest(request.corporateOccupant.id, request.unit.id)
+      : null;
 
   const locationLabel = request.unit
     ? request.unit.unitNumber
@@ -114,6 +120,39 @@ export default async function MaintenanceRequestDetailPage({ params }: { params:
               <Field label={t.maintenance.fieldSource} value={t.maintenanceRequestSource[request.source]} />
             </dl>
           </Section>
+
+          {canViewCorporateHousing && request.corporateOccupant && (
+            <Section title={t.corporateHousing.maintenanceTraceabilityTitle}>
+              <dl className="grid grid-cols-2 gap-4 text-sm">
+                <Field
+                  label={t.corporateHousing.fieldOccupant}
+                  value={
+                    <Link href={`/corporate-housing/occupants/${request.corporateOccupant.id}`} className="text-brand-gold-dark hover:underline">
+                      {pickLocalized(locale, request.corporateOccupant.fullNameAr, request.corporateOccupant.fullName)}
+                    </Link>
+                  }
+                />
+                <Field
+                  label={t.corporateHousing.colCorporateAccount}
+                  value={
+                    <Link href={`/corporate-housing/accounts/${request.corporateOccupant.corporateAccount.id}`} className="text-brand-gold-dark hover:underline">
+                      {request.corporateOccupant.corporateAccount.accountNumber} — {request.corporateOccupant.corporateAccount.displayName}
+                    </Link>
+                  }
+                />
+                {corporateAllocation && (
+                  <Field
+                    label={t.corporateHousing.currentAllocationLabel}
+                    value={
+                      <Link href={`/corporate-housing/allocations/${corporateAllocation.id}`} className="text-brand-gold-dark hover:underline">
+                        {corporateAllocation.allocationNumber}
+                      </Link>
+                    }
+                  />
+                )}
+              </dl>
+            </Section>
+          )}
 
           {request.moveIn && (
             <Section title={t.maintenance.sectionMoveInSource}>
@@ -254,7 +293,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
       <dt className="text-xs text-slate-500">{label}</dt>

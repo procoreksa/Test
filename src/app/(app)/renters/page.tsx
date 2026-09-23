@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listRenters, createRenter, deleteRenter } from "@/lib/actions/renters";
 import { getMoveInStatusForRenters } from "@/lib/actions/move-ins";
 import { getMoveOutStatusForRenters } from "@/lib/actions/move-outs";
+import { getCorporateAccountLinksForRenters } from "@/lib/actions/corporate-accounts";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
@@ -13,8 +14,12 @@ export default async function RentersPage() {
   const canDelete = can("renter.delete", role);
   const canViewMoveIns = can("moveIn.view", role);
   const canViewMoveOuts = can("moveOut.view", role);
+  const canViewCorporateHousing = can("corporateHousing.view", role);
   const moveInByRenter: Awaited<ReturnType<typeof getMoveInStatusForRenters>> = canViewMoveIns ? await getMoveInStatusForRenters(renters.map((r) => r.id)) : new Map();
   const moveOutByRenter: Awaited<ReturnType<typeof getMoveOutStatusForRenters>> = canViewMoveOuts ? await getMoveOutStatusForRenters(renters.map((r) => r.id)) : new Map();
+  const corporateAccountByRenter: Awaited<ReturnType<typeof getCorporateAccountLinksForRenters>> = canViewCorporateHousing
+    ? await getCorporateAccountLinksForRenters(renters.map((r) => r.id))
+    : new Map();
 
   return (
     <div className="space-y-6">
@@ -98,6 +103,13 @@ export default async function RentersPage() {
                     <div className="mt-1">
                       <Link href={`/operations/move-outs/${moveOutByRenter.get(r.id)!.moveOutId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
                         {t.moveOut.contractStatusLabel}: {t.moveOutStatus[moveOutByRenter.get(r.id)!.status]}
+                      </Link>
+                    </div>
+                  )}
+                  {canViewCorporateHousing && corporateAccountByRenter.get(r.id) && (
+                    <div className="mt-1">
+                      <Link href={`/corporate-housing/accounts/${corporateAccountByRenter.get(r.id)!.accountId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
+                        {t.corporateHousing.renterIntegrationTitle}: {corporateAccountByRenter.get(r.id)!.accountNumber}
                       </Link>
                     </div>
                   )}

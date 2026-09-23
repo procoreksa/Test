@@ -11,7 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { assertSafeTestDatabaseUrl } from "@/lib/test-db-guard";
 import { createContractWithSchedule } from "@/lib/contract-schedule";
 import { issueInvoice } from "@/lib/invoicing";
-import type { UserRole, ViewingStatus, OfferStatus, ReservationStatus, ReservationAmountStatus } from "@prisma/client";
+import { nextCounterValue, formatCorporateAccountNumber } from "@/lib/numbering";
+import type { UserRole, ViewingStatus, OfferStatus, ReservationStatus, ReservationAmountStatus, CorporateOccupantStatus } from "@prisma/client";
 
 assertSafeTestDatabaseUrl(process.env.DATABASE_URL);
 
@@ -488,6 +489,50 @@ export async function driveMoveOutToCompletion(contractId: string) {
  * helper, since a COLLECTION entry must always be traceable to a real paid
  * invoice line.
  */
+/** A VAT-registered (B2B) Renter with no CorporateAccount yet - the eligible-for-wrapping shape createCorporateAccount() requires (docs/CORPORATE-HOUSING.md). */
+export async function createTestCorporateRenter(organizationId: string, name = "Corporate Renter") {
+  return prisma.renter.create({ data: { organizationId, fullName: name, vatNumber: `VAT-${uniqueSuffix()}` } });
+}
+
+/**
+ * A CorporateAccount wrapping a fresh corporate Renter, created via direct
+ * Prisma writes (same "bypass the server action purely for fixture speed"
+ * convention as seedFinancialsForOrg()/createTestContract() above) - tests
+ * that specifically exercise createCorporateAccount() itself call the real
+ * action directly instead of this helper.
+ */
+export async function seedCorporateAccount(org: SeededOrg, overrides: Partial<{ displayName: string; status: "PROSPECT" | "ACTIVE" | "INACTIVE" | "SUSPENDED" }> = {}) {
+  const renter = await createTestCorporateRenter(org.organization.id, overrides.displayName ?? "Corp Renter");
+  const seq = await nextCounterValue(prisma, org.organization.id, "corporateAccount");
+  const account = await prisma.corporateAccount.create({
+    data: {
+      organizationId: org.organization.id,
+      renterId: renter.id,
+      accountNumber: formatCorporateAccountNumber(seq),
+      displayName: overrides.displayName ?? renter.fullName,
+      status: overrides.status ?? "ACTIVE",
+      createdByUserId: org.admin.id,
+    },
+  });
+  return { renter, account };
+}
+
+export async function createTestCorporateOccupant(
+  organizationId: string,
+  corporateAccountId: string,
+  overrides: Partial<{ fullName: string; employeeNumber: string; status: CorporateOccupantStatus }> = {}
+) {
+  return prisma.corporateOccupant.create({
+    data: {
+      organizationId,
+      corporateAccountId,
+      fullName: overrides.fullName ?? "Test Occupant",
+      employeeNumber: overrides.employeeNumber,
+      status: overrides.status ?? "ACTIVE",
+    },
+  });
+}
+
 export async function payDepositInvoice(organizationId: string, renterId: string, contractId: string, amount: number, paidAmount = amount) {
   const invoice = await issueInvoice({
     organizationId,

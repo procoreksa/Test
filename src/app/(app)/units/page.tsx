@@ -5,6 +5,7 @@ import { getUnitViewingCounts } from "@/lib/actions/viewings";
 import { getActiveReservationsForUnits } from "@/lib/actions/reservations";
 import { getMoveInStatusForUnits } from "@/lib/actions/move-ins";
 import { getMoveOutStatusForUnits } from "@/lib/actions/move-outs";
+import { getCorporateAllocationStatusForUnits } from "@/lib/actions/corporate-allocations";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
@@ -29,10 +30,14 @@ export default async function UnitsPage() {
   const canViewReservations = can("reservation.view", role);
   const canViewMoveIns = can("moveIn.view", role);
   const canViewMoveOuts = can("moveOut.view", role);
+  const canViewCorporateHousing = can("corporateHousing.view", role);
   const viewingCounts = canViewViewings ? await getUnitViewingCounts(units.map((u) => u.id)) : new Map<string, number>();
   const reservationsByUnit = canViewReservations ? await getActiveReservationsForUnits(units.map((u) => u.id)) : new Map();
   const moveInByUnit: Awaited<ReturnType<typeof getMoveInStatusForUnits>> = canViewMoveIns ? await getMoveInStatusForUnits(units.map((u) => u.id)) : new Map();
   const moveOutByUnit: Awaited<ReturnType<typeof getMoveOutStatusForUnits>> = canViewMoveOuts ? await getMoveOutStatusForUnits(units.map((u) => u.id)) : new Map();
+  const corporateAllocationByUnit: Awaited<ReturnType<typeof getCorporateAllocationStatusForUnits>> = canViewCorporateHousing
+    ? await getCorporateAllocationStatusForUnits(units.map((u) => u.id))
+    : new Map();
 
   return (
     <div className="space-y-6">
@@ -115,6 +120,13 @@ export default async function UnitsPage() {
                     <p className="text-xs text-slate-400 mt-1 whitespace-nowrap">
                       {reservationsByUnit.get(u.id)!.reservationNumber} · {t.reservation.unitHoldUntilLabel} {dateFmt.format(reservationsByUnit.get(u.id)!.holdUntil)}
                     </p>
+                  )}
+                  {canViewCorporateHousing && corporateAllocationByUnit.get(u.id) && (
+                    <div className="mt-1">
+                      <Link href={`/corporate-housing/allocations/${corporateAllocationByUnit.get(u.id)!.allocationId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
+                        {t.corporateHousing.unitIntegrationTitle}: {corporateAllocationByUnit.get(u.id)!.allocationNumber}
+                      </Link>
+                    </div>
                   )}
                 </td>
                 <td className="px-5 py-3 text-slate-500">

@@ -154,8 +154,21 @@ export async function createContract(formData: FormData) {
  */
 export async function terminateContract(contractId: string) {
   const { organizationId } = await requirePermissionAudited("contract.terminate", "Contract", contractId);
+  const t = getDictionary(await getLocale());
   await prisma.$transaction(async (tx) => {
     const before = await tx.contract.findUniqueOrThrow({ where: { id: contractId, organizationId } });
+
+    // Corporate Housing boundary (docs/CORPORATE-HOUSING.md, "Contract
+    // termination boundary"): never silently orphan an active occupancy
+    // record - active allocations must be explicitly ended first, the same
+    // policy already applied to Move-Out completion.
+    const activeCorporateAllocationCount = await tx.corporateHousingAllocation.count({
+      where: { organizationId, contractId, status: { in: ["PLANNED", "ACTIVE"] } },
+    });
+    if (activeCorporateAllocationCount > 0) {
+      throw new Error(t.validation.contractTerminationBlockedByActiveCorporateAllocations);
+    }
+
     const contract = await tx.contract.update({
       where: { id: contractId, organizationId },
       data: { status: "TERMINATED" },

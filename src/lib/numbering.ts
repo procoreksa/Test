@@ -88,3 +88,13 @@ export function formatMoveOutNumber(seq: number): string {
 export function formatSecurityDepositSettlementNumber(seq: number): string {
   return `SDS-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatMoveInNumber() - a Corporate Account number is an internal operational record, not a legal/tax document series (the underlying Renter's own invoices keep their usual INV- numbers). */
+export function formatCorporateAccountNumber(seq: number): string {
+  return `CORP-${String(seq).padStart(6, "0")}`;
+}
+
+/** No year component, matching formatMoveInNumber() - a Corporate Housing Allocation number is an internal operational record, not a legal/tax document series. */
+export function formatCorporateHousingAllocationNumber(seq: number): string {
+  return `CHA-${String(seq).padStart(6, "0")}`;
+}

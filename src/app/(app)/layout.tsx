@@ -66,6 +66,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   const operationsNavItems = allOperationsNavItems.filter((item) => can(item.permission, role));
 
+  // Its own navigation group (docs/CORPORATE-HOUSING.md) - B2B corporate
+  // accounts/occupants/allocations are an operational layer on top of the
+  // existing Contract/Renter engines, not a new leasing or CRM pipeline, so
+  // it never folds into the CRM or Operations groups above.
+  const allCorporateHousingNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
+    { href: "/corporate-housing", label: t.corporateHousing.dashboardTitle, icon: "🏙️", permission: "corporateHousing.view" },
+    { href: "/corporate-housing/accounts", label: t.corporateHousing.navAccounts, icon: "🏢", permission: "corporateHousing.view" },
+    { href: "/corporate-housing/occupants", label: t.corporateHousing.navOccupants, icon: "🧑‍💼", permission: "corporateHousing.view" },
+    { href: "/corporate-housing/allocations", label: t.corporateHousing.navAllocations, icon: "🗝️", permission: "corporateHousing.view" },
+    { href: "/corporate-housing/reports", label: t.corporateHousing.navReports, icon: "📑", permission: "corporateHousingReports.view" },
+  ];
+  const corporateHousingNavItems = allCorporateHousingNavItems.filter((item) => can(item.permission, role));
+
   const brandMark = (
     <div className="flex items-center gap-2">
       <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
@@ -111,6 +124,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.nav.operationsGroupLabel}</p>
                   {operationsNavItems.map((opItem) => (
                     <NavLink key={opItem.href} {...opItem} />
+                  ))}
+                </div>
+              )}
+              {item.href === "/renters" && corporateHousingNavItems.length > 0 && (
+                <div className="pt-3 mt-2 border-t border-brand-black-line">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.corporateHousing.dashboardTitle}</p>
+                  {corporateHousingNavItems.map((chItem) => (
+                    <NavLink key={chItem.href} {...chItem} />
                   ))}
                 </div>
               )}

@@ -126,7 +126,20 @@ export type Permission =
   | "ownerPortalAccount.activate"
   | "ownerPortalAccount.suspend"
   | "ownerPortalAccount.disable"
-  | "ownerPortalAccount.resetPassword";
+  | "ownerPortalAccount.resetPassword"
+  | "corporateHousing.view"
+  | "corporateAccount.create"
+  | "corporateAccount.update"
+  | "corporateContact.manage"
+  | "corporateOccupant.create"
+  | "corporateOccupant.update"
+  | "corporateAllocation.create"
+  | "corporateAllocation.update"
+  | "corporateAllocation.activate"
+  | "corporateAllocation.end"
+  | "corporateAllocation.cancel"
+  | "corporateAllocation.transfer"
+  | "corporateHousingReports.view";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -249,6 +262,19 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "ownerPortalAccount.suspend",
   "ownerPortalAccount.disable",
   "ownerPortalAccount.resetPassword",
+  "corporateHousing.view",
+  "corporateAccount.create",
+  "corporateAccount.update",
+  "corporateContact.manage",
+  "corporateOccupant.create",
+  "corporateOccupant.update",
+  "corporateAllocation.create",
+  "corporateAllocation.update",
+  "corporateAllocation.activate",
+  "corporateAllocation.end",
+  "corporateAllocation.cancel",
+  "corporateAllocation.transfer",
+  "corporateHousingReports.view",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -395,6 +421,26 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "ownerPortalAccount.create",
   "ownerPortalAccount.activate",
   "ownerPortalAccount.suspend",
+  // Corporate Housing (docs/CORPORATE-HOUSING.md): MANAGER holds every
+  // operational permission - account/contact/occupant/allocation
+  // management, including transfer/end/cancel - the same "MANAGER: all
+  // operational" tier already applied to Maintenance/Move-In/Move-Out
+  // elsewhere in this table. Nothing here is reserved as OWNER/ADMIN-only:
+  // unlike tenantPortalAccount/ownerPortalAccount, no action in this
+  // module is a credential-issuing or permanently-destructive operation.
+  "corporateHousing.view",
+  "corporateAccount.create",
+  "corporateAccount.update",
+  "corporateContact.manage",
+  "corporateOccupant.create",
+  "corporateOccupant.update",
+  "corporateAllocation.create",
+  "corporateAllocation.update",
+  "corporateAllocation.activate",
+  "corporateAllocation.end",
+  "corporateAllocation.cancel",
+  "corporateAllocation.transfer",
+  "corporateHousingReports.view",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -455,6 +501,13 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.refund.manage",
   "tenantPortalAccount.view",
   "ownerPortalAccount.view",
+  // Corporate Housing: ACCOUNTANT gets view + reports (Financial Snapshot
+  // report uses the existing Contract/Invoice/Payment engine ACCOUNTANT
+  // already has full visibility into elsewhere) but no mutation - the same
+  // read-only-on-operational-modules posture ACCOUNTANT already holds for
+  // CRM/Viewings/Offers.
+  "corporateHousing.view",
+  "corporateHousingReports.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -481,6 +534,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.refund.view",
   "tenantPortalAccount.view",
   "ownerPortalAccount.view",
+  "corporateHousing.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

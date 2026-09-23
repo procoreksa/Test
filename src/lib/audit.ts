@@ -25,6 +25,8 @@ export type AuditAction =
   | "ISSUE"
   | "CANCEL"
   | "VOID"
+  | "END"
+  | "TRANSFER"
   | "PAYMENT_RECORDED"
   | "PAYMENT_REVERSED"
   | "OWNERSHIP_ASSIGNED"

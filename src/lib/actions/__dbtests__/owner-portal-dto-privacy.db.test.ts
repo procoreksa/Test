@@ -143,3 +143,49 @@ describe("Maintenance-privacy minimization: internal notes, vendor detail, and t
     }
   });
 });
+
+describe("Corporate Housing privacy regression: the Owner Portal never gains access to CorporateOccupant PII through Maintenance joins", () => {
+  it("a Maintenance Request reported by a Corporate Occupant exposes neither corporateOccupantId nor any occupant/corporate-account field to the Owner Portal", async () => {
+    const owner = await createTestOwner(org.organization.id, "Corporate Privacy Owner");
+    const account = await createTestOwnerPortalAccount(org.organization.id, owner.id, org.admin.id);
+    const unit = await createTestUnit(org.organization.id, org.floor.id, { unitNumber: `CorpPriv-${Date.now()}` });
+    await prisma.propertyOwnership.create({ data: { organizationId: org.organization.id, ownerId: owner.id, unitId: unit.id, ownershipPercentage: 100 } });
+
+    const { seedCorporateAccount, createTestCorporateOccupant } = await import("./db-test-helpers");
+    const { account: corpAccount } = await seedCorporateAccount(org, { displayName: "Owner-Portal-Visible Corp" });
+    const occupant = await createTestCorporateOccupant(org.organization.id, corpAccount.id, { fullName: "Confidential Corporate Occupant" });
+
+    const request = await prisma.maintenanceRequest.create({
+      data: {
+        organizationId: org.organization.id,
+        requestNumber: `MR-CORPPRIV-${Date.now()}`,
+        scopeType: "UNIT",
+        unitId: unit.id,
+        category: "PLUMBING",
+        priority: "NORMAL",
+        status: "OPEN",
+        title: "Corporate occupant reported issue",
+        reportedByType: "TENANT",
+        corporateOccupantId: occupant.id,
+        source: "TENANT",
+        createdByUserId: org.admin.id,
+      },
+    });
+
+    mockOwnerAuth.mockResolvedValue(ownerSessionFor(account));
+    const { getOwnerPortalMaintenanceRequests, getOwnerPortalMaintenanceRequestDetail } = await import("@/lib/actions/owner-portal/maintenance");
+
+    const list = await getOwnerPortalMaintenanceRequests();
+    const listRow = list.find((r) => r.id === request.id);
+    expect(listRow).toBeDefined();
+    expect("corporateOccupantId" in listRow!).toBe(false);
+    expect("corporateOccupant" in listRow!).toBe(false);
+
+    const { request: dto } = await getOwnerPortalMaintenanceRequestDetail(request.id);
+    expect("corporateOccupantId" in dto).toBe(false);
+    expect("corporateOccupant" in dto).toBe(false);
+    // Confirm the occupant's own name/employer never leak into the JSON at all, not merely under the expected key.
+    expect(JSON.stringify(dto)).not.toContain("Confidential Corporate Occupant");
+    expect(JSON.stringify(dto)).not.toContain(corpAccount.displayName);
+  });
+});
