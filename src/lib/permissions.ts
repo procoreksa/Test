@@ -98,7 +98,14 @@ export type Permission =
   | "maintenance.cost.view"
   | "maintenance.cost.manage"
   | "maintenance.vendor.view"
-  | "maintenance.vendor.manage";
+  | "maintenance.vendor.manage"
+  | "moveOut.view"
+  | "moveOut.create"
+  | "moveOut.update"
+  | "moveOut.start"
+  | "moveOut.complete"
+  | "moveOut.cancel"
+  | "moveOutInspection.update";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -193,6 +200,13 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "maintenance.cost.manage",
   "maintenance.vendor.view",
   "maintenance.vendor.manage",
+  "moveOut.view",
+  "moveOut.create",
+  "moveOut.update",
+  "moveOut.start",
+  "moveOut.complete",
+  "moveOut.cancel",
+  "moveOutInspection.update",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -300,6 +314,16 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "maintenance.cost.manage",
   "maintenance.vendor.view",
   "maintenance.vendor.manage",
+  // MANAGER holds every moveOut.*/moveOutInspection.* permission (Move-Out
+  // Management Phase 2, requirement 6: "MANAGER: all Move-Out operational
+  // permissions") - same operational tier as Move-In/Maintenance above.
+  "moveOut.view",
+  "moveOut.create",
+  "moveOut.update",
+  "moveOut.start",
+  "moveOut.complete",
+  "moveOut.cancel",
+  "moveOutInspection.update",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -346,6 +370,9 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "maintenance.view",
   "maintenance.cost.view",
   "maintenance.vendor.view",
+  // Requirement 6: "ACCOUNTANT: moveOut.view" - visibility only, same as
+  // ACCOUNTANT's own moveIn.view-only policy above; no moveOut.* mutation.
+  "moveOut.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -367,6 +394,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "reservation.view",
   "moveIn.view",
   "maintenance.view",
+  "moveOut.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

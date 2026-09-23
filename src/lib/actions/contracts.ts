@@ -8,6 +8,7 @@ import { requirePermission } from "@/lib/session";
 import { createContractWithSchedule, generateAndCreateSchedule } from "@/lib/contract-schedule";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { auditCreate, auditUpdate, auditAction, requirePermissionAudited } from "@/lib/audit";
+import { moveOutBlocksContractRenewal } from "@/lib/operations/move-out-rules";
 
 function contractFieldsSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -140,6 +141,17 @@ export async function createContract(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+/**
+ * Terminates a Contract. Move-Out Management Phase 2, Decision 1: physical
+ * vacancy belongs to Move-Out, not Contract termination - Unit.status must
+ * represent confirmed physical hand-back, so a Unit must not become VACANT
+ * merely because its Contract was terminated (only a COMPLETED Move-Out's
+ * own strictly re-validated completeMoveOut() may do that - see
+ * docs/MOVE-OUT-MANAGEMENT.md). This intentionally tightens this action's
+ * previous behavior, which used to set the Unit VACANT here unconditionally;
+ * every other effect (Contract status, pending PaymentSchedule cancellation)
+ * is unchanged - no financial side effect was introduced or removed.
+ */
 export async function terminateContract(contractId: string) {
   const { organizationId } = await requirePermissionAudited("contract.terminate", "Contract", contractId);
   await prisma.$transaction(async (tx) => {
@@ -152,7 +164,6 @@ export async function terminateContract(contractId: string) {
       where: { contractId, organizationId, status: "PENDING" },
       data: { status: "CANCELLED" },
     });
-    await tx.unit.update({ where: { id: contract.unitId }, data: { status: "VACANT" } });
     await auditAction(tx, {
       action: "TERMINATE",
       entityType: "Contract",
@@ -183,49 +194,66 @@ export async function renewContract(formData: FormData) {
     throw new Error(t.validation.contractEndAfterStart);
   }
 
-  await prisma.$transaction(async (tx) => {
-    const oldContract = await tx.contract.findUniqueOrThrow({
-      where: { id: parsed.contractId, organizationId },
-    });
+  await prisma.$transaction(
+    async (tx) => {
+      const oldContract = await tx.contract.findUniqueOrThrow({
+        where: { id: parsed.contractId, organizationId },
+      });
 
-    await tx.contract.update({ where: { id: oldContract.id }, data: { status: "RENEWED" } });
-    await tx.paymentSchedule.updateMany({
-      where: { contractId: oldContract.id, organizationId, status: "PENDING" },
-      data: { status: "CANCELLED" },
-    });
+      // Move-Out Management Phase 2, requirement 4: a Contract with a
+      // non-terminal or COMPLETED Move-Out must not be silently renewed -
+      // renewing it would create a second, live Contract for a Unit that
+      // either still has an in-progress physical hand-back, or has already
+      // been physically handed back. A CANCELLED Move-Out never blocks
+      // renewal. Checked inside this same Serializable transaction (see
+      // createMoveOut()'s own use of Serializable for the same Contract/
+      // MoveOut tables) so a renewal racing a brand-new Move-Out creation
+      // can never both succeed.
+      const moveOuts = await tx.moveOut.findMany({ where: { organizationId, contractId: oldContract.id }, select: { status: true } });
+      if (moveOuts.some((m) => moveOutBlocksContractRenewal(m.status))) {
+        throw new Error(t.validation.contractRenewalBlockedByMoveOut);
+      }
 
-    const newContract = await createContractWithSchedule(tx, organizationId, {
-      unitId: oldContract.unitId,
-      renterId: oldContract.renterId,
-      startDate: parsed.startDate,
-      endDate: parsed.endDate,
-      rentAmount: parsed.rentAmount,
-      paymentFrequency: parsed.paymentFrequency,
-      securityDeposit: parsed.securityDeposit,
-      commissionAmount: parsed.commissionAmount,
-      cleaningAmount: parsed.cleaningAmount,
-      extraChargesMode: parsed.extraChargesMode,
-      vatApplicable: parsed.vatApplicable ?? oldContract.vatApplicable,
-      notes: parsed.notes,
-    });
-    await tx.contract.update({ where: { id: newContract.id }, data: { renewedFromContractId: oldContract.id } });
+      await tx.contract.update({ where: { id: oldContract.id }, data: { status: "RENEWED" } });
+      await tx.paymentSchedule.updateMany({
+        where: { contractId: oldContract.id, organizationId, status: "PENDING" },
+        data: { status: "CANCELLED" },
+      });
 
-    await auditAction(tx, {
-      action: "RENEW",
-      entityType: "Contract",
-      entityId: oldContract.id,
-      entityDisplayName: oldContract.contractNumber,
-      previousValues: { status: oldContract.status, endDate: oldContract.endDate },
-      newValues: { status: "RENEWED", renewedIntoContractId: newContract.id, renewedIntoContractNumber: newContract.contractNumber },
-    });
-    await auditCreate(tx, {
-      action: "RENEW",
-      entityType: "Contract",
-      entityId: newContract.id,
-      entityDisplayName: newContract.contractNumber,
-      newValues: { renewedFromContractId: oldContract.id, renewedFromContractNumber: oldContract.contractNumber, ...parsed },
-    });
-  });
+      const newContract = await createContractWithSchedule(tx, organizationId, {
+        unitId: oldContract.unitId,
+        renterId: oldContract.renterId,
+        startDate: parsed.startDate,
+        endDate: parsed.endDate,
+        rentAmount: parsed.rentAmount,
+        paymentFrequency: parsed.paymentFrequency,
+        securityDeposit: parsed.securityDeposit,
+        commissionAmount: parsed.commissionAmount,
+        cleaningAmount: parsed.cleaningAmount,
+        extraChargesMode: parsed.extraChargesMode,
+        vatApplicable: parsed.vatApplicable ?? oldContract.vatApplicable,
+        notes: parsed.notes,
+      });
+      await tx.contract.update({ where: { id: newContract.id }, data: { renewedFromContractId: oldContract.id } });
+
+      await auditAction(tx, {
+        action: "RENEW",
+        entityType: "Contract",
+        entityId: oldContract.id,
+        entityDisplayName: oldContract.contractNumber,
+        previousValues: { status: oldContract.status, endDate: oldContract.endDate },
+        newValues: { status: "RENEWED", renewedIntoContractId: newContract.id, renewedIntoContractNumber: newContract.contractNumber },
+      });
+      await auditCreate(tx, {
+        action: "RENEW",
+        entityType: "Contract",
+        entityId: newContract.id,
+        entityDisplayName: newContract.contractNumber,
+        newValues: { renewedFromContractId: oldContract.id, renewedFromContractNumber: oldContract.contractNumber, ...parsed },
+      });
+    },
+    { isolationLevel: "Serializable" }
+  );
 
   revalidatePath("/contracts");
   revalidatePath("/units");

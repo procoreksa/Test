@@ -57,6 +57,8 @@ maintenance.request.create / maintenance.request.update / maintenance.request.tr
 maintenance.workOrder.create / maintenance.workOrder.assign / maintenance.workOrder.update / maintenance.workOrder.start / maintenance.workOrder.complete / maintenance.workOrder.verify / maintenance.workOrder.close / maintenance.workOrder.cancel
 maintenance.cost.view / maintenance.cost.manage
 maintenance.vendor.view / maintenance.vendor.manage
+
+moveOut.view / moveOut.create / moveOut.update / moveOut.start / moveOut.complete / moveOut.cancel / moveOutInspection.update
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -168,6 +170,26 @@ is no `moveIn.delete`: a Move-In row is never deleted (only cancelled,
 `moveIn.cancel`, which preserves the row), matching the no-hard-delete
 policy every other module in this table already established.
 
+`moveOut.*`/`moveOutInspection.update` gate Move-Out Management (see
+`docs/MOVE-OUT-MANAGEMENT.md`). No new role was introduced. MANAGER holds
+every `moveOut.*`/`moveOutInspection.*` permission, matching its full
+operational access to Move-In/Maintenance/Contract elsewhere in this
+table. ACCOUNTANT gets `moveOut.view` only (operational visibility,
+matching its `moveIn.view`-only policy above), no mutation permission at
+all. VIEWER gets `moveOut.view` only, same read-only pattern as
+everywhere else. `moveOutInspection.update` is deliberately separate from
+`moveOut.update`, mirroring `moveInInspection.update`'s own precedent
+exactly - it gates the inspection/inventory/meter/key/attachment
+workspace, while `moveOut.update` gates higher-level record fields
+(scheduling, vacate date, findings-review advancement, acknowledgements).
+There is no `moveOut.delete`: a Move-Out row is never deleted (only
+cancelled, `moveOut.cancel`, which preserves the row), matching the
+no-hard-delete policy every other module in this table already
+established. Completing a Move-Out (`moveOut.complete`) is the sole
+action anywhere in this codebase that may set `Unit.status = VACANT` -
+see `docs/MOVE-OUT-MANAGEMENT.md` for the strict re-validation that
+requires.
+
 `property.update`, `unit.update`, and `renter.update` are defined for
 completeness (the spec that introduced this system asked for them, and any
 future edit action on those entities should be gated by them), but as of this
@@ -272,6 +294,13 @@ create/delete, not edit. When one is added, gate it with the matching
 | maintenance.cost.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
 | maintenance.vendor.view | ✅ | ✅ | ✅ | ✅ | ❌ |
 | maintenance.vendor.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveOut.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| moveOut.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveOut.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveOut.start | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveOut.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveOut.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| moveOutInspection.update | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -296,6 +325,14 @@ Notes on judgment calls made while encoding the brief's policy:
   established - and a CLOSED Work Order is additionally immutable at the
   service-layer regardless of permission (see docs/MAINTENANCE-MANAGEMENT.md
   §23).
+
+- **Move-Out Management (docs/MOVE-OUT-MANAGEMENT.md).** No new role was
+  introduced. MANAGER holds every `moveOut.*`/`moveOutInspection.*`
+  permission, the same operational tier as its own Move-In/Maintenance
+  permissions. ACCOUNTANT and VIEWER both get `moveOut.view` only - no
+  mutation permission for either. This mirrors Move-In's own role policy
+  exactly, since Move-Out is the same day-to-day leasing-operations tier
+  of work, not CRM pipeline work or an accounting function.
 
 - **`property.delete` / `unit.delete` / `renter.delete` are OWNER/ADMIN-only.**
   The brief listed `property.delete` etc. as permission keys to define but

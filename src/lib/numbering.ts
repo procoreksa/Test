@@ -78,3 +78,8 @@ export function formatMaintenanceWorkOrderNumber(seq: number): string {
 export function formatMaintenanceVendorNumber(seq: number): string {
   return `VEN-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatMoveInNumber() - a Move-Out number is not a legal/tax document series either. */
+export function formatMoveOutNumber(seq: number): string {
+  return `MO-${String(seq).padStart(6, "0")}`;
+}

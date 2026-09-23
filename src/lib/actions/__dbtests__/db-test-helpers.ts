@@ -377,6 +377,45 @@ export async function seedFinancialsForOrg(org: SeededOrg) {
 
 export type SeededFinancials = Awaited<ReturnType<typeof seedFinancialsForOrg>>;
 
+function testFormData(fields: Record<string, string>): FormData {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+  return fd;
+}
+
+/**
+ * Drives a real Move-In (via the actual src/lib/actions/move-ins.ts server
+ * actions, not direct Prisma writes) all the way to COMPLETED, for Move-Out
+ * tests that need a genuine baseline to link against and read from. Adds one
+ * KEY item marked returnedExpected (the default) so Move-Out's own
+ * key-return reconciliation has something concrete to check against.
+ * Requires the calling test file to already have `@/lib/auth`'s `auth()`
+ * mocked to resolve to a session for the Contract's own organization.
+ */
+export async function driveMoveInToCompletion(contractId: string) {
+  const { createMoveIn, startMoveIn, updateInspectionItem, addMeterReading, addKeyItem, recordStaffAcknowledgement, setTenantAcknowledgementOverride, markReadyForHandover, completeMoveIn } =
+    await import("@/lib/actions/move-ins");
+
+  const moveInId = await createMoveIn(testFormData({ contractId }));
+  await startMoveIn(moveInId);
+  const items = await prisma.moveInInspectionItem.findMany({ where: { moveInId, isApplicable: true } });
+  for (const item of items) {
+    await updateInspectionItem(testFormData({ itemId: item.id, condition: "GOOD" }));
+  }
+  await addMeterReading(testFormData({ moveInId, meterType: "ELECTRICITY", reading: "1000" }));
+  await addMeterReading(testFormData({ moveInId, meterType: "WATER", reading: "500" }));
+  await addKeyItem(testFormData({ moveInId, keyType: "KEY", description: "Main door key" }));
+  await markReadyForHandover(moveInId);
+  await setTenantAcknowledgementOverride(testFormData({ moveInId, override: "on", reason: "Tenant unavailable" }));
+  await recordStaffAcknowledgement(moveInId);
+  // setHandoverDate is required by validateMoveInCompletion() - set last so
+  // every other requirement is already satisfied when completeMoveIn() runs.
+  const { setHandoverDate } = await import("@/lib/actions/move-ins");
+  await setHandoverDate(testFormData({ moveInId, handoverDate: "2027-01-01T10:00:00" }));
+  await completeMoveIn(moveInId);
+  return moveInId;
+}
+
 /**
  * A fresh Unit + ACTIVE Contract (with generated schedule) for Move-In
  * tests (docs/MOVE-IN-HANDOVER.md) - uses the real createContractWithSchedule()

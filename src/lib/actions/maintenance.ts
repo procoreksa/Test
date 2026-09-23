@@ -59,6 +59,8 @@ const REQUEST_FULL_INCLUDE = {
   triagedByUser: { select: { id: true, name: true } },
   moveIn: { select: { id: true, moveInNumber: true } },
   moveInInspectionItem: { select: { id: true, itemName: true, itemNameAr: true, category: true } },
+  moveOut: { select: { id: true, moveOutNumber: true } },
+  moveOutInspectionItem: { select: { id: true, itemName: true, itemNameAr: true, category: true } },
   attachments: { orderBy: { createdAt: "asc" as const } },
   workOrders: { orderBy: { createdAt: "desc" as const } },
 } satisfies Prisma.MaintenanceRequestInclude;
@@ -107,7 +109,7 @@ const categoryEnum = z.enum([
 ]);
 const priorityEnum = z.enum(["LOW", "NORMAL", "HIGH", "URGENT", "EMERGENCY"]);
 const reportedByTypeEnum = z.enum(["STAFF", "TENANT", "OWNER", "SECURITY", "HOUSEKEEPING", "MANAGEMENT", "OTHER"]);
-const sourceEnum = z.enum(["INTERNAL", "TENANT", "MOVE_IN_INSPECTION", "MANAGEMENT", "SECURITY", "HOUSEKEEPING", "OTHER"]);
+const sourceEnum = z.enum(["INTERNAL", "TENANT", "MOVE_IN_INSPECTION", "MOVE_OUT_INSPECTION", "MANAGEMENT", "SECURITY", "HOUSEKEEPING", "OTHER"]);
 const cancelReasonEnum = z.enum(["DUPLICATE", "NOT_NEEDED", "TENANT_WITHDREW", "RESOLVED_INFORMALLY", "DATA_ERROR", "OTHER"]);
 
 export async function createMaintenanceRequest(formData: FormData): Promise<string> {
@@ -136,6 +138,8 @@ export async function createMaintenanceRequest(formData: FormData): Promise<stri
       source: sourceEnum.default("INTERNAL"),
       moveInId: z.string().optional(),
       moveInInspectionItemId: z.string().optional(),
+      moveOutId: z.string().optional(),
+      moveOutInspectionItemId: z.string().optional(),
     })
     .parse({
       scopeType: formData.get("scopeType"),
@@ -157,6 +161,8 @@ export async function createMaintenanceRequest(formData: FormData): Promise<stri
       source: formData.get("source") || undefined,
       moveInId: formData.get("moveInId") || undefined,
       moveInInspectionItemId: formData.get("moveInInspectionItemId") || undefined,
+      moveOutId: formData.get("moveOutId") || undefined,
+      moveOutInspectionItemId: formData.get("moveOutInspectionItemId") || undefined,
     });
 
   const requestId = await prisma.$transaction(
@@ -206,6 +212,10 @@ export async function createMaintenanceRequest(formData: FormData): Promise<stri
           // Step 40: reference only - never mutates the Move-In/inspection item itself.
           moveInId: parsed.moveInId,
           moveInInspectionItemId: parsed.moveInInspectionItemId,
+          // Move-Out Management Phase 2, requirement 10: reference only -
+          // never mutates the MoveOut/inspection item itself.
+          moveOutId: parsed.moveOutId,
+          moveOutInspectionItemId: parsed.moveOutInspectionItemId,
           createdByUserId: user.id,
         },
       });
@@ -251,6 +261,43 @@ export async function createMaintenanceRequestFromMoveIn(formData: FormData): Pr
   built.set("source", "MOVE_IN_INSPECTION");
   built.set("moveInId", moveInId);
   built.set("moveInInspectionItemId", inspectionItemId);
+
+  return createMaintenanceRequest(built);
+}
+
+/**
+ * Move-Out Management Phase 2, requirement 10: authorized action from a
+ * Move-Out inspection finding, mirroring createMaintenanceRequestFromMoveIn()
+ * field-for-field. Never mutates the MoveOut/inspection item baseline -
+ * reference only - and never posts anything financial (Decision 4: damages
+ * are operational records only). The source Move-Out and inspection item are
+ * re-verified same-organization and mutually consistent here, exactly like
+ * the Move-In version above; UNIT scope is derived from the Move-Out's own
+ * (Contract-derived) unitId, never trusted from the client.
+ */
+export async function createMaintenanceRequestFromMoveOut(formData: FormData): Promise<string> {
+  const { organizationId } = await requirePermission("maintenance.request.create");
+
+  const moveOutId = z.string().min(1).parse(formData.get("moveOutId"));
+  const inspectionItemId = z.string().min(1).parse(formData.get("inspectionItemId"));
+
+  const item = await prisma.moveOutInspectionItem.findFirst({
+    where: { id: inspectionItemId, organizationId, moveOutId },
+    include: { moveOut: { select: { id: true, unitId: true } } },
+  });
+  if (!item) throw new Error("Move-Out inspection item not found");
+
+  const built = new FormData();
+  built.set("scopeType", "UNIT");
+  built.set("unitId", item.moveOut.unitId);
+  built.set("category", (formData.get("category") as string) || "GENERAL");
+  built.set("priority", (formData.get("priority") as string) || "NORMAL");
+  built.set("title", (formData.get("title") as string) || item.itemName);
+  built.set("description", (formData.get("description") as string) || item.notes || "");
+  built.set("reportedByType", "STAFF");
+  built.set("source", "MOVE_OUT_INSPECTION");
+  built.set("moveOutId", moveOutId);
+  built.set("moveOutInspectionItemId", inspectionItemId);
 
   return createMaintenanceRequest(built);
 }

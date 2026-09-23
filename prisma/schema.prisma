@@ -63,34 +63,40 @@ model Organization {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  users                 User[]
-  properties            Property[]
-  renters               Renter[]
-  contracts             Contract[]
-  invoices              Invoice[]
-  payments              Payment[]
-  counters              Counter[]
-  units                 Unit[]
-  compounds             Compound[]
-  buildings             Building[]
-  floors                Floor[]
-  owners                Owner[]
-  propertyOwnerships    PropertyOwnership[]
-  ownerLedgerEntries    OwnerLedgerEntry[]
-  leads                 Lead[]
-  leadActivities        LeadActivity[]
-  viewings              Viewing[]
-  leasingOffers         LeasingOffer[]
-  reservations          Reservation[]
-  moveIns               MoveIn[]
-  moveInInspectionItems MoveInInspectionItem[]
-  moveInInventoryItems  MoveInInventoryItem[]
-  moveInMeterReadings   MoveInMeterReading[]
-  moveInKeyItems        MoveInKeyItem[]
-  moveInAttachments     MoveInAttachment[]
-  maintenanceRequests   MaintenanceRequest[]
-  maintenanceWorkOrders MaintenanceWorkOrder[]
-  maintenanceVendors    MaintenanceVendor[]
+  users                  User[]
+  properties             Property[]
+  renters                Renter[]
+  contracts              Contract[]
+  invoices               Invoice[]
+  payments               Payment[]
+  counters               Counter[]
+  units                  Unit[]
+  compounds              Compound[]
+  buildings              Building[]
+  floors                 Floor[]
+  owners                 Owner[]
+  propertyOwnerships     PropertyOwnership[]
+  ownerLedgerEntries     OwnerLedgerEntry[]
+  leads                  Lead[]
+  leadActivities         LeadActivity[]
+  viewings               Viewing[]
+  leasingOffers          LeasingOffer[]
+  reservations           Reservation[]
+  moveIns                MoveIn[]
+  moveInInspectionItems  MoveInInspectionItem[]
+  moveInInventoryItems   MoveInInventoryItem[]
+  moveInMeterReadings    MoveInMeterReading[]
+  moveInKeyItems         MoveInKeyItem[]
+  moveInAttachments      MoveInAttachment[]
+  maintenanceRequests    MaintenanceRequest[]
+  maintenanceWorkOrders  MaintenanceWorkOrder[]
+  maintenanceVendors     MaintenanceVendor[]
+  moveOuts               MoveOut[]
+  moveOutInspectionItems MoveOutInspectionItem[]
+  moveOutInventoryItems  MoveOutInventoryItem[]
+  moveOutMeterReadings   MoveOutMeterReading[]
+  moveOutKeyItems        MoveOutKeyItem[]
+  moveOutAttachments     MoveOutAttachment[]
 
   @@map("organizations")
 }
@@ -132,6 +138,10 @@ model User {
   assignedMaintenanceWorkOrders MaintenanceWorkOrder[]  @relation("MaintenanceWorkOrderAssignedTo")
   verifiedMaintenanceWorkOrders MaintenanceWorkOrder[]  @relation("MaintenanceWorkOrderVerifiedBy")
   maintenanceLaborEntries       MaintenanceLaborEntry[] @relation("MaintenanceLaborEntryUser")
+
+  inspectedMoveOuts        MoveOut[] @relation("MoveOutInspectedBy")
+  handedOverMoveOuts       MoveOut[] @relation("MoveOutHandedOverBy")
+  findingsReviewedMoveOuts MoveOut[] @relation("MoveOutFindingsReviewedBy")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -314,6 +324,7 @@ model Unit {
   reservations        Reservation[]
   moveIns             MoveIn[]
   maintenanceRequests MaintenanceRequest[]
+  moveOuts            MoveOut[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -354,6 +365,7 @@ model Renter {
   convertedFromLead   Lead?
   moveIns             MoveIn[]
   maintenanceRequests MaintenanceRequest[]
+  moveOuts            MoveOut[]
 
   @@index([organizationId])
   @@map("renters")
@@ -446,6 +458,7 @@ model Contract {
   // CANCELLED MoveIn attempts before a successful one.
   moveIns             MoveIn[]
   maintenanceRequests MaintenanceRequest[]
+  moveOuts            MoveOut[]
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
@@ -1717,6 +1730,7 @@ model MoveIn {
   keyItems            MoveInKeyItem[]
   attachments         MoveInAttachment[]
   maintenanceRequests MaintenanceRequest[]
+  moveOuts            MoveOut[]
 
   @@unique([organizationId, moveInNumber])
   @@index([organizationId, status])
@@ -1761,8 +1775,9 @@ model MoveInInspectionItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  attachments         MoveInAttachment[]
-  maintenanceRequests MaintenanceRequest[]
+  attachments            MoveInAttachment[]
+  maintenanceRequests    MaintenanceRequest[]
+  moveOutInspectionItems MoveOutInspectionItem[]
 
   @@index([organizationId, moveInId])
   @@index([moveInId, category])
@@ -1885,6 +1900,307 @@ model MoveInAttachment {
 }
 
 // ---------------------------------------------------------------------------
+// Move-Out Management
+//
+// Physical unit hand-back at the end of a tenancy: Preparation -> Inspection
+// -> Findings Review -> Tenant Acknowledgement -> Completion. Deliberately a
+// separate model family from Move-In, never a shared table - Move-Out reads
+// its originating Move-In (and its inspection/inventory/meter/key rows) as
+// read-only historical baseline data to compare against, and NEVER writes
+// back to any Move-In* table (see docs/MOVE-OUT-MANAGEMENT.md).
+//
+// Move-Out is deliberately decoupled from Contract lifecycle (Phase 2
+// Decision 2): creating, progressing, or completing a Move-Out never
+// terminates, expires, renews, or otherwise mutates a Contract, and never
+// creates/alters any Invoice/Payment/PaymentSchedule/OwnerLedgerEntry
+// (Decision 3/4) - it is an operational record of physical hand-back only.
+// Completing a Move-Out is instead the sole, authoritative trigger that may
+// set Unit.status = VACANT (Decision 1) - see completeMoveOut() in
+// src/lib/actions/move-outs.ts for the strict re-validation this requires.
+// ---------------------------------------------------------------------------
+
+enum MoveOutStatus {
+  DRAFT
+  SCHEDULED
+  IN_PROGRESS
+  PENDING_FINDINGS_REVIEW
+  READY_FOR_CLOSURE
+  COMPLETED
+  CANCELLED
+}
+
+enum MoveOutCancelReason {
+  CONTRACT_REINSTATED // tenant is staying after all (renewal, dispute resolved, termination reversed)
+  TENANT_REQUEST
+  RESCHEDULED
+  DATA_ERROR
+  OTHER
+}
+
+model MoveOut {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "MO-000001" via the existing Counter infrastructure (key "moveOut"),
+  // never a separate numbering scheme.
+  moveOutNumber String
+
+  // Required - a Move-Out always traces back to one Contract that is
+  // ACTIVE or TERMINATED at creation time (RENEWED/DRAFT are not eligible -
+  // see blocksNewMoveOutForContract()/resolveMoveOutEligibility() in
+  // src/lib/operations/move-out-rules.ts). unitId/renterId are copied from
+  // the Contract at creation and never allowed to diverge - same pattern
+  // MoveIn.unitId/renterId already established from Contract.
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  unitId     String
+  unit       Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  renterId   String
+  renter     Renter   @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  // Optional - the Move-In this Move-Out is hand-back for, when one exists
+  // on record (older Contracts predating this system may have none).
+  // Reference-only, SetNull: Move-Out reads this relation to build its
+  // baseline comparison (§ below) but never writes to it or anything
+  // reachable through it.
+  moveInId String?
+  moveIn   MoveIn? @relation(fields: [moveInId], references: [id], onDelete: SetNull)
+
+  status MoveOutStatus @default(DRAFT)
+
+  scheduledAt DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  // The actual date physical vacancy was confirmed - distinct from
+  // completedAt (the system timestamp of finishing the workflow), same
+  // completedAt-vs-handoverDate distinction MoveIn already draws.
+  vacateDate  DateTime?
+
+  // Live operational assignment - same pattern as MoveIn's own
+  // inspectedByUserId/handedOverByUserId: a real relation, verified
+  // same-organization on every write.
+  inspectedByUserId  String?
+  inspectedByUser    User?   @relation("MoveOutInspectedBy", fields: [inspectedByUserId], references: [id], onDelete: SetNull)
+  handedOverByUserId String?
+  handedOverByUser   User?   @relation("MoveOutHandedOverBy", fields: [handedOverByUserId], references: [id], onDelete: SetNull)
+
+  // Set once, on PENDING_FINDINGS_REVIEW -> READY_FOR_CLOSURE (the one step
+  // with no Move-In equivalent) - a distinct authorized staff member
+  // confirming the compiled findings/damages have been reviewed, separate
+  // from whoever performed the physical inspection.
+  findingsReviewedAt       DateTime?
+  findingsReviewedByUserId String?
+  findingsReviewedByUser   User?     @relation("MoveOutFindingsReviewedBy", fields: [findingsReviewedByUserId], references: [id], onDelete: SetNull)
+
+  // Free-text tenant-representative identity captured at hand-back - not a
+  // User/Renter relation, same reasoning as MoveIn's own pair.
+  tenantRepresentativeName String?
+  tenantRepresentativeId   String?
+
+  overallCondition ConditionRating?
+
+  tenantComments String?
+  internalNotes  String?
+
+  // Operational acknowledgement (not a legal e-signature) - identical
+  // "tenant acknowledgement OR authorized override" pattern MoveIn already
+  // established, always paired with a reason.
+  tenantAcknowledgedAt                DateTime?
+  tenantAcknowledgementOverride       Boolean   @default(false)
+  tenantAcknowledgementOverrideReason String?
+  staffAcknowledgedAt                 DateTime?
+
+  // Set true only when staff explicitly confirms there are nothing to
+  // reconcile keys against (no linked Move-In, or the linked Move-In
+  // recorded no keys) - mirrors MoveIn.noKeysToRecord's own escape hatch.
+  noKeysToReturn Boolean @default(false)
+
+  cancelReason     MoveOutCancelReason?
+  cancelReasonNote String?
+  cancelledAt      DateTime?
+
+  // Plain string, not a relation - survives the creating User being
+  // removed, same as every other module in this schema.
+  createdByUserId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inspectionItems     MoveOutInspectionItem[]
+  inventoryItems      MoveOutInventoryItem[]
+  meterReadings       MoveOutMeterReading[]
+  keyItems            MoveOutKeyItem[]
+  attachments         MoveOutAttachment[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@unique([organizationId, moveOutNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, contractId])
+  @@index([organizationId, unitId])
+  @@index([organizationId, renterId])
+  @@index([organizationId, scheduledAt])
+  @@index([organizationId, vacateDate])
+  @@map("move_outs")
+}
+
+model MoveOutInspectionItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveOutId      String
+  moveOut        MoveOut      @relation(fields: [moveOutId], references: [id], onDelete: Cascade)
+
+  category InspectionCategory
+
+  itemName   String
+  itemNameAr String?
+
+  condition ConditionRating?
+
+  isApplicable Boolean @default(true)
+
+  notes             String?
+  requiresAttention Boolean @default(false)
+
+  sequence Int
+
+  // Optional pointer to the specific Move-In baseline item this one is
+  // being compared against - reference-only, SetNull. Lets the findings
+  // summary compute a direct before/after condition delta for items that
+  // have one, while still allowing Move-Out-only items (e.g. a defect that
+  // only appeared after move-in) with no baseline counterpart at all.
+  // Move-Out NEVER writes to the row this points at.
+  moveInInspectionItemId String?
+  moveInInspectionItem   MoveInInspectionItem? @relation(fields: [moveInInspectionItemId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments         MoveOutAttachment[]
+  maintenanceRequests MaintenanceRequest[]
+
+  @@index([organizationId, moveOutId])
+  @@index([moveOutId, category])
+  @@map("move_out_inspection_items")
+}
+
+model MoveOutInventoryItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveOutId      String
+  moveOut        MoveOut      @relation(fields: [moveOutId], references: [id], onDelete: Cascade)
+
+  // Reuses InspectionCategory, same as MoveInInventoryItem - no second
+  // furniture-specific category enum. Diffed against MoveInInventoryItem
+  // by category + itemName (never a stored row-to-row link - furniture
+  // isn't individually tracked with a stable identity across the two
+  // records, per docs/MOVE-OUT-MANAGEMENT.md's own comparison design).
+  category InspectionCategory
+  itemName String
+
+  quantity Int @default(1)
+
+  condition ConditionRating?
+
+  serialNumber String?
+  brand        String?
+  model        String?
+  notes        String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attachments MoveOutAttachment[]
+
+  @@index([organizationId, moveOutId])
+  @@map("move_out_inventory_items")
+}
+
+model MoveOutMeterReading {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveOutId      String
+  moveOut        MoveOut      @relation(fields: [moveOutId], references: [id], onDelete: Cascade)
+
+  // Reuses MeterType - diffed against the matching MoveInMeterReading by
+  // meterType (consumption = this reading - the Move-In reading, a pure
+  // calculation, never itself stored as a third value).
+  meterType     MeterType
+  meterNumber   String?
+  reading       Decimal   @db.Decimal(12, 2)
+  unitOfMeasure String?
+  readingDate   DateTime  @default(now())
+  notes         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, moveOutId])
+  @@map("move_out_meter_readings")
+}
+
+model MoveOutKeyItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveOutId      String
+  moveOut        MoveOut      @relation(fields: [moveOutId], references: [id], onDelete: Cascade)
+
+  // Reuses KeyType. Records what was actually returned; reconciled against
+  // the linked Move-In's own MoveInKeyItem rows (returnedExpected = true)
+  // by keyType + description - see computeKeyReturnReconciliation() in
+  // src/lib/operations/move-out-rules.ts.
+  keyType     KeyType
+  description String
+  quantity    Int     @default(1)
+  identifier  String?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, moveOutId])
+  @@map("move_out_key_items")
+}
+
+/// Metadata-only, mirrors MoveInAttachment exactly (see
+/// docs/STORAGE-ARCHITECTURE.md) - reuses MoveInAttachmentType rather than
+/// forking a second identical enum.
+model MoveOutAttachment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  moveOutId      String
+  moveOut        MoveOut      @relation(fields: [moveOutId], references: [id], onDelete: Cascade)
+
+  // At most one of these two is set - a photo can document one specific
+  // checklist/inventory line, or the Move-Out as a whole when both are null.
+  inspectionItemId String?
+  inspectionItem   MoveOutInspectionItem? @relation(fields: [inspectionItemId], references: [id], onDelete: SetNull)
+  inventoryItemId  String?
+  inventoryItem    MoveOutInventoryItem?  @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+
+  attachmentType MoveInAttachmentType
+
+  fileName   String
+  mimeType   String
+  fileSize   Int?
+  storageKey String?
+
+  caption String?
+
+  uploadedByUserId String
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, moveOutId])
+  @@map("move_out_attachments")
+}
+
+// ---------------------------------------------------------------------------
 // Maintenance Management
 //
 // Workflow: Maintenance Request -> Triage -> Work Order -> Assignment ->
@@ -1970,6 +2286,7 @@ enum MaintenanceRequestSource {
   INTERNAL
   TENANT
   MOVE_IN_INSPECTION
+  MOVE_OUT_INSPECTION
   MANAGEMENT
   SECURITY
   HOUSEKEEPING
@@ -2168,6 +2485,13 @@ model MaintenanceRequest {
   moveIn                 MoveIn?               @relation(fields: [moveInId], references: [id], onDelete: SetNull)
   moveInInspectionItemId String?
   moveInInspectionItem   MoveInInspectionItem? @relation(fields: [moveInInspectionItemId], references: [id], onDelete: SetNull)
+
+  // Move-Out defect traceability - reference only. Creating a Request from
+  // a Move-Out finding never mutates the MoveOut/inspection item.
+  moveOutId               String?
+  moveOut                 MoveOut?               @relation(fields: [moveOutId], references: [id], onDelete: SetNull)
+  moveOutInspectionItemId String?
+  moveOutInspectionItem   MoveOutInspectionItem? @relation(fields: [moveOutInspectionItemId], references: [id], onDelete: SetNull)
 
   // Plain string, not a relation - survives the creating User being removed
   // (same pattern as MoveIn.createdByUserId and every other module here).

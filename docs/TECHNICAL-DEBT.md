@@ -36,6 +36,7 @@ write-ups, evidence, and residual-risk notes on each.
 | 4 | No Content-Security-Policy header - `next.config.ts` now sets the other standard headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, HSTS), but a real CSP needs staged rollout against this app's actual script/style sources first. | `next.config.ts` | Inventory every script/style source the app actually loads (fonts, any future third-party embed), start with a `Content-Security-Policy-Report-Only` header to observe violations in production without breaking anything, then enforce. |
 | 5 | Neither `getDashboardStats()`'s totals (old or new implementation) exclude `CANCELLED` invoices, unlike several other places in the codebase that explicitly do (`getContractEditContext()`'s invoice count, for one). Found while fixing the dashboard's performance issue; **not changed**, since altering a business total silently is exactly what the hardening brief says not to do. | `src/lib/actions/dashboard.ts` | Needs a product-owner decision (should a cancelled invoice count toward "Total Invoiced"?), then a single, deliberate, tested change - not a side effect of an unrelated task. |
 | 6 | Transitive dependency vulnerabilities reported by `npm audit` (3 moderate, 4 high, 1 critical, all in indirect dependencies as of this pass) - not remediated here per the brief's explicit "do not perform risky package upgrades"/"do not upgrade major framework versions" constraints. | `package-lock.json` (transitive) | Run `npm audit` for the current, specific list; evaluate and apply each fix individually (not `--force`), starting with anything reachable from user input. |
+| 7 | An `ACTIVE` Contract does not currently transition automatically to `EXPIRED` when its `endDate` passes - `ContractStatus.EXPIRED` is a defined enum value that is never actually set by any code anywhere in this codebase (confirmed during the Move-Out Management Phase 1 audit). A Contract simply stays `ACTIVE` indefinitely past its own end date until something else (a manual termination, or a renewal) changes its status. Move-Out Management Phase 2 deliberately left this gap unfixed - Decision 5 of that phase's own brief was explicit: "Document the existing Contract expiry gap as Technical Debt" and "Do not fix that gap as part of Move-Out." Move-Out's own eligibility rule was written to tolerate the gap rather than paper over it: an `ACTIVE` Contract remains eligible for a Move-Out even after its `endDate` has passed (see `docs/MOVE-OUT-MANAGEMENT.md` §3, "Contract eligibility"), so the gap does not block the operational workflow it would otherwise interact with most. | `src/lib/actions/contracts.ts` (no `ContractStatus.EXPIRED` writer exists anywhere) | A dedicated future task: either a scheduled job (cron/worker) that sweeps `ACTIVE` Contracts past `endDate` into `EXPIRED`, or a lazy check computed at read time (mirroring how `PaymentSchedule`/`Invoice` overdue status is already synced lazily elsewhere in this codebase via `syncOverdueStatuses()`) - needs its own design decision on which approach fits this codebase's existing patterns, plus a decision on what (if anything) should happen to a Unit/PaymentSchedule when a Contract expires this way, since that interacts with the same Unit-vacancy invariant Move-Out Management Phase 2 just tightened (Decision 1). Out of scope for a drive-by fix. |
 
 ## P3 - Low
 
@@ -65,14 +66,15 @@ write-ups, evidence, and residual-risk notes on each.
 
 ## Explicitly not addressed (by design, per the hardening brief's scope)
 
-- Any new business module (Move-Out, Tenant/Owner Portal, Vendor Portal,
-  Preventive Maintenance, WhatsApp/email automation, AI, payment gateway,
-  Document Management, object-storage uploads, e-signature, mobile app,
+- Any new business module (Tenant/Owner Portal, Vendor Portal, Preventive
+  Maintenance, WhatsApp/email automation, AI, payment gateway, Document
+  Management, object-storage uploads, e-signature, mobile app,
   subscription billing, marketplace) - out of scope for a hardening-only
-  task. (Maintenance Management itself was out of scope for the hardening
-  pass this line was originally written for, but has since been built -
-  see `docs/MAINTENANCE-MANAGEMENT.md` §33 for what remains genuinely
-  future-scope within that module.)
+  task. (Maintenance Management and Move-Out Management were both
+  likewise out of scope for the hardening pass this line was originally
+  written for, but have since been built - see
+  `docs/MAINTENANCE-MANAGEMENT.md` §33 and `docs/MOVE-OUT-MANAGEMENT.md`
+  for what remains genuinely future-scope within each.)
 - Redesigning VAT/ZATCA/accounting logic - frozen by the brief's own
   explicit instruction; issues found there (P2 #2 above) are recorded,
   not touched.

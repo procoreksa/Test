@@ -691,6 +691,17 @@ export interface Dictionary {
     maintenancePartQuantityPositive: string;
     maintenanceLaborHoursNonNegative: string;
     maintenanceAmountNonNegative: string;
+    moveOutContractNotEligible: string;
+    moveOutAlreadyExistsForContract: string;
+    moveOutInvalidTransition: string;
+    moveOutNotEditable: string;
+    moveOutFindingsReviewIncomplete: string;
+    moveOutFindingsNotYetReviewed: string;
+    moveOutCompletionMissingRequirements: string;
+    moveOutOverrideReasonRequired: string;
+    moveOutCancelNoteRequired: string;
+    moveOutUnsafeToVacate: string;
+    contractRenewalBlockedByMoveOut: string;
   };
   zatca: {
     notConfigured: string;
@@ -1753,7 +1764,7 @@ export interface Dictionary {
   maintenancePriority: Record<"LOW" | "NORMAL" | "HIGH" | "URGENT" | "EMERGENCY", string>;
   maintenanceRequestStatus: Record<"OPEN" | "TRIAGED" | "WORK_ORDER_CREATED" | "RESOLVED" | "CANCELLED", string>;
   maintenanceWorkOrderStatus: Record<"DRAFT" | "ASSIGNED" | "SCHEDULED" | "IN_PROGRESS" | "ON_HOLD" | "COMPLETED" | "VERIFIED" | "CLOSED" | "CANCELLED", string>;
-  maintenanceRequestSource: Record<"INTERNAL" | "TENANT" | "MOVE_IN_INSPECTION" | "MANAGEMENT" | "SECURITY" | "HOUSEKEEPING" | "OTHER", string>;
+  maintenanceRequestSource: Record<"INTERNAL" | "TENANT" | "MOVE_IN_INSPECTION" | "MOVE_OUT_INSPECTION" | "MANAGEMENT" | "SECURITY" | "HOUSEKEEPING" | "OTHER", string>;
   maintenanceReportedByType: Record<"STAFF" | "TENANT" | "OWNER" | "SECURITY" | "HOUSEKEEPING" | "MANAGEMENT" | "OTHER", string>;
   maintenanceHoldReason: Record<"WAITING_FOR_PART" | "WAITING_FOR_VENDOR" | "WAITING_FOR_TENANT" | "WAITING_FOR_APPROVAL" | "ACCESS_UNAVAILABLE" | "OTHER", string>;
   maintenanceCancelReason: Record<"DUPLICATE" | "NOT_NEEDED" | "TENANT_WITHDREW" | "RESOLVED_INFORMALLY" | "DATA_ERROR" | "OTHER", string>;
