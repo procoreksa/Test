@@ -149,7 +149,39 @@ are covered by dedicated regression tests. Its own `blocksNewMoveInForContract()
 one-per-Contract rule mirrors `blocksNewReservationForOffer()`'s
 established pattern exactly.
 
-## 11. Shared domain services (not tied to one module)
+## 11. Tenant Portal: a second, independent authentication principal
+
+The Tenant Portal (`docs/TENANT-PORTAL.md`) is the first externally-facing
+(non-staff) surface in this codebase, and its authentication is
+deliberately **not** an extension of §2 above. `src/lib/tenant-auth.ts`
+constructs a second, fully independent `NextAuth({...})` instance - its
+own JWT claim shape (`{ tenant: { id, organizationId, renterId, email } }`
+vs. the internal session's `{ user: { id, role, organizationId, ... } }`),
+its own signing secret (`TENANT_AUTH_SECRET`, or `AUTH_SECRET` + a suffix
+if unset - never equal to the internal secret), its own cookie name
+(`tenant-portal.session-token` vs. the internal default), and its own
+`basePath` (`/api/portal-auth`). This is the actual mechanism, not a
+convention, that keeps an internal staff session and a tenant session from
+ever being confused in the same browser: a `TENANT` value was deliberately
+**not** added to the internal `UserRole` enum, since a tenant is not an
+internal staff user and never flows through `src/lib/session.ts`'s
+`requirePermission()`/`can()` at all.
+
+Its own authorization boundary (`src/lib/tenant-session.ts`) mirrors this
+separation: `requireTenantSession()` (never `requireSession()`) and a
+family of `requireTenant*Access()` entitlement helpers, each re-deriving
+`organizationId`/`renterId` from the signed tenant session and re-querying
+the database fresh on every call - `TenantPortalAccount → Renter →
+Contract → resource`, never from a client-supplied id or `organizationId`
+alone (the same "organization scoping alone is not sufficient" principle
+this document's §3 established for internal isolation is applied one
+level stricter here, since two tenants can share an `organizationId`).
+See `docs/TENANT-PORTAL.md` for the full entitlement architecture,
+settlement-visibility policy, and the real-DB isolation test suite
+(`src/lib/actions/__dbtests__/tenant-portal-*.db.test.ts`) that verifies
+it end-to-end, including same-organization tenant-to-tenant isolation.
+
+## 12. Shared domain services (not tied to one module)
 
 - `src/lib/numbering.ts` - the one `Counter`-table-backed sequence
   generator every module's human-readable number (`LEAD-`, `VIEW-`,
@@ -163,7 +195,7 @@ established pattern exactly.
 - `src/lib/unit-location.ts` - the one Compound/Building display-label
   function.
 
-## 12. Concurrency strategy
+## 13. Concurrency strategy
 
 Postgres `SERIALIZABLE` transactions are this codebase's deliberate,
 consistently-applied answer to every "read some aggregate/existence check,
@@ -174,7 +206,7 @@ single-row updates with no such check (those need no more than Postgres's
 default `READ COMMITTED`). See `docs/SECURITY-REVIEW.md`
 §"Concurrency audit" for the case-by-case necessity review.
 
-## 13. Database access pattern
+## 14. Database access pattern
 
 No repository/DAO layer - Server Actions call `prisma.*`/`tx.*` directly.
 Every module that reuses one Prisma sub-query pattern for multiple call
@@ -185,13 +217,15 @@ with a per-module `PAGE_SIZE` constant (uniformly 25) - there is no shared
 pagination helper, but the pattern itself is consistent everywhere it's
 needed (Leads, Viewings, Offers, Reservations, Move-Ins, Audit Logs).
 
-## 14. What this map deliberately does not cover
+## 15. What this map deliberately does not cover
 
 Page-by-page UI component inventory, the exact Tailwind design tokens,
 and the CRM/Operations report catalog are already documented in each
 module's own `docs/*.md` (`CRM-LEADS.md`, `VIEWING-MANAGEMENT.md`,
 `LEASING-OFFERS.md`, `RESERVATION-MANAGEMENT.md`,
 `RESERVATION-TO-CONTRACT.md`, `MOVE-IN-HANDOVER.md`,
-`OWNERSHIP-ACCOUNTING.md`, `AUDIT-AND-FINANCIAL-CONTROLS.md`) - this
+`OWNERSHIP-ACCOUNTING.md`, `AUDIT-AND-FINANCIAL-CONTROLS.md`,
+`MAINTENANCE-MANAGEMENT.md`, `MOVE-OUT-MANAGEMENT.md`,
+`SECURITY-DEPOSIT-SETTLEMENT.md`, `TENANT-PORTAL.md`) - this
 document exists to connect those module-level maps into one picture of
 how the whole system actually fits together, not to repeat their detail.

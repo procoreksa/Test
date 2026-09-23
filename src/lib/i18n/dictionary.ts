@@ -1804,6 +1804,7 @@ export interface Dictionary {
   assessmentSourceType: Record<"INSPECTION_ITEM" | "INVENTORY_ITEM" | "KEY_ITEM" | "MAINTENANCE_REQUEST" | "OTHER", string>;
   settlementDisputeStatus: Record<"NONE" | "RAISED" | "UNDER_REVIEW" | "RESOLVED", string>;
   settlementRefundStatus: Record<"PENDING" | "APPROVED" | "PAID" | "CANCELLED", string>;
+  tenantPortalAccountStatus: Record<"INVITED" | "ACTIVE" | "SUSPENDED" | "DISABLED", string>;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -2590,6 +2591,184 @@ export interface Dictionary {
     kpiDisputedSettlements: string;
     sectionTitle: string;
     goToSettlements: string;
+  };
+  tenantPortal: {
+    // Errors / validation (thrown from server actions, bilingual per this
+    // codebase's established convention)
+    notFoundTitle: string;
+    notFoundMessage: string;
+    notFoundBackLink: string;
+    accountAlreadyExists: string;
+    emailAlreadyInUse: string;
+    renterNotFound: string;
+    accountNotFound: string;
+    invalidAccountTransition: string;
+    currentPasswordIncorrect: string;
+    noActiveTenancy: string;
+    maintenanceNotCancellable: string;
+
+    // Brand / shell
+    portalTitle: string;
+    signOut: string;
+
+    // Nav
+    navDashboard: string;
+    navContract: string;
+    navPayments: string;
+    navInvoices: string;
+    navMoveIn: string;
+    navMaintenance: string;
+    navMoveOut: string;
+    navSecurityDeposit: string;
+    navProfile: string;
+
+    // Login
+    loginTitle: string;
+    loginSubtitle: string;
+    loginEmail: string;
+    loginPassword: string;
+    loginSubmit: string;
+    loginError: string;
+
+    // Dashboard
+    dashboardTitle: string;
+    dashboardSubtitle: string;
+    cardCurrentContract: string;
+    cardUnit: string;
+    cardNextPaymentDue: string;
+    cardOutstandingBalance: string;
+    cardOpenMaintenance: string;
+    cardMoveInStatus: string;
+    cardMoveOutStatus: string;
+    cardDepositPosition: string;
+    cardRecentReceipts: string;
+    noCurrentTenancy: string;
+    noUpcomingPayment: string;
+
+    // Contracts
+    contractsTitle: string;
+    currentTenancyTitle: string;
+    pastContractsTitle: string;
+    noPastContracts: string;
+    fieldContractNumber: string;
+    fieldUnit: string;
+    fieldStartDate: string;
+    fieldEndDate: string;
+    fieldRent: string;
+    fieldPaymentFrequency: string;
+    fieldSecurityDepositRequired: string;
+    fieldStatus: string;
+    renewedInto: string;
+    contractDocumentNotice: string;
+
+    // Payment schedule / invoices / receipts
+    paymentScheduleTitle: string;
+    colInstallment: string;
+    colPeriod: string;
+    colDueDate: string;
+    colAmount: string;
+    colStatus: string;
+    invoicesTitle: string;
+    colInvoiceNumber: string;
+    colIssueDate: string;
+    colTotal: string;
+    colPaid: string;
+    colBalance: string;
+    viewInvoiceButton: string;
+    invoiceDetailTitle: string;
+    invoiceLinesTitle: string;
+    colSubtotal: string;
+    colVat: string;
+    receiptsTitle: string;
+    colReceiptNumber: string;
+    colPaymentDate: string;
+    colMethod: string;
+    reversedNotice: string;
+    outstandingBalanceLabel: string;
+    emptyInvoices: string;
+    emptyPayments: string;
+
+    // Move-In
+    moveInTitle: string;
+    noMoveInYet: string;
+    moveInAcknowledgedLabel: string;
+
+    // Maintenance
+    maintenanceTitle: string;
+    maintenanceSubtitle: string;
+    newMaintenanceRequestButton: string;
+    newMaintenanceRequestTitle: string;
+    fieldCategory: string;
+    fieldPriority: string;
+    fieldTitle: string;
+    fieldDescription: string;
+    fieldPreferredVisitDate: string;
+    fieldPreferredTimeWindow: string;
+    fieldPermissionToEnter: string;
+    submitRequestButton: string;
+    emergencyWarning: string;
+    colRequestNumber: string;
+    colReported: string;
+    cancelRequestButton: string;
+    confirmCancelMaintenanceButton: string;
+    emptyMaintenance: string;
+    maintenanceDetailTitle: string;
+    scheduledVisitLabel: string;
+    workStatusLabel: string;
+
+    // Move-Out
+    moveOutTitle: string;
+    noMoveOutYet: string;
+    findingsNoticeTenant: string;
+
+    // Security Deposit
+    securityDepositTitle: string;
+    depositRequiredLabel: string;
+    depositAvailableLabel: string;
+    noSettlementYet: string;
+    settlementApprovedPendingPostingNotice: string;
+    assessedDeductionsTitle: string;
+    colDeductionCategory: string;
+    colDeductionDescription: string;
+    colDeductionAmount: string;
+    colWaivedAmount: string;
+    depositAppliedLabel: string;
+    refundDueLabel: string;
+    refundPaidLabel: string;
+    refundRemainingLabel: string;
+    additionalAmountDueLabel: string;
+    additionalAmountDueInvoiceLabel: string;
+    printStatementButton: string;
+
+    // Profile
+    profileTitle: string;
+    fieldFullName: string;
+    fieldEmail: string;
+    fieldPhone: string;
+    fieldCompany: string;
+    contactPhoneLabel: string;
+    saveButton: string;
+    changePasswordTitle: string;
+    fieldCurrentPassword: string;
+    fieldNewPassword: string;
+    changePasswordButton: string;
+    mustChangePasswordNotice: string;
+
+    // Internal admin integration (Contract/Renter page)
+    sectionPortalAccess: string;
+    noPortalAccountNotice: string;
+    accountStatusLabel: string;
+    lastLoginLabel: string;
+    neverLoggedInValue: string;
+    createAccountButton: string;
+    activateAccountButton: string;
+    suspendAccountButton: string;
+    disableAccountButton: string;
+    resetPasswordButton: string;
+    temporaryPasswordNotice: string;
+    temporaryPasswordLabel: string;
+    copyOncePasswordWarning: string;
+    closeButton: string;
   };
 }
 

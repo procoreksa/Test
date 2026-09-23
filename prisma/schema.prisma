@@ -102,6 +102,7 @@ model Organization {
   securityDepositLedgerEntries   SecurityDepositLedgerEntry[]
   securityDepositRefunds         SecurityDepositRefund[]
   securityDepositSettlementNotes SecurityDepositSettlementNote[]
+  tenantPortalAccounts           TenantPortalAccount[]
 
   @@map("organizations")
 }
@@ -379,6 +380,7 @@ model Renter {
   maintenanceRequests        MaintenanceRequest[]
   moveOuts                   MoveOut[]
   securityDepositSettlements SecurityDepositSettlement[]
+  tenantPortalAccount        TenantPortalAccount?
 
   @@index([organizationId])
   @@map("renters")
@@ -3198,4 +3200,69 @@ model SecurityDepositSettlementNote {
 
   @@index([organizationId, settlementId])
   @@map("security_deposit_settlement_notes")
+}
+
+// =============================================================================
+// TENANT PORTAL (Prompt 16) - a wholly separate identity/authorization domain
+// from the internal User/UserRole system above. A TenantPortalAccount is
+// never able to hold any `UserRole` permission, and `UserRole` never gains a
+// TENANT value - see docs/TENANT-PORTAL.md for the full architecture
+// rationale (Step 1 audit). Session identity is issued by a second,
+// independent NextAuth instance (src/lib/tenant-auth.ts) with its own JWT
+// shape and its own cookie name, so an internal staff session and a tenant
+// session can never be confused for one another even in the same browser.
+// =============================================================================
+
+enum TenantPortalAccountStatus {
+  INVITED // created by staff, temporary credential issued, never logged in yet
+  ACTIVE
+  SUSPENDED // reversible - staff-initiated, access stops immediately
+  DISABLED // terminal in practice (tenancy ended, fraud, etc.) - never deleted
+}
+
+/// One per Renter (V1: `renterId @unique` - see docs/TENANT-PORTAL.md,
+/// "Account cardinality", for the documented future multi-contact corporate
+/// extension). Deliberately NOT a User: this table grants zero internal
+/// permissions, and internal RBAC (`Permission`/`ROLE_PERMISSIONS`) never
+/// reads from it. Every authorization check derives access from
+/// TenantPortalAccount -> Renter -> Contract -> resource, never from a
+/// client-supplied id alone (Step 9).
+model TenantPortalAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  renterId String @unique
+  renter   Renter @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  email           String
+  emailNormalized String // lowercase/trimmed, matches the internal User.email normalization convention in src/lib/auth.ts
+
+  phone String?
+
+  passwordHash String
+
+  status TenantPortalAccountStatus @default(INVITED)
+
+  mustChangePassword Boolean @default(true)
+
+  lastLoginAt     DateTime?
+  emailVerifiedAt DateTime?
+
+  // Plain string, not a relation - survives the creating/managing internal
+  // User being removed, same convention as every other actor field in this
+  // schema (e.g. MoveOut.createdByUserId).
+  createdByUserId String
+
+  suspendedAt       DateTime?
+  suspendedByUserId String?
+  disabledAt        DateTime?
+  disabledByUserId  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, emailNormalized])
+  @@index([organizationId, status])
+  @@map("tenant_portal_accounts")
 }

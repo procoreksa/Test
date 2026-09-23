@@ -114,7 +114,13 @@ export type Permission =
   | "securityDeposit.post"
   | "securityDeposit.refund.view"
   | "securityDeposit.refund.manage"
-  | "securityDeposit.dispute.manage";
+  | "securityDeposit.dispute.manage"
+  | "tenantPortalAccount.view"
+  | "tenantPortalAccount.create"
+  | "tenantPortalAccount.activate"
+  | "tenantPortalAccount.suspend"
+  | "tenantPortalAccount.disable"
+  | "tenantPortalAccount.resetPassword";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -225,6 +231,12 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.refund.view",
   "securityDeposit.refund.manage",
   "securityDeposit.dispute.manage",
+  "tenantPortalAccount.view",
+  "tenantPortalAccount.create",
+  "tenantPortalAccount.activate",
+  "tenantPortalAccount.suspend",
+  "tenantPortalAccount.disable",
+  "tenantPortalAccount.resetPassword",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -353,6 +365,16 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.assess",
   "securityDeposit.review",
   "securityDeposit.dispute.manage",
+  // Tenant Portal account administration (docs/TENANT-PORTAL.md, "Internal
+  // account administration"): MANAGER can create/activate/suspend an
+  // account (the day-to-day leasing-operations tier), but disabling an
+  // account permanently and resetting a tenant's credential are reserved
+  // for OWNER/ADMIN - the same higher-trust tier that already gates
+  // settings.update.
+  "tenantPortalAccount.view",
+  "tenantPortalAccount.create",
+  "tenantPortalAccount.activate",
+  "tenantPortalAccount.suspend",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -411,6 +433,7 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "securityDeposit.post",
   "securityDeposit.refund.view",
   "securityDeposit.refund.manage",
+  "tenantPortalAccount.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -435,6 +458,7 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "moveOut.view",
   "securityDeposit.view",
   "securityDeposit.refund.view",
+  "tenantPortalAccount.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

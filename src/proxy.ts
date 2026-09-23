@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 
 export default auth((req) => {
+  // The Tenant Portal (docs/TENANT-PORTAL.md) is a second, independent
+  // security principal with its own auth instance (src/lib/tenant-auth.ts)
+  // and its own protected-route boundary (requireTenantSession(), enforced
+  // in src/app/portal/(portal)/layout.tsx). This internal-staff gate must
+  // never touch /portal/* at all - checking `req.auth` (the INTERNAL
+  // session only) against a tenant's request would incorrectly redirect
+  // every tenant, including on the public /portal/login page itself, to
+  // the internal /login page. Excluded here rather than via the matcher
+  // below so the exclusion is explicit and easy to find next to the rest
+  // of this gate's logic.
+  if (req.nextUrl.pathname.startsWith("/portal")) {
+    return NextResponse.next();
+  }
+
   const isLoggedIn = Boolean(req.auth);
   const isLoginPage = req.nextUrl.pathname.startsWith("/login");
 

@@ -61,6 +61,8 @@ maintenance.vendor.view / maintenance.vendor.manage
 moveOut.view / moveOut.create / moveOut.update / moveOut.start / moveOut.complete / moveOut.cancel / moveOutInspection.update
 
 securityDeposit.view / securityDeposit.create / securityDeposit.assess / securityDeposit.review / securityDeposit.approve / securityDeposit.post / securityDeposit.refund.view / securityDeposit.refund.manage / securityDeposit.dispute.manage
+
+tenantPortalAccount.view / tenantPortalAccount.create / tenantPortalAccount.activate / tenantPortalAccount.suspend / tenantPortalAccount.disable / tenantPortalAccount.resetPassword
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -312,6 +314,12 @@ create/delete, not edit. When one is added, gate it with the matching
 | securityDeposit.refund.view | ✅ | ✅ | ❌ | ✅ | ✅ |
 | securityDeposit.refund.manage | ✅ | ✅ | ❌ | ✅ | ❌ |
 | securityDeposit.dispute.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| tenantPortalAccount.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| tenantPortalAccount.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| tenantPortalAccount.activate | ✅ | ✅ | ✅ | ❌ | ❌ |
+| tenantPortalAccount.suspend | ✅ | ✅ | ✅ | ❌ | ❌ |
+| tenantPortalAccount.disable | ✅ | ✅ | ❌ | ❌ | ❌ |
+| tenantPortalAccount.resetPassword | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -365,6 +373,28 @@ Notes on judgment calls made while encoding the brief's policy:
   pre-posting (`securityDeposit.review` covers `cancelSettlement()`, the
   same authorization tier as reviewing) or reversed post-posting via a
   dedicated reversal entry, matching this table's no-hard-delete policy.
+
+- **Tenant Portal account administration (docs/TENANT-PORTAL.md).** No new
+  role was introduced, and critically, the internal `UserRole` enum did
+  **not** gain a `TENANT` value - a tenant is not an internal staff user
+  and never authenticates through this permission system at all (see
+  `docs/TENANT-PORTAL.md`, "Principal separation"). These six permissions
+  gate only the internal, staff-facing admin actions in
+  `src/lib/actions/tenant-portal-account.ts` (Create/Activate/Suspend/
+  Disable/Reset-Password, surfaced on the Contract edit page). `view` is
+  granted to every role (the account status/last-login summary is
+  read-only operational context, same posture as `contract.view`).
+  `create`/`activate`/`suspend` are MANAGER's day-to-day tier, matching its
+  full operational access to Move-In/Move-Out/Maintenance elsewhere in
+  this table. `disable` (functionally terminal - see `ACCOUNT_TRANSITIONS`
+  in `tenant-portal-account.ts`) and `resetPassword` (issues a fresh
+  plaintext credential) are reserved for OWNER/ADMIN, the same high-trust
+  tier that already gates `settings.update` and `securityDeposit.approve`.
+  ACCOUNTANT and VIEWER get `tenantPortalAccount.view` only, consistent
+  with their read-only posture on operational (non-financial) modules
+  elsewhere. There is no `tenantPortalAccount.delete` - an account is never
+  deleted, only suspended/disabled, matching this table's no-hard-delete
+  policy.
 
 - **`property.delete` / `unit.delete` / `renter.delete` are OWNER/ADMIN-only.**
   The brief listed `property.delete` etc. as permission keys to define but

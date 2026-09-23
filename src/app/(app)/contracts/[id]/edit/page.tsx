@@ -6,11 +6,13 @@ import { listRenters } from "@/lib/actions/renters";
 import { getMoveInForContract } from "@/lib/actions/move-ins";
 import { getMoveOutForContract } from "@/lib/actions/move-outs";
 import { getSettlementForContract, getDepositPositionForContract } from "@/lib/actions/security-deposits";
+import { getTenantPortalAccountForRenter } from "@/lib/actions/tenant-portal-account";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized, shortDateFormatter, currencyFormatter } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
 import { AuditTimeline } from "@/components/audit-timeline";
+import { TenantPortalAccountPanel } from "@/components/tenant-portal-account-panel";
 
 export default async function EditContractPage({
   params,
@@ -35,6 +37,8 @@ export default async function EditContractPage({
   const canViewSettlement = can("securityDeposit.view", role);
   const settlement = canViewSettlement ? await getSettlementForContract(contract.id) : null;
   const depositPosition = canViewSettlement ? await getDepositPositionForContract(contract.id) : null;
+  const canViewPortalAccount = can("tenantPortalAccount.view", role);
+  const portalAccount = canViewPortalAccount ? await getTenantPortalAccountForRenter(contract.renterId) : null;
 
   const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
@@ -191,6 +195,51 @@ export default async function EditContractPage({
           </dl>
           {depositPosition.isOverCollected && <p className="text-xs text-amber-600 mt-3">{t.securityDeposit.depositOverCollectedNotice}</p>}
         </div>
+      )}
+
+      {canViewPortalAccount && (
+        <TenantPortalAccountPanel
+          renterId={contract.renterId}
+          defaultEmail={contract.renter.email ?? ""}
+          account={
+            portalAccount
+              ? {
+                  id: portalAccount.id,
+                  email: portalAccount.email,
+                  phone: portalAccount.phone,
+                  status: portalAccount.status,
+                  lastLoginLabel: portalAccount.lastLoginAt ? dateFmt.format(portalAccount.lastLoginAt) : null,
+                }
+              : null
+          }
+          perms={{
+            canView: canViewPortalAccount,
+            canCreate: can("tenantPortalAccount.create", role),
+            canActivate: can("tenantPortalAccount.activate", role),
+            canSuspend: can("tenantPortalAccount.suspend", role),
+            canDisable: can("tenantPortalAccount.disable", role),
+            canResetPassword: can("tenantPortalAccount.resetPassword", role),
+          }}
+          t={{
+            sectionPortalAccess: t.tenantPortal.sectionPortalAccess,
+            noPortalAccountNotice: t.tenantPortal.noPortalAccountNotice,
+            accountStatusLabel: t.tenantPortal.accountStatusLabel,
+            lastLoginLabel: t.tenantPortal.lastLoginLabel,
+            neverLoggedInValue: t.tenantPortal.neverLoggedInValue,
+            createAccountButton: t.tenantPortal.createAccountButton,
+            activateAccountButton: t.tenantPortal.activateAccountButton,
+            suspendAccountButton: t.tenantPortal.suspendAccountButton,
+            disableAccountButton: t.tenantPortal.disableAccountButton,
+            resetPasswordButton: t.tenantPortal.resetPasswordButton,
+            temporaryPasswordNotice: t.tenantPortal.temporaryPasswordNotice,
+            temporaryPasswordLabel: t.tenantPortal.temporaryPasswordLabel,
+            copyOncePasswordWarning: t.tenantPortal.copyOncePasswordWarning,
+            closeButton: t.tenantPortal.closeButton,
+            fieldEmail: t.tenantPortal.fieldEmail,
+            fieldPhone: t.tenantPortal.fieldPhone,
+            statusLabels: t.tenantPortalAccountStatus,
+          }}
+        />
       )}
 
       <form action={updateContract} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
