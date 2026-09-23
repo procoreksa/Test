@@ -442,3 +442,62 @@ export async function createTestContract(
   });
   return { unit, contract };
 }
+
+function formDataFrom(fields: Record<string, string>): FormData {
+  const fd = new FormData();
+  for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+  return fd;
+}
+
+/**
+ * Drives a real Move-Out (via src/lib/actions/move-outs.ts server actions)
+ * all the way to COMPLETED - the sole prerequisite for creating a Security
+ * Deposit Settlement (see docs/SECURITY-DEPOSIT-SETTLEMENT.md). Mirrors the
+ * driveMoveOutToReadyForClosure() helper duplicated across the Move-Out
+ * db-test files, centralized here since every settlement test needs it.
+ */
+export async function driveMoveOutToCompletion(contractId: string) {
+  const { createMoveOut, startMoveOut, updateInspectionItem, addMeterReading, addKeyItem, advanceToFindingsReview, reviewMoveOutFindings, setVacateDate, recordTenantAcknowledgement, recordStaffAcknowledgement, completeMoveOut } =
+    await import("@/lib/actions/move-outs");
+
+  const moveOutId = await createMoveOut(formDataFrom({ contractId }));
+  await startMoveOut(moveOutId);
+  const items = await prisma.moveOutInspectionItem.findMany({ where: { moveOutId, isApplicable: true } });
+  for (const item of items) {
+    await updateInspectionItem(formDataFrom({ itemId: item.id, condition: "GOOD" }));
+  }
+  await addMeterReading(formDataFrom({ moveOutId, meterType: "ELECTRICITY", reading: "1200" }));
+  await addMeterReading(formDataFrom({ moveOutId, meterType: "WATER", reading: "600" }));
+  await addKeyItem(formDataFrom({ moveOutId, keyType: "KEY", description: "Main door key" }));
+  await setVacateDate(formDataFrom({ moveOutId, vacateDate: "2027-06-15T10:00:00" }));
+  await recordTenantAcknowledgement(formDataFrom({ moveOutId, tenantRepresentativeName: "Tenant Rep" }));
+  await recordStaffAcknowledgement(moveOutId);
+  await advanceToFindingsReview(moveOutId);
+  await reviewMoveOutFindings(moveOutId);
+  await completeMoveOut(moveOutId);
+  return moveOutId;
+}
+
+/**
+ * Creates and fully (or partially) pays a SECURITY_DEPOSIT invoice line for
+ * a Contract, using the real issueInvoice() service directly (bypassing the
+ * server-action/auth layer, same convention as seedFinancialsForOrg()) -
+ * this is the only source createSecurityDepositSettlement()'s one-time
+ * collection-ledger sync (syncDepositCollectionLedgerOnce()) ever reads
+ * from; there is deliberately no direct SecurityDepositLedgerEntry-seeding
+ * helper, since a COLLECTION entry must always be traceable to a real paid
+ * invoice line.
+ */
+export async function payDepositInvoice(organizationId: string, renterId: string, contractId: string, amount: number, paidAmount = amount) {
+  const invoice = await issueInvoice({
+    organizationId,
+    renterId,
+    contractId,
+    lines: [{ description: "Security Deposit", kind: "SECURITY_DEPOSIT", quantity: 1, unitPrice: amount, vatRate: 0 }],
+  });
+  await prisma.invoice.update({
+    where: { id: invoice.id },
+    data: { paidAmount, status: paidAmount >= amount ? "PAID" : paidAmount > 0 ? "PARTIALLY_PAID" : "ISSUED" },
+  });
+  return invoice;
+}

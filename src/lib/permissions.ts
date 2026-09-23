@@ -105,7 +105,16 @@ export type Permission =
   | "moveOut.start"
   | "moveOut.complete"
   | "moveOut.cancel"
-  | "moveOutInspection.update";
+  | "moveOutInspection.update"
+  | "securityDeposit.view"
+  | "securityDeposit.create"
+  | "securityDeposit.assess"
+  | "securityDeposit.review"
+  | "securityDeposit.approve"
+  | "securityDeposit.post"
+  | "securityDeposit.refund.view"
+  | "securityDeposit.refund.manage"
+  | "securityDeposit.dispute.manage";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -207,6 +216,15 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "moveOut.complete",
   "moveOut.cancel",
   "moveOutInspection.update",
+  "securityDeposit.view",
+  "securityDeposit.create",
+  "securityDeposit.assess",
+  "securityDeposit.review",
+  "securityDeposit.approve",
+  "securityDeposit.post",
+  "securityDeposit.refund.view",
+  "securityDeposit.refund.manage",
+  "securityDeposit.dispute.manage",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -324,6 +342,17 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "moveOut.complete",
   "moveOut.cancel",
   "moveOutInspection.update",
+  // Security Deposit Settlement: MANAGER prepares/assesses/reviews/manages
+  // disputes (the operational side), but never approves, posts, or manages
+  // refunds - that segregation of duties (Step 34-36) is deliberate: a
+  // MANAGER can build a settlement end to end except the two genuinely
+  // financial actions, which are OWNER-only (approve) or ACCOUNTANT-only
+  // (post/refund).
+  "securityDeposit.view",
+  "securityDeposit.create",
+  "securityDeposit.assess",
+  "securityDeposit.review",
+  "securityDeposit.dispute.manage",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -373,6 +402,15 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   // Requirement 6: "ACCOUNTANT: moveOut.view" - visibility only, same as
   // ACCOUNTANT's own moveIn.view-only policy above; no moveOut.* mutation.
   "moveOut.view",
+  // Security Deposit Settlement: ACCOUNTANT reviews, posts, and manages
+  // refunds - the genuinely financial half of the workflow (Step 34-36) -
+  // but never assesses liability or approves (that stays MANAGER's
+  // assessment role and OWNER/ADMIN's approval role respectively).
+  "securityDeposit.view",
+  "securityDeposit.review",
+  "securityDeposit.post",
+  "securityDeposit.refund.view",
+  "securityDeposit.refund.manage",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -395,6 +433,8 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "moveIn.view",
   "maintenance.view",
   "moveOut.view",
+  "securityDeposit.view",
+  "securityDeposit.refund.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

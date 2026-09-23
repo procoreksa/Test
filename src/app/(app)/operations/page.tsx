@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getOperationsDashboard } from "@/lib/actions/move-ins";
 import { getMaintenanceDashboardKpis } from "@/lib/actions/maintenance";
 import { getMoveOutDashboardKpis } from "@/lib/actions/move-outs";
+import { getSecurityDepositDashboardKpis } from "@/lib/actions/security-deposits";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
@@ -11,11 +12,13 @@ export default async function OperationsDashboardPage() {
   const t = getDictionary(locale);
   const canViewMaintenance = can("maintenance.view", role);
   const canViewMoveOuts = can("moveOut.view", role);
+  const canViewSettlements = can("securityDeposit.view", role);
 
-  const [kpis, maintenanceKpis, moveOutKpis] = await Promise.all([
+  const [kpis, maintenanceKpis, moveOutKpis, settlementKpis] = await Promise.all([
     getOperationsDashboard(),
     canViewMaintenance ? getMaintenanceDashboardKpis() : null,
     canViewMoveOuts ? getMoveOutDashboardKpis() : null,
+    canViewSettlements ? getSecurityDepositDashboardKpis() : null,
   ]);
   const moneyFmt = currencyFormatter(locale);
 
@@ -144,6 +147,47 @@ export default async function OperationsDashboardPage() {
         </>
       )}
 
+      {settlementKpis && (
+        <>
+          <div className="flex items-center justify-between pt-2">
+            <h2 className="text-lg font-bold text-slate-900">{t.securityDeposit.sectionTitle}</h2>
+            <Link href="/operations/settlements" className="text-sm text-brand-gold-dark hover:underline font-medium">
+              {t.securityDeposit.goToSettlements} →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiPendingReview}</p>
+              <p className="text-3xl font-bold mt-2 text-amber-600">{settlementKpis.pendingReview}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiPendingApproval}</p>
+              <p className="text-3xl font-bold mt-2 text-amber-600">{settlementKpis.pendingApproval}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiApprovedNotPosted}</p>
+              <p className="text-3xl font-bold mt-2 text-brand-gold-dark">{settlementKpis.approvedNotPosted}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiDisputedSettlements}</p>
+              <p className="text-3xl font-bold mt-2 text-red-600">{settlementKpis.disputedSettlements}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiRefundsDue}</p>
+              <p className="text-3xl font-bold mt-2 text-slate-900">{settlementKpis.refundsDueCount}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiRefundAmountOutstanding}</p>
+              <p className="text-2xl font-bold mt-2 text-slate-900">{moneyFmt.format(Number(settlementKpis.refundAmountOutstanding))}</p>
+            </div>
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <p className="text-slate-500 text-sm">{t.securityDeposit.kpiAdditionalTenantAmountDue}</p>
+              <p className="text-2xl font-bold mt-2 text-slate-900">{moneyFmt.format(Number(settlementKpis.additionalTenantAmountDue))}</p>
+            </div>
+          </div>
+        </>
+      )}
+
       <div className="flex flex-wrap gap-4">
         <Link href="/operations/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
           {t.operations.reportsTitle} →
@@ -156,6 +200,11 @@ export default async function OperationsDashboardPage() {
         {moveOutKpis && (
           <Link href="/operations/move-outs/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
             {t.moveOut.listTitle} {t.operations.reportsTitle} →
+          </Link>
+        )}
+        {settlementKpis && (
+          <Link href="/operations/settlements/reports" className="text-sm text-brand-gold-dark hover:underline font-medium">
+            {t.securityDeposit.listTitle} {t.operations.reportsTitle} →
           </Link>
         )}
       </div>

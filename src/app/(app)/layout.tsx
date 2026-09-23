@@ -58,6 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/operations/move-ins", label: t.nav.operationsMoveIns, icon: "🔑", permission: "moveIn.view" },
     { href: "/operations/move-outs", label: t.nav.operationsMoveOuts, icon: "📤", permission: "moveOut.view" },
     { href: "/operations/move-outs/reports", label: t.nav.operationsReports, icon: "📑", permission: "moveOut.view" },
+    { href: "/operations/settlements", label: t.nav.operationsSettlements, icon: "🏦", permission: "securityDeposit.view" },
     { href: "/operations/maintenance/requests", label: t.nav.operationsMaintenanceRequests, icon: "🛠️", permission: "maintenance.view" },
     { href: "/operations/maintenance/work-orders", label: t.nav.operationsMaintenanceWorkOrders, icon: "🧾", permission: "maintenance.view" },
     { href: "/operations/maintenance/vendors", label: t.nav.operationsMaintenanceVendors, icon: "🧰", permission: "maintenance.vendor.view" },

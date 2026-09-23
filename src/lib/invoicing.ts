@@ -16,6 +16,8 @@ export interface IssueInvoiceInput {
   contractId?: string | null;
   /** All lines in one invoice must belong to the same schedule (or none). */
   paymentScheduleId?: string | null;
+  /** Reference-only traceability to a Security Deposit Settlement's "Additional Tenant Amount Due" receivable (see docs/SECURITY-DEPOSIT-SETTLEMENT.md) - never used to change invoicing/VAT/numbering behavior itself. */
+  settlementId?: string | null;
   lines: Array<
     LineInput & {
       description: string;
@@ -84,6 +86,7 @@ export async function issueInvoice(input: IssueInvoiceInput, existingTx?: Tx) {
         kind,
         documentType: "TAX_INVOICE",
         contractId: input.contractId ?? null,
+        settlementId: input.settlementId ?? null,
         renterId: input.renterId,
         issueDate,
         supplyDate: issueDate,

@@ -62,6 +62,7 @@ export interface Dictionary {
     operationsMaintenanceReports: string;
     operationsMoveOuts: string;
     operationsReports: string;
+    operationsSettlements: string;
     settings: string;
     signOut: string;
     brandTagline: string;
@@ -704,6 +705,20 @@ export interface Dictionary {
     moveOutCancelNoteRequired: string;
     moveOutUnsafeToVacate: string;
     contractRenewalBlockedByMoveOut: string;
+    settlementMoveOutNotEligible: string;
+    settlementAlreadyExistsForMoveOut: string;
+    settlementInvalidTransition: string;
+    settlementNotEditable: string;
+    settlementApprovalBlockedUndetermined: string;
+    settlementApprovalBlockedDispute: string;
+    settlementApprovedPlusWaivedExceedsProposed: string;
+    settlementNonTenantCannotHaveApprovedAmount: string;
+    settlementNegativeAmount: string;
+    settlementNotApproved: string;
+    settlementAlreadyPosted: string;
+    settlementRefundExceedsRemaining: string;
+    settlementRefundAmountInvalid: string;
+    settlementCancelReasonRequired: string;
   };
   zatca: {
     notConfigured: string;
@@ -1783,6 +1798,12 @@ export interface Dictionary {
     string
   >;
   inventoryDiffStatus: Record<"MATCHED" | "QUANTITY_MISMATCH" | "MISSING_AT_MOVE_OUT" | "ADDED_AT_MOVE_OUT", string>;
+  settlementStatus: Record<"DRAFT" | "UNDER_REVIEW" | "PENDING_APPROVAL" | "APPROVED" | "POSTED" | "PARTIALLY_SETTLED" | "SETTLED" | "CANCELLED", string>;
+  settlementResponsibility: Record<"TENANT" | "OWNER" | "PROPERTY_MANAGEMENT" | "VENDOR" | "WARRANTY" | "UNDETERMINED" | "NO_CHARGE" | "OTHER", string>;
+  settlementDeductionCategory: Record<"DAMAGE" | "MISSING_INVENTORY" | "MISSING_KEY_OR_ACCESS_DEVICE" | "CLEANING" | "MAINTENANCE" | "OTHER_CONTRACTUAL_CHARGE" | "OTHER", string>;
+  assessmentSourceType: Record<"INSPECTION_ITEM" | "INVENTORY_ITEM" | "KEY_ITEM" | "MAINTENANCE_REQUEST" | "OTHER", string>;
+  settlementDisputeStatus: Record<"NONE" | "RAISED" | "UNDER_REVIEW" | "RESOLVED", string>;
+  settlementRefundStatus: Record<"PENDING" | "APPROVED" | "PAID" | "CANCELLED", string>;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -2418,6 +2439,157 @@ export interface Dictionary {
     colClosedCount: string;
     colVerifiedCount: string;
     recurringIssueWindowLabel: (days: number) => string;
+  };
+  securityDeposit: {
+    listTitle: string;
+    listSubtitle: string;
+    empty: string;
+    notSet: string;
+    saveButton: string;
+    addButton: string;
+
+    filterSearch: string;
+    filterStatus: string;
+    filterAll: string;
+    filterApply: string;
+    filterDisputedOnly: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, totalPages: number) => string;
+
+    colSettlementNumber: string;
+    colContract: string;
+    colUnit: string;
+    colTenant: string;
+    colMoveOut: string;
+    colStatus: string;
+    colCreatedAt: string;
+
+    createSettlementButton: string;
+    viewSettlementButton: string;
+    noSettlementYet: string;
+
+    sectionSummary: string;
+    sectionDepositPosition: string;
+    sectionFindings: string;
+    sectionAssessments: string;
+    sectionCalculationSummary: string;
+    sectionApproval: string;
+    sectionPosting: string;
+    sectionRefund: string;
+    sectionAdditionalDue: string;
+    sectionFinancialReferences: string;
+    sectionNotes: string;
+
+    fieldSettlementNumber: string;
+    fieldContract: string;
+    fieldUnit: string;
+    fieldRenter: string;
+    fieldMoveOut: string;
+    fieldStatus: string;
+    fieldPreparedBy: string;
+    fieldReviewedBy: string;
+    fieldApprovedBy: string;
+    fieldPostedBy: string;
+
+    depositRequiredLabel: string;
+    depositCollectedLabel: string;
+    depositAvailableLabel: string;
+    depositOverCollectedNotice: string;
+
+    findingNotLiabilityNotice: string;
+    addAssessmentFromFindingButton: string;
+    addManualAssessmentButton: string;
+
+    colCategory: string;
+    colDescription: string;
+    colEvidence: string;
+    colResponsibility: string;
+    colProposed: string;
+    colApproved: string;
+    colWaived: string;
+    colDispute: string;
+
+    responsibilityLabel: string;
+    categoryLabel: string;
+    descriptionLabel: string;
+    proposedAmountLabel: string;
+    approvedAmountLabel: string;
+    waivedAmountLabel: string;
+    waiverReasonLabel: string;
+    disputeStatusLabel: string;
+    disputeNoteLabel: string;
+    assessmentReasonLabel: string;
+
+    totalProposedTenantLabel: string;
+    totalApprovedTenantLabel: string;
+    totalWaivedTenantLabel: string;
+
+    outcomeDepositAppliedLabel: string;
+    outcomeRefundDueLabel: string;
+    outcomeAdditionalDueLabel: string;
+
+    submitForReviewButton: string;
+    reviewForwardButton: string;
+    reviewBackButton: string;
+    approveButton: string;
+    reopenForCorrectionButton: string;
+    postButton: string;
+    cancelButton: string;
+    confirmCancelButton: string;
+    cancelReasonLabel: string;
+
+    approvalBlockedUndeterminedNotice: string;
+    approvalBlockedDisputeNotice: string;
+
+    approvalPreviewTitle: string;
+    approvalPreviewBody: string;
+    postingPreviewTitle: string;
+    postingPreviewBody: string;
+
+    refundDueLabel: string;
+    refundPaidLabel: string;
+    refundRemainingLabel: string;
+    refundAmountLabel: string;
+    refundMethodLabel: string;
+    refundReferenceLabel: string;
+    refundNotesLabel: string;
+    recordRefundButton: string;
+    refundHistoryEmpty: string;
+    colLastRefundDate: string;
+
+    additionalDueEmpty: string;
+    financialReferencesEmpty: string;
+
+    addNoteButton: string;
+    noteLabel: string;
+    notesEmpty: string;
+
+    reportTitle: string;
+    reportSubtitle: (settlementNumber: string) => string;
+    reportOrgLabel: string;
+    reportDisclaimer: string;
+    reportPrintedOn: string;
+    reportNotFinalWhileDisputed: string;
+
+    reportsTitle: string;
+    reportsSubtitle: string;
+    reportSettlement: string;
+    reportDepositBalance: string;
+    reportRefund: string;
+    reportDeductions: string;
+    reportOutstandingAdditional: string;
+    reportDisputed: string;
+
+    kpiPendingReview: string;
+    kpiPendingApproval: string;
+    kpiApprovedNotPosted: string;
+    kpiRefundsDue: string;
+    kpiRefundAmountOutstanding: string;
+    kpiAdditionalTenantAmountDue: string;
+    kpiDisputedSettlements: string;
+    sectionTitle: string;
+    goToSettlements: string;
   };
 }
 

@@ -83,3 +83,8 @@ export function formatMaintenanceVendorNumber(seq: number): string {
 export function formatMoveOutNumber(seq: number): string {
   return `MO-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatMoveOutNumber() - a Security Deposit Settlement number is an internal operational record, not a legal/tax document series (the "Additional Tenant Amount Due" invoice it may reference, if any, gets its own INV- number as usual). */
+export function formatSecurityDepositSettlementNumber(seq: number): string {
+  return `SDS-${String(seq).padStart(6, "0")}`;
+}

@@ -5,9 +5,10 @@ import { listUnits } from "@/lib/actions/units";
 import { listRenters } from "@/lib/actions/renters";
 import { getMoveInForContract } from "@/lib/actions/move-ins";
 import { getMoveOutForContract } from "@/lib/actions/move-outs";
+import { getSettlementForContract, getDepositPositionForContract } from "@/lib/actions/security-deposits";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
-import { getLocale, getDictionary, pickLocalized, shortDateFormatter } from "@/lib/i18n";
+import { getLocale, getDictionary, pickLocalized, shortDateFormatter, currencyFormatter } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
 import { AuditTimeline } from "@/components/audit-timeline";
 
@@ -24,12 +25,16 @@ export default async function EditContractPage({
   ]);
   const t = getDictionary(locale);
   const dateFmt = shortDateFormatter(locale);
+  const moneyFmt = currencyFormatter(locale);
   const canViewMoveIns = can("moveIn.view", role);
   const canCreateMoveIn = can("moveIn.create", role);
   const moveIn = canViewMoveIns ? await getMoveInForContract(contract.id) : null;
   const canViewMoveOuts = can("moveOut.view", role);
   const canCreateMoveOut = can("moveOut.create", role);
   const moveOut = canViewMoveOuts ? await getMoveOutForContract(contract.id) : null;
+  const canViewSettlement = can("securityDeposit.view", role);
+  const settlement = canViewSettlement ? await getSettlementForContract(contract.id) : null;
+  const depositPosition = canViewSettlement ? await getDepositPositionForContract(contract.id) : null;
 
   const propertyName = unitLocationLabel(locale, contract.unit);
   const renterName = pickLocalized(locale, contract.renter.fullNameAr, contract.renter.fullName);
@@ -160,6 +165,31 @@ export default async function EditContractPage({
               </Link>
             )
           )}
+        </div>
+      )}
+
+      {canViewSettlement && depositPosition && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h2 className="font-semibold text-slate-800 mb-3">{t.securityDeposit.sectionDepositPosition}</h2>
+          <dl className="grid grid-cols-2 gap-y-2 text-sm">
+            <dt className="text-slate-500">{t.securityDeposit.depositRequiredLabel}</dt>
+            <dd className="text-slate-800 font-medium">{moneyFmt.format(Number(depositPosition.requiredDeposit))}</dd>
+            <dt className="text-slate-500">{t.securityDeposit.depositAvailableLabel}</dt>
+            <dd className="text-slate-800 font-medium">{moneyFmt.format(Number(depositPosition.availableDeposit))}</dd>
+            {settlement && (
+              <>
+                <dt className="text-slate-500">{t.securityDeposit.fieldSettlementNumber}</dt>
+                <dd className="text-slate-800 font-medium">
+                  <Link href={`/operations/settlements/${settlement.id}`} className="text-brand-gold-dark hover:underline">
+                    {settlement.settlementNumber}
+                  </Link>
+                </dd>
+                <dt className="text-slate-500">{t.securityDeposit.fieldStatus}</dt>
+                <dd className="text-slate-800 font-medium">{t.settlementStatus[settlement.status]}</dd>
+              </>
+            )}
+          </dl>
+          {depositPosition.isOverCollected && <p className="text-xs text-amber-600 mt-3">{t.securityDeposit.depositOverCollectedNotice}</p>}
         </div>
       )}
 

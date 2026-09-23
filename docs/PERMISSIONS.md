@@ -59,6 +59,8 @@ maintenance.cost.view / maintenance.cost.manage
 maintenance.vendor.view / maintenance.vendor.manage
 
 moveOut.view / moveOut.create / moveOut.update / moveOut.start / moveOut.complete / moveOut.cancel / moveOutInspection.update
+
+securityDeposit.view / securityDeposit.create / securityDeposit.assess / securityDeposit.review / securityDeposit.approve / securityDeposit.post / securityDeposit.refund.view / securityDeposit.refund.manage / securityDeposit.dispute.manage
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -301,6 +303,15 @@ create/delete, not edit. When one is added, gate it with the matching
 | moveOut.complete | ✅ | ✅ | ✅ | ❌ | ❌ |
 | moveOut.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
 | moveOutInspection.update | ✅ | ✅ | ✅ | ❌ | ❌ |
+| securityDeposit.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| securityDeposit.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| securityDeposit.assess | ✅ | ✅ | ✅ | ❌ | ❌ |
+| securityDeposit.review | ✅ | ✅ | ✅ | ✅ | ❌ |
+| securityDeposit.approve | ✅ | ✅ | ❌ | ❌ | ❌ |
+| securityDeposit.post | ✅ | ✅ | ❌ | ✅ | ❌ |
+| securityDeposit.refund.view | ✅ | ✅ | ❌ | ✅ | ✅ |
+| securityDeposit.refund.manage | ✅ | ✅ | ❌ | ✅ | ❌ |
+| securityDeposit.dispute.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -333,6 +344,27 @@ Notes on judgment calls made while encoding the brief's policy:
   mutation permission for either. This mirrors Move-In's own role policy
   exactly, since Move-Out is the same day-to-day leasing-operations tier
   of work, not CRM pipeline work or an accounting function.
+
+- **Security Deposit & Move-Out Financial Settlement
+  (docs/SECURITY-DEPOSIT-SETTLEMENT.md).** No new role was introduced. This
+  is the one module in this table with genuine segregation of duties across
+  three different roles rather than one operational tier: MANAGER holds
+  `securityDeposit.view/create/assess/review/dispute.manage` - it can
+  create a settlement, add/edit liability assessments, submit and review
+  them, and manage disputes, but can **never approve, post, or manage a
+  refund**. ACCOUNTANT holds `securityDeposit.view/review/post/refund.view/
+  refund.manage` - the genuinely financial half (reviewing, posting the
+  approved figures, recording/paying refunds) but can **never create a
+  settlement, add/edit an assessment, approve, or manage a dispute**.
+  `securityDeposit.approve` is OWNER/ADMIN-only - approval freezes the
+  commercial snapshot and is deliberately the single highest-trust action
+  in the whole workflow, held by neither MANAGER nor ACCOUNTANT alone.
+  VIEWER gets `securityDeposit.view` + `securityDeposit.refund.view` only,
+  consistent with VIEWER's read-only posture everywhere else. There is no
+  `securityDeposit.delete`: a settlement is never deleted, only cancelled
+  pre-posting (`securityDeposit.review` covers `cancelSettlement()`, the
+  same authorization tier as reviewing) or reversed post-posting via a
+  dedicated reversal entry, matching this table's no-hard-delete policy.
 
 - **`property.delete` / `unit.delete` / `renter.delete` are OWNER/ADMIN-only.**
   The brief listed `property.delete` etc. as permission keys to define but

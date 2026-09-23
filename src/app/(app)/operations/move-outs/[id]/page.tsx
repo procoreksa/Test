@@ -20,7 +20,9 @@ import {
   cancelMoveOut,
 } from "@/lib/actions/move-outs";
 import { createMaintenanceRequestFromMoveOut } from "@/lib/actions/maintenance";
+import { getSettlementForMoveOut, createSecurityDepositSettlement } from "@/lib/actions/security-deposits";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { computeConditionComparisonLabel } from "@/lib/operations/move-out-rules";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
@@ -50,6 +52,10 @@ export default async function MoveOutProfilePage({ params }: { params: Promise<{
   ]);
   const t = getDictionary(locale);
   const dateTimeFmt = longDateTimeFormatter(locale);
+
+  const canViewSettlement = can("securityDeposit.view", role);
+  const canCreateSettlement = can("securityDeposit.create", role);
+  const settlement = canViewSettlement && moveOut.status === "COMPLETED" ? await getSettlementForMoveOut(moveOut.id) : null;
 
   const canUpdate = can("moveOut.update", role);
   const canStart = can("moveOut.start", role);
@@ -172,6 +178,39 @@ export default async function MoveOutProfilePage({ params }: { params: Promise<{
             ))}
           </ul>
         </div>
+      )}
+
+      {moveOut.status === "COMPLETED" && canViewSettlement && (
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-800">{t.securityDeposit.listTitle}</h2>
+            {settlement ? (
+              <p className="text-sm text-slate-500 mt-1">
+                {settlement.settlementNumber} — {t.settlementStatus[settlement.status]}
+              </p>
+            ) : (
+              <p className="text-sm text-slate-500 mt-1">{t.securityDeposit.noSettlementYet}</p>
+            )}
+          </div>
+          {settlement ? (
+            <Link href={`/operations/settlements/${settlement.id}`} className="bg-slate-800 hover:bg-slate-900 text-white rounded-lg px-4 py-2 text-sm font-medium">
+              {t.securityDeposit.viewSettlementButton}
+            </Link>
+          ) : (
+            canCreateSettlement && (
+              <form
+                action={async () => {
+                  "use server";
+                  const settlementId = await createSecurityDepositSettlement(moveOut.id);
+                  revalidatePath(`/operations/move-outs/${moveOut.id}`);
+                  redirect(`/operations/settlements/${settlementId}`);
+                }}
+              >
+                <button className="bg-brand-gold hover:bg-brand-gold-dark text-brand-black rounded-lg px-4 py-2 text-sm font-semibold">{t.securityDeposit.createSettlementButton}</button>
+              </form>
+            )
+          )}
+        </section>
       )}
 
       {/* Overview */}

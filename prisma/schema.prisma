@@ -63,40 +63,45 @@ model Organization {
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 
-  users                  User[]
-  properties             Property[]
-  renters                Renter[]
-  contracts              Contract[]
-  invoices               Invoice[]
-  payments               Payment[]
-  counters               Counter[]
-  units                  Unit[]
-  compounds              Compound[]
-  buildings              Building[]
-  floors                 Floor[]
-  owners                 Owner[]
-  propertyOwnerships     PropertyOwnership[]
-  ownerLedgerEntries     OwnerLedgerEntry[]
-  leads                  Lead[]
-  leadActivities         LeadActivity[]
-  viewings               Viewing[]
-  leasingOffers          LeasingOffer[]
-  reservations           Reservation[]
-  moveIns                MoveIn[]
-  moveInInspectionItems  MoveInInspectionItem[]
-  moveInInventoryItems   MoveInInventoryItem[]
-  moveInMeterReadings    MoveInMeterReading[]
-  moveInKeyItems         MoveInKeyItem[]
-  moveInAttachments      MoveInAttachment[]
-  maintenanceRequests    MaintenanceRequest[]
-  maintenanceWorkOrders  MaintenanceWorkOrder[]
-  maintenanceVendors     MaintenanceVendor[]
-  moveOuts               MoveOut[]
-  moveOutInspectionItems MoveOutInspectionItem[]
-  moveOutInventoryItems  MoveOutInventoryItem[]
-  moveOutMeterReadings   MoveOutMeterReading[]
-  moveOutKeyItems        MoveOutKeyItem[]
-  moveOutAttachments     MoveOutAttachment[]
+  users                          User[]
+  properties                     Property[]
+  renters                        Renter[]
+  contracts                      Contract[]
+  invoices                       Invoice[]
+  payments                       Payment[]
+  counters                       Counter[]
+  units                          Unit[]
+  compounds                      Compound[]
+  buildings                      Building[]
+  floors                         Floor[]
+  owners                         Owner[]
+  propertyOwnerships             PropertyOwnership[]
+  ownerLedgerEntries             OwnerLedgerEntry[]
+  leads                          Lead[]
+  leadActivities                 LeadActivity[]
+  viewings                       Viewing[]
+  leasingOffers                  LeasingOffer[]
+  reservations                   Reservation[]
+  moveIns                        MoveIn[]
+  moveInInspectionItems          MoveInInspectionItem[]
+  moveInInventoryItems           MoveInInventoryItem[]
+  moveInMeterReadings            MoveInMeterReading[]
+  moveInKeyItems                 MoveInKeyItem[]
+  moveInAttachments              MoveInAttachment[]
+  maintenanceRequests            MaintenanceRequest[]
+  maintenanceWorkOrders          MaintenanceWorkOrder[]
+  maintenanceVendors             MaintenanceVendor[]
+  moveOuts                       MoveOut[]
+  moveOutInspectionItems         MoveOutInspectionItem[]
+  moveOutInventoryItems          MoveOutInventoryItem[]
+  moveOutMeterReadings           MoveOutMeterReading[]
+  moveOutKeyItems                MoveOutKeyItem[]
+  moveOutAttachments             MoveOutAttachment[]
+  securityDepositSettlements     SecurityDepositSettlement[]
+  moveOutLiabilityAssessments    MoveOutLiabilityAssessment[]
+  securityDepositLedgerEntries   SecurityDepositLedgerEntry[]
+  securityDepositRefunds         SecurityDepositRefund[]
+  securityDepositSettlementNotes SecurityDepositSettlementNote[]
 
   @@map("organizations")
 }
@@ -142,6 +147,12 @@ model User {
   inspectedMoveOuts        MoveOut[] @relation("MoveOutInspectedBy")
   handedOverMoveOuts       MoveOut[] @relation("MoveOutHandedOverBy")
   findingsReviewedMoveOuts MoveOut[] @relation("MoveOutFindingsReviewedBy")
+
+  reviewedSettlements  SecurityDepositSettlement[]  @relation("SettlementReviewedBy")
+  approvedSettlements  SecurityDepositSettlement[]  @relation("SettlementApprovedBy")
+  postedSettlements    SecurityDepositSettlement[]  @relation("SettlementPostedBy")
+  cancelledSettlements SecurityDepositSettlement[]  @relation("SettlementCancelledBy")
+  approvedLiabilities  MoveOutLiabilityAssessment[] @relation("AssessmentApprovedBy")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -316,15 +327,16 @@ model Unit {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts           Contract[]
-  propertyOwnerships  PropertyOwnership[]
-  ownerLedgerEntries  OwnerLedgerEntry[]
-  viewingUnits        ViewingUnit[]
-  leasingOffers       LeasingOffer[]
-  reservations        Reservation[]
-  moveIns             MoveIn[]
-  maintenanceRequests MaintenanceRequest[]
-  moveOuts            MoveOut[]
+  contracts                  Contract[]
+  propertyOwnerships         PropertyOwnership[]
+  ownerLedgerEntries         OwnerLedgerEntry[]
+  viewingUnits               ViewingUnit[]
+  leasingOffers              LeasingOffer[]
+  reservations               Reservation[]
+  moveIns                    MoveIn[]
+  maintenanceRequests        MaintenanceRequest[]
+  moveOuts                   MoveOut[]
+  securityDepositSettlements SecurityDepositSettlement[]
 
   @@index([organizationId])
   @@index([propertyId])
@@ -359,13 +371,14 @@ model Renter {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  contracts           Contract[]
-  invoices            Invoice[]
-  payments            Payment[]
-  convertedFromLead   Lead?
-  moveIns             MoveIn[]
-  maintenanceRequests MaintenanceRequest[]
-  moveOuts            MoveOut[]
+  contracts                  Contract[]
+  invoices                   Invoice[]
+  payments                   Payment[]
+  convertedFromLead          Lead?
+  moveIns                    MoveIn[]
+  maintenanceRequests        MaintenanceRequest[]
+  moveOuts                   MoveOut[]
+  securityDepositSettlements SecurityDepositSettlement[]
 
   @@index([organizationId])
   @@map("renters")
@@ -446,9 +459,9 @@ model Contract {
   reservationId String?      @unique
   reservation   Reservation? @relation(fields: [reservationId], references: [id], onDelete: SetNull)
 
-  paymentSchedules    PaymentSchedule[]
-  invoices            Invoice[]
-  convertedFromLead   Lead?
+  paymentSchedules             PaymentSchedule[]
+  invoices                     Invoice[]
+  convertedFromLead            Lead?
   // No DB-level unique constraint here (see docs/MOVE-IN-HANDOVER.md,
   // "Contract eligibility") - "one active/completed Move-In per Contract"
   // is enforced the same way "one active Reservation per Offer" already
@@ -456,9 +469,11 @@ model Contract {
   // (blocksNewMoveInForContract()) checked inside a Serializable
   // transaction, not a DB constraint - a Contract may have several
   // CANCELLED MoveIn attempts before a successful one.
-  moveIns             MoveIn[]
-  maintenanceRequests MaintenanceRequest[]
-  moveOuts            MoveOut[]
+  moveIns                      MoveIn[]
+  maintenanceRequests          MaintenanceRequest[]
+  moveOuts                     MoveOut[]
+  securityDepositSettlements   SecurityDepositSettlement[]
+  securityDepositLedgerEntries SecurityDepositLedgerEntry[]
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
@@ -535,35 +550,42 @@ enum ZatcaSubmissionStatus {
 }
 
 model Invoice {
-  id                  String                @id @default(cuid())
+  id                  String                     @id @default(cuid())
   organizationId      String
-  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization        Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invoiceNumber       String // human readable, e.g. INV-2026-000123
   icv                 Int // Invoice Counter Value: strictly increasing per organization, never reused
-  uuid                String                @unique // ZATCA invoice UUID
-  documentType        InvoiceDocumentType   @default(TAX_INVOICE)
-  kind                InvoiceKind           @default(SIMPLIFIED)
+  uuid                String                     @unique // ZATCA invoice UUID
+  documentType        InvoiceDocumentType        @default(TAX_INVOICE)
+  kind                InvoiceKind                @default(SIMPLIFIED)
   contractId          String?
-  contract            Contract?             @relation(fields: [contractId], references: [id])
+  contract            Contract?                  @relation(fields: [contractId], references: [id])
   renterId            String
-  renter              Renter                @relation(fields: [renterId], references: [id])
-  issueDate           DateTime              @default(now())
-  supplyDate          DateTime              @default(now())
+  renter              Renter                     @relation(fields: [renterId], references: [id])
+  // Reference-only traceability to the Security Deposit Settlement this
+  // invoice's "Additional Tenant Amount Due" receivable belongs to, when
+  // applicable (Step 32/57) - SetNull, never able to block deleting either
+  // side, and Invoice's own issuance/payment/cancellation rules remain
+  // completely unchanged and authoritative.
+  settlementId        String?
+  settlement          SecurityDepositSettlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+  issueDate           DateTime                   @default(now())
+  supplyDate          DateTime                   @default(now())
   dueDate             DateTime?
-  currency            String                @default("SAR")
-  subtotal            Decimal               @db.Decimal(12, 2)
-  vatAmount           Decimal               @db.Decimal(12, 2)
-  totalAmount         Decimal               @db.Decimal(12, 2)
-  paidAmount          Decimal               @default(0) @db.Decimal(12, 2)
-  status              InvoiceStatus         @default(ISSUED)
+  currency            String                     @default("SAR")
+  subtotal            Decimal                    @db.Decimal(12, 2)
+  vatAmount           Decimal                    @db.Decimal(12, 2)
+  totalAmount         Decimal                    @db.Decimal(12, 2)
+  paidAmount          Decimal                    @default(0) @db.Decimal(12, 2)
+  status              InvoiceStatus              @default(ISSUED)
   previousInvoiceHash String? // PIH: hash of the prior invoice in the chain (base64 SHA-256)
   invoiceHash         String? // hash of this invoice's canonical content (base64 SHA-256)
   qrCodeBase64        String? // ZATCA TLV-encoded QR payload, base64
-  zatcaStatus         ZatcaSubmissionStatus @default(NOT_SUBMITTED)
+  zatcaStatus         ZatcaSubmissionStatus      @default(NOT_SUBMITTED)
   zatcaResponse       Json?
   notes               String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
 
   lines    InvoiceLine[]
   payments Payment[]
@@ -2033,6 +2055,13 @@ model MoveOut {
   keyItems            MoveOutKeyItem[]
   attachments         MoveOutAttachment[]
   maintenanceRequests MaintenanceRequest[]
+  // One settlement per completed Move-Out (Security Deposit Settlement,
+  // Step 3/4) - enforced at the DB level by this relation being to a
+  // singular optional field on MoveOut is NOT how this is modeled;
+  // uniqueness is instead enforced by `SecurityDepositSettlement.moveOutId`
+  // itself being `@unique` (see that model) - a MoveOut may have zero or
+  // one settlement, never two.
+  settlement          SecurityDepositSettlement?
 
   @@unique([organizationId, moveOutNumber])
   @@index([organizationId, status])
@@ -2077,8 +2106,9 @@ model MoveOutInspectionItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  attachments         MoveOutAttachment[]
-  maintenanceRequests MaintenanceRequest[]
+  attachments          MoveOutAttachment[]
+  maintenanceRequests  MaintenanceRequest[]
+  liabilityAssessments MoveOutLiabilityAssessment[]
 
   @@index([organizationId, moveOutId])
   @@index([moveOutId, category])
@@ -2112,7 +2142,8 @@ model MoveOutInventoryItem {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  attachments MoveOutAttachment[]
+  attachments          MoveOutAttachment[]
+  liabilityAssessments MoveOutLiabilityAssessment[]
 
   @@index([organizationId, moveOutId])
   @@map("move_out_inventory_items")
@@ -2161,6 +2192,8 @@ model MoveOutKeyItem {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  liabilityAssessments MoveOutLiabilityAssessment[]
 
   @@index([organizationId, moveOutId])
   @@map("move_out_key_items")
@@ -2500,8 +2533,9 @@ model MaintenanceRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workOrders  MaintenanceWorkOrder[]
-  attachments MaintenanceAttachment[]
+  workOrders           MaintenanceWorkOrder[]
+  attachments          MaintenanceAttachment[]
+  liabilityAssessments MoveOutLiabilityAssessment[]
 
   @@unique([organizationId, requestNumber])
   @@index([organizationId, status])
@@ -2784,4 +2818,384 @@ model MaintenanceAttachment {
   @@index([organizationId, workOrderId])
   @@index([organizationId, workLogId])
   @@map("maintenance_attachments")
+}
+
+// ---------------------------------------------------------------------------
+// Security Deposit & Move-Out Financial Settlement
+//
+// This is the financial-settlement layer that follows a COMPLETED Move-Out
+// (see docs/SECURITY-DEPOSIT-SETTLEMENT.md). It is a dedicated domain, never
+// collapsed into MoveOut/Invoice/Payment/OwnerLedgerEntry/MaintenanceRequest:
+//
+//   Move-In Baseline -> Move-Out Final Condition -> Findings ->
+//   Liability Assessment -> Proposed/Approved Deductions -> Review ->
+//   Approval -> Posting -> Deposit Application -> Refund / Additional
+//   Amount Due
+//
+// CRITICAL PRINCIPLE (never to be weakened): FINDING != TENANT LIABILITY !=
+// FINANCIAL DEDUCTION. A Move-Out inspection/inventory/key finding, or a
+// MaintenanceRequest/WorkOrder cost, is evidence only. Nothing in this
+// section (or anywhere else in this codebase) may auto-create a tenant
+// charge from a finding. An authorized human must explicitly assess
+// responsibility, then a distinct authorized approver must explicitly
+// approve an amount, before any financial posting can occur.
+//
+// Existing invariants this section NEVER touches:
+//   - completeMoveOut() remains the sole path to Unit.status = VACANT.
+//   - MoveOut/MoveIn inspection/inventory/meter/key/attachment rows are
+//     read-only evidence here - never mutated.
+//   - Contract.status is never changed by settlement activity.
+//   - OwnerLedgerEntry is never posted to automatically merely because a
+//     deposit was collected or a tenant deduction was approved - a
+//     collected deposit is a liability held on the tenant's behalf, not
+//     owner income (see docs/SECURITY-DEPOSIT-SETTLEMENT.md, "Owner
+//     accounting boundary" - deferred, future integration).
+//
+// Deposit collection itself reuses the EXISTING Invoice/Payment pipeline
+// unchanged (InvoiceLineKind.SECURITY_DEPOSIT already exists, billed at 0%
+// VAT - see issueInvoiceForSchedule()). What was missing, and is added
+// here, is (a) an authoritative, ledger-backed "available balance" that
+// survives partial/mixed invoicing exactly the way recomputeScheduleStatus()
+// already tolerates, and (b) a genuine OUTGOING-money concept (refund),
+// which Payment (inbound-only, invoiceId required) cannot safely represent -
+// see docs/SECURITY-DEPOSIT-SETTLEMENT.md, "Why Payment/OwnerLedgerEntry
+// were not reused for refunds."
+// ---------------------------------------------------------------------------
+
+enum SettlementStatus {
+  DRAFT // preparer (assessment phase) - freely editable
+  UNDER_REVIEW // submitted for a second look; reviewer may send back to DRAFT
+  PENDING_APPROVAL // reviewed; awaiting the authorized approver's decision
+  APPROVED // commercial snapshot frozen (approved* fields set) - assessment editing stops
+  POSTED // financial movements created (ledger APPLICATION/REFUND-obligation, additional-due invoice if any)
+  PARTIALLY_SETTLED // posted, and at least one of refund/additional-due is partially but not fully cleared
+  SETTLED // posted, and refund fully paid (if any) and additional-due handled per the documented completion definition
+  CANCELLED // terminal, only reachable before POSTED
+}
+
+enum SettlementResponsibility {
+  TENANT
+  OWNER
+  PROPERTY_MANAGEMENT
+  VENDOR
+  WARRANTY
+  UNDETERMINED
+  NO_CHARGE
+  OTHER
+}
+
+// Deliberately excludes UNPAID_RENT/UNPAID_UTILITY (Step 13/46): this
+// codebase already tracks unpaid rent authoritatively via
+// PaymentSchedule/Invoice, and has no utility-billing feature at all, so
+// neither can be safely re-derived here without risking double-charging or
+// fabricating a balance this module cannot prove. A genuinely unpaid-rent
+// deduction is entered as OTHER_CONTRACTUAL_CHARGE with a manual reference
+// to the specific existing Invoice/PaymentSchedule row, never re-summed here.
+enum SettlementDeductionCategory {
+  DAMAGE
+  MISSING_INVENTORY
+  MISSING_KEY_OR_ACCESS_DEVICE
+  CLEANING
+  MAINTENANCE
+  OTHER_CONTRACTUAL_CHARGE
+  OTHER
+}
+
+enum AssessmentSourceType {
+  INSPECTION_ITEM
+  INVENTORY_ITEM
+  KEY_ITEM
+  MAINTENANCE_REQUEST
+  OTHER
+}
+
+enum SettlementDisputeStatus {
+  NONE
+  RAISED
+  UNDER_REVIEW
+  RESOLVED
+}
+
+enum SecurityDepositLedgerEntryType {
+  COLLECTION // credit - deposit money actually collected (derived from a paid SECURITY_DEPOSIT invoice line, never manually fabricated)
+  APPLICATION // debit - portion of the deposit applied against approved tenant deductions at posting
+  REFUND // debit - portion of the deposit paid back out to the tenant
+  ADJUSTMENT // either side - a rare, explicit, audited correction (e.g. correcting a sync error) - never used to hide a mistake
+  REVERSAL // opposite of whatever entry it reverses
+}
+
+enum SecurityDepositRefundStatus {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+/// One per COMPLETED MoveOut (moveOutId is @unique below - enforced at the
+/// DB level, not just in application code). Orchestrates settlement while
+/// every source record (MoveOut, its inspection/inventory/key items,
+/// MaintenanceRequest) remains untouched and authoritative for what actually
+/// happened; this model only ever reads them.
+model SecurityDepositSettlement {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // "SDS-000001" via the existing Counter infrastructure (key
+  // "securityDepositSettlement") - no new numbering scheme.
+  settlementNumber String
+
+  // Copied from the completed MoveOut at creation and never allowed to
+  // diverge - same pattern MoveOut itself already established for
+  // unitId/renterId copied from Contract.
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  moveOutId  String   @unique
+  moveOut    MoveOut  @relation(fields: [moveOutId], references: [id], onDelete: Restrict)
+  unitId     String
+  unit       Unit     @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  renterId   String
+  renter     Renter   @relation(fields: [renterId], references: [id], onDelete: Restrict)
+
+  status SettlementStatus @default(DRAFT)
+
+  // Frozen commercial snapshot (Step 49/50) - null until APPROVED, and never
+  // recalculated afterward even if a source record could theoretically
+  // change later. Posting reuses these exact figures; it never
+  // re-derives new ones.
+  approvedAvailableDeposit Decimal? @db.Decimal(12, 2)
+  approvedTenantDeductions Decimal? @db.Decimal(12, 2)
+  approvedDepositApplied   Decimal? @db.Decimal(12, 2)
+  approvedRefundDue        Decimal? @db.Decimal(12, 2)
+  approvedAdditionalDue    Decimal? @db.Decimal(12, 2)
+
+  // Plain string, not a relation (the FK would need to be nullable to
+  // support onDelete: SetNull, and this one is never optional) - survives
+  // the preparing User being removed, same convention as
+  // MoveOut.createdByUserId.
+  preparedByUserId String
+
+  reviewedByUserId String?
+  reviewedByUser   User?     @relation("SettlementReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt       DateTime?
+
+  approvedByUserId String?
+  approvedByUser   User?     @relation("SettlementApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt       DateTime?
+
+  postedByUserId String?
+  postedByUser   User?     @relation("SettlementPostedBy", fields: [postedByUserId], references: [id], onDelete: SetNull)
+  postedAt       DateTime?
+
+  settledAt DateTime?
+
+  cancelledByUserId String?
+  cancelledByUser   User?     @relation("SettlementCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+  cancelledAt       DateTime?
+  cancelReason      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  liabilityAssessments  MoveOutLiabilityAssessment[]
+  ledgerEntries         SecurityDepositLedgerEntry[]
+  refunds               SecurityDepositRefund[]
+  notesLog              SecurityDepositSettlementNote[]
+  additionalDueInvoices Invoice[]
+
+  @@unique([organizationId, settlementNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, contractId])
+  @@index([organizationId, unitId])
+  @@index([organizationId, renterId])
+  @@index([organizationId, createdAt])
+  @@map("security_deposit_settlements")
+}
+
+/// Explicit human liability decision against one piece of Move-Out (or
+/// manual) evidence. NEVER auto-created from a finding - always an
+/// authorized user's deliberate action (see createLiabilityAssessment()).
+/// Typed source relations (Step 12) rather than a polymorphic sourceType +
+/// bare sourceId string, so referential integrity is real: exactly one of
+/// the four *Id fields is set for a Move-Out-evidenced assessment, and none
+/// for a manual (sourceType = OTHER) one.
+model MoveOutLiabilityAssessment {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  settlementId String
+  settlement   SecurityDepositSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  sourceType AssessmentSourceType
+
+  moveOutInspectionItemId String?
+  moveOutInspectionItem   MoveOutInspectionItem? @relation(fields: [moveOutInspectionItemId], references: [id], onDelete: SetNull)
+  moveOutInventoryItemId  String?
+  moveOutInventoryItem    MoveOutInventoryItem?  @relation(fields: [moveOutInventoryItemId], references: [id], onDelete: SetNull)
+  moveOutKeyItemId        String?
+  moveOutKeyItem          MoveOutKeyItem?        @relation(fields: [moveOutKeyItemId], references: [id], onDelete: SetNull)
+  maintenanceRequestId    String?
+  maintenanceRequest      MaintenanceRequest?    @relation(fields: [maintenanceRequestId], references: [id], onDelete: SetNull)
+
+  description   String
+  descriptionAr String?
+
+  category         SettlementDeductionCategory
+  // Defaults to UNDETERMINED (Step 9) - never inferred from a condition
+  // rating or any other evidence field; always a deliberate choice.
+  responsibility   SettlementResponsibility    @default(UNDETERMINED)
+  assessmentReason String?
+
+  // proposedAmount is the preparer's suggestion; approvedAmount is the
+  // distinct, separately-authorized approver's decision (Step 15) - never
+  // overwritten by, or used to silently overwrite, the other. Enforced in
+  // the action layer (not a DB CHECK, to match this schema's existing
+  // convention of application-layer invariant enforcement for cross-field
+  // business rules): responsibility != TENANT => approvedAmount must be 0
+  // (Step 42/43/96); approvedAmount + waivedAmount <= proposedAmount
+  // (Step 16, no double counting).
+  proposedAmount Decimal  @default(0) @db.Decimal(12, 2)
+  approvedAmount Decimal? @db.Decimal(12, 2)
+  waivedAmount   Decimal  @default(0) @db.Decimal(12, 2)
+  waiverReason   String?
+
+  disputeStatus SettlementDisputeStatus @default(NONE)
+  disputeNote   String?
+
+  // Plain string, not a relation - same reasoning as
+  // SecurityDepositSettlement.preparedByUserId above.
+  assessedByUserId String
+  assessedAt       DateTime @default(now())
+
+  approvedByUserId String?
+  approvedByUser   User?     @relation("AssessmentApprovedBy", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId, settlementId])
+  @@index([organizationId, responsibility])
+  @@index([organizationId, disputeStatus])
+  @@map("move_out_liability_assessments")
+}
+
+/// Append-only (Step 26/27) - Available Deposit Balance is ALWAYS
+/// SUM(credit) - SUM(debit) over these rows for a Contract, mirroring
+/// OwnerLedgerEntry's own debit/credit + reversal-linkage convention
+/// exactly. There is deliberately no update/delete server action for this
+/// model anywhere - a mistaken entry is corrected only by posting a
+/// REVERSAL row that mirrors it (see reverseSecurityDepositLedgerEntry()).
+model SecurityDepositLedgerEntry {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  // Null for a COLLECTION entry synced before any settlement existed for
+  // this Contract (deposit can be collected well before Move-Out); always
+  // set for APPLICATION/REFUND, which only ever happen inside a settlement.
+  settlementId String?
+  settlement   SecurityDepositSettlement? @relation(fields: [settlementId], references: [id], onDelete: SetNull)
+
+  refundId String?
+  refund   SecurityDepositRefund? @relation(fields: [refundId], references: [id], onDelete: SetNull)
+
+  entryType SecurityDepositLedgerEntryType
+
+  debit  Decimal @default(0) @db.Decimal(12, 2)
+  credit Decimal @default(0) @db.Decimal(12, 2)
+
+  // Free-text pointer (e.g. referenceType="Invoice") for a COLLECTION entry
+  // synced from an existing paid SECURITY_DEPOSIT invoice line - not a
+  // Prisma relation, matching OwnerLedgerEntry's own referenceType/
+  // referenceId convention exactly, for the same reason: this ledger must
+  // stay postable/queryable even if the source Invoice is later restructured,
+  // and must never be able to cascade-delete a financial record.
+  referenceType String?
+  referenceId   String?
+
+  description   String
+  descriptionAr String?
+
+  entryDate DateTime @default(now())
+
+  reversalOfEntryId String?                     @unique
+  reversalOfEntry   SecurityDepositLedgerEntry? @relation("SecurityDepositLedgerReversal", fields: [reversalOfEntryId], references: [id])
+  reversedByEntry   SecurityDepositLedgerEntry? @relation("SecurityDepositLedgerReversal")
+
+  // Plain string, not a relation - survives the acting User being removed,
+  // same as OwnerLedgerEntry.createdBy and every other ledger-tier record
+  // in this schema.
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  @@unique([organizationId, referenceType, referenceId])
+  @@index([organizationId, contractId, entryDate])
+  @@index([organizationId, settlementId])
+  @@map("security_deposit_ledger_entries")
+}
+
+/// A genuine OUTGOING cash movement to the tenant - deliberately NOT a
+/// negative Payment (Payment.invoiceId is required and its own "reversal"
+/// means something entirely different - see docs/SECURITY-DEPOSIT-
+/// SETTLEMENT.md). V1 exposes one action, recordSecurityDepositRefund(),
+/// which always records an already-executed payment (status is written as
+/// PAID immediately, with paidAt set) - there is no separate refund-request/
+/// refund-approval UI step in V1, since the settlement's own approval
+/// already authorizes the refund amount; PENDING/APPROVED remain valid
+/// schema states for future workflow extension without a migration.
+model SecurityDepositRefund {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  settlementId String
+  settlement   SecurityDepositSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  amount          Decimal                     @db.Decimal(12, 2)
+  status          SecurityDepositRefundStatus @default(PAID)
+  method          PaymentMethod?
+  referenceNumber String?
+  notes           String?
+
+  paidAt DateTime?
+
+  cancelledAt  DateTime?
+  cancelReason String?
+
+  // Plain string, not a relation - same ledger-tier convention as
+  // SecurityDepositLedgerEntry.createdBy/OwnerLedgerEntry.createdBy.
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  ledgerEntries SecurityDepositLedgerEntry[]
+
+  @@index([organizationId, settlementId])
+  @@map("security_deposit_refunds")
+}
+
+/// Append-only operational discussion history for a settlement (Step 80) -
+/// deliberately separate from AuditLog, which stays a pure compliance
+/// record of state changes, never a comments thread.
+model SecurityDepositSettlementNote {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  settlementId String
+  settlement   SecurityDepositSettlement @relation(fields: [settlementId], references: [id], onDelete: Cascade)
+
+  // Plain string, not a relation - same reasoning as
+  // SecurityDepositSettlement.preparedByUserId above.
+  authorUserId String
+  note         String
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, settlementId])
+  @@map("security_deposit_settlement_notes")
 }
