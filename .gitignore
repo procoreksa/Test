@@ -43,3 +43,6 @@ next-env.d.ts
 
 # LOCAL_DEV document storage adapter (dev-only, never production - see docs/DOCUMENT-MANAGEMENT.md)
 /var/document-storage
+
+# ad-hoc UAT/debug scripts (never part of the application, may contain non-production test credentials)
+/scratch-*
