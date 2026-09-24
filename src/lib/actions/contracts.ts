@@ -117,6 +117,21 @@ export async function createContract(formData: FormData) {
     }
 
     const unit = await tx.unit.findUniqueOrThrow({ where: { id: unitId, organizationId } });
+    // Prompt 24 UAT (real-DB reproduction, docs/FINAL-UAT-GO-LIVE.md D-007):
+    // a brand-new Unit can never already have a Contract, but an EXISTING
+    // unit can - checked against the actual Contract rows (the source of
+    // truth), never Unit.status, because Unit.status is a separate cached
+    // field that a completed Move-Out already resets to VACANT even though
+    // the just-vacated Contract itself is never closed (docs/TECHNICAL-DEBT.md
+    // item 7 - "no code anywhere sets ContractStatus.EXPIRED"). Without this
+    // check, the completely normal move-out-then-re-lease turnover silently
+    // left two simultaneously ACTIVE Contracts on the same Unit.
+    if (formData.get("createNewUnit") !== "true") {
+      const conflictingActiveContract = await tx.contract.count({ where: { organizationId, unitId, status: "ACTIVE" } });
+      if (conflictingActiveContract > 0) {
+        throw new Error(t.validation.unitAlreadyOccupied);
+      }
+    }
     // Hardening (docs/SECURITY-REVIEW.md, "Cross-org relation injection"):
     // unitId was already verified above, but renterId was previously taken
     // straight from client input with no organization check at all - a
@@ -324,8 +339,12 @@ export async function updateContract(formData: FormData) {
       }
 
       if (parsed.unitId !== existing.unitId) {
-        const newUnit = await tx.unit.findUniqueOrThrow({ where: { id: parsed.unitId, organizationId } });
-        if (newUnit.status === "OCCUPIED") {
+        await tx.unit.findUniqueOrThrow({ where: { id: parsed.unitId, organizationId } });
+        // Checked against the actual Contract rows, not the cached
+        // Unit.status field - see the identical, more fully-explained
+        // check in createContract() above (Prompt 24 UAT, D-007).
+        const conflictingActiveContract = await tx.contract.count({ where: { organizationId, unitId: parsed.unitId, status: "ACTIVE" } });
+        if (conflictingActiveContract > 0) {
           throw new Error(t.validation.unitAlreadyOccupied);
         }
         await tx.unit.update({ where: { id: existing.unitId }, data: { status: "VACANT" } });

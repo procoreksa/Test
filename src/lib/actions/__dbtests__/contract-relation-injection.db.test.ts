@@ -74,18 +74,14 @@ describe("Contract relation injection: renterId is org-verified like unitId alre
 
   it("updateContract() rejects re-pointing an existing contract's renterId at another organization's Renter", async () => {
     mockAuth.mockResolvedValue(orgA.session);
-    const { createContract, updateContract } = await import("@/lib/actions/contracts");
+    const { updateContract } = await import("@/lib/actions/contracts");
 
-    const createFd = contractFormData({
-      unitId: orgA.reservableUnit.id,
-      renterId: orgA.renter.id,
-      startDate: "2027-01-01",
-      endDate: "2028-01-01",
-      rentAmount: "1000",
-      paymentFrequency: "ANNUAL",
-      extraChargesMode: "ONE_TIME",
-    });
-    await createContract(createFd);
+    // Reuses the ACTIVE Contract the previous test already created on
+    // orgA.reservableUnit.id (this file never resets the DB between `it()`
+    // blocks) rather than creating a second one on the same unit -
+    // createContract() now rejects two simultaneously ACTIVE Contracts on
+    // one Unit (Prompt 24 UAT, docs/FINAL-UAT-GO-LIVE.md D-007), and this
+    // test's own concern is renterId cross-org injection, not unit reuse.
     const contract = await prisma.contract.findFirstOrThrow({ where: { organizationId: orgA.organization.id, unitId: orgA.reservableUnit.id } });
 
     const updateFd = contractFormData({
