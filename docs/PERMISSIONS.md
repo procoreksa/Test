@@ -71,6 +71,11 @@ corporateAccount.create / corporateAccount.update
 corporateContact.manage
 corporateOccupant.create / corporateOccupant.update
 corporateAllocation.create / corporateAllocation.update / corporateAllocation.activate / corporateAllocation.end / corporateAllocation.cancel / corporateAllocation.transfer
+
+communications.view / communications.message.view / communications.retry / communications.cancel
+communicationTemplate.view / communicationTemplate.create / communicationTemplate.version / communicationTemplate.activate
+communicationRule.view / communicationRule.create / communicationRule.update
+communicationTest.send
 ```
 
 The `owner.*`/`ownership.*`/`ownerLedger.*` keys were added for the internal
@@ -347,6 +352,18 @@ create/delete, not edit. When one is added, gate it with the matching
 | corporateAllocation.end | ✅ | ✅ | ✅ | ❌ | ❌ |
 | corporateAllocation.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
 | corporateAllocation.transfer | ✅ | ✅ | ✅ | ❌ | ❌ |
+| communications.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| communications.message.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| communications.retry | ✅ | ✅ | ✅ | ❌ | ❌ |
+| communications.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| communicationTemplate.view | ✅ | ✅ | ✅ | ❌ | ❌ |
+| communicationTemplate.create | ✅ | ✅ | ❌ | ❌ | ❌ |
+| communicationTemplate.version | ✅ | ✅ | ❌ | ❌ | ❌ |
+| communicationTemplate.activate | ✅ | ✅ | ❌ | ❌ | ❌ |
+| communicationRule.view | ✅ | ✅ | ✅ | ❌ | ❌ |
+| communicationRule.create | ✅ | ✅ | ❌ | ❌ | ❌ |
+| communicationRule.update | ✅ | ✅ | ❌ | ❌ | ❌ |
+| communicationTest.send | ✅ | ✅ | ❌ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -478,6 +495,32 @@ Notes on judgment calls made while encoding the brief's policy:
   distinct, independently auditable actions, mirroring how `contract.terminate`
   is kept separate from `contract.update`.
 
+- **Notifications & Communications (docs/NOTIFICATIONS-COMMUNICATIONS.md).**
+  No new role was introduced. OWNER/ADMIN hold every permission, including
+  the two configuration-tier ones (`communicationTemplate.create/.version/
+  .activate`, `communicationRule.create/.update`) and the restricted
+  `communicationTest.send` manual test-send action. MANAGER gets the
+  day-to-day operational surface - the dashboard, the message list/detail,
+  manual retry/cancel, and read-only visibility into templates/rules so it
+  can see what will fire - but never template/rule authoring, since
+  creating or activating a template/rule is a configuration change in the
+  same higher-trust tier as `settings.update`. ACCOUNTANT and VIEWER both
+  get `communications.view`/`communications.message.view` only (read-only
+  visibility into the message log, e.g. confirming an
+  INVOICE_ISSUED/PAYMENT_RECEIVED notification actually went out),
+  matching this table's established "broad `*.view`, narrow mutation"
+  posture. There is no `communicationMessage.delete` or
+  `communicationTemplate.delete` - a message's lifecycle only ever reaches
+  a terminal status (`SENT`/`DELIVERED`/`READ`/`FAILED`/`CANCELLED`) and a
+  template is archived (`communicationTemplate.activate`, which also
+  covers archiving), never hard-deleted, matching this table's no-hard-
+  delete policy everywhere else. `communications.retry`/`communications.cancel`
+  are kept separate from any `communications.message.update` (which does
+  not exist) since a manual retry or cancel is a specific, narrow lifecycle
+  action, not a general edit of message content - a `CommunicationMessage`'s
+  rendered content is immutable once created, mirroring `AuditLog`'s own
+  immutability.
+
 ## 4. How to protect a new server action
 
 Every mutating server action, and every read of business/financial data,
@@ -543,7 +586,7 @@ going forward.
 
 ## 7. Deliberately unprotected actions (and why)
 
-Two exported functions intentionally do **not** call `requirePermission()`:
+Four exported functions intentionally do **not** call `requirePermission()`:
 
 - **`setLocale`** (`src/lib/actions/locale.ts`) - sets a UI-language cookie.
   It isn't org-scoped, doesn't touch any business data, and runs even on
@@ -557,5 +600,24 @@ Two exported functions intentionally do **not** call `requirePermission()`:
   it separately would only block lower-privileged roles (who can rightly
   view overdue data) from seeing accurate statuses.
 
-Both are called out explicitly here so a future reviewer doesn't mistake
-them for gaps.
+A third, `enqueueCommunicationEvent()` (`src/lib/communications/enqueue.ts`),
+also intentionally does **not** call `requirePermission()` - it is never
+called directly by a user action or client request at all. Every one of its
+9 wired call sites is itself already behind that business action's own
+permission check (`invoice.create`, `payment.create`, etc.); by the time
+`enqueueCommunicationEvent()` runs, authorization has already been decided.
+It also deliberately never throws, so it cannot be used to probe
+authorization either way.
+
+`processQueuedCommunications()` (`src/lib/communications/processor.ts`) is
+gated differently, not by `requirePermission()` at all: it is a
+system-level background worker operation with no acting user, invoked only
+through the protected `POST /api/communications/process` route, which
+checks a dedicated shared secret (`COMMUNICATIONS_WORKER_SECRET`) instead -
+the same `timingSafeEqual` idiom `src/app/api/admin/seed/route.ts` already
+established for its own bootstrap endpoint. This is intentional, not a gap:
+no internal `UserRole` should ever be able to trigger a real provider send
+directly, only the system's own scheduled caller.
+
+All four are called out explicitly here so a future reviewer doesn't
+mistake them for gaps.

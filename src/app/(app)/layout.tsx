@@ -79,6 +79,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   const corporateHousingNavItems = allCorporateHousingNavItems.filter((item) => can(item.permission, role));
 
+  // Its own navigation group (docs/NOTIFICATIONS-COMMUNICATIONS.md) - the
+  // Communication Center is a cross-cutting infrastructure layer, not part
+  // of any single business module's own pipeline, so it never folds into
+  // CRM/Operations/Corporate Housing above.
+  const allCommunicationsNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
+    { href: "/communications", label: t.communications.dashboardTitle, icon: "🔔", permission: "communications.view" },
+    { href: "/communications/messages", label: t.communications.navMessages, icon: "✉️", permission: "communications.message.view" },
+    { href: "/communications/templates", label: t.communications.navTemplates, icon: "📝", permission: "communicationTemplate.view" },
+    { href: "/communications/rules", label: t.communications.navRules, icon: "🔀", permission: "communicationRule.view" },
+    { href: "/communications/test-send", label: t.communications.testSendTitle, icon: "🧪", permission: "communicationTest.send" },
+  ];
+  const communicationsNavItems = allCommunicationsNavItems.filter((item) => can(item.permission, role));
+
   const brandMark = (
     <div className="flex items-center gap-2">
       <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
@@ -132,6 +145,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.corporateHousing.dashboardTitle}</p>
                   {corporateHousingNavItems.map((chItem) => (
                     <NavLink key={chItem.href} {...chItem} />
+                  ))}
+                </div>
+              )}
+              {item.href === "/renters" && communicationsNavItems.length > 0 && (
+                <div className="pt-3 mt-2 border-t border-brand-black-line">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.communications.dashboardTitle}</p>
+                  {communicationsNavItems.map((commItem) => (
+                    <NavLink key={commItem.href} {...commItem} />
                   ))}
                 </div>
               )}

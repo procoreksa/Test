@@ -1814,6 +1814,13 @@ export interface Dictionary {
   corporateContactType: Record<"PRIMARY" | "HR" | "ADMINISTRATION" | "FINANCE" | "HOUSING_COORDINATOR" | "EMERGENCY" | "OTHER", string>;
   corporateOccupantStatus: Record<"ACTIVE" | "INACTIVE" | "LEFT_COMPANY", string>;
   corporateHousingAllocationStatus: Record<"PLANNED" | "ACTIVE" | "ENDED" | "CANCELLED", string>;
+  communicationChannel: Record<"EMAIL" | "WHATSAPP", string>;
+  communicationMessageStatus: Record<"QUEUED" | "PROCESSING" | "SENT" | "DELIVERED" | "READ" | "FAILED" | "CANCELLED", string>;
+  communicationTemplateStatus: Record<"DRAFT" | "ACTIVE" | "ARCHIVED", string>;
+  communicationRecipientStrategy: Record<
+    "RENTER" | "OWNER" | "CORPORATE_PRIMARY_CONTACT" | "CORPORATE_HOUSING_CONTACT" | "ASSIGNED_STAFF" | "SPECIFIC_INTERNAL_USER",
+    string
+  >;
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -3131,6 +3138,121 @@ export interface Dictionary {
     viewCorporateAccountButton: string;
     currentAllocationLabel: string;
     maintenanceTraceabilityTitle: string;
+  };
+  communications: {
+    // Nav
+    navDashboard: string;
+    navMessages: string;
+    navTemplates: string;
+    navRules: string;
+
+    // Generic controls
+    searchLabel: string;
+    filterAll: string;
+    filterApply: string;
+    saveButton: string;
+    cancelButton: string;
+    backLabel: string;
+
+    // Errors / validation
+    templateNotFound: string;
+    ruleNotFound: string;
+    messageNotFound: string;
+    ruleAlreadyExists: string;
+    cannotCancelNotQueued: string;
+    cannotRetryNotFailed: string;
+
+    // Dashboard
+    dashboardTitle: string;
+    dashboardSubtitle: string;
+    cardQueued: string;
+    cardProcessing: string;
+    cardSent: string;
+    cardDelivered: string;
+    cardFailed: string;
+    cardCancelled: string;
+    sectionRecentMessages: string;
+
+    // Messages list/detail
+    messagesTitle: string;
+    messagesSubtitle: string;
+    colEvent: string;
+    colChannel: string;
+    colRecipient: string;
+    colDestination: string;
+    colStatus: string;
+    colCreatedAt: string;
+    colAttempts: string;
+    emptyMessages: string;
+    actionRetry: string;
+    actionCancel: string;
+    messageDetailTitle: string;
+    sectionMessageInfo: string;
+    sectionRenderedContent: string;
+    sectionDeliveryHistory: string;
+    fieldDestination: string;
+    fieldTemplate: string;
+    fieldTemplateVersion: string;
+    fieldBusinessEntity: string;
+    fieldAttemptCount: string;
+    fieldMaxAttempts: string;
+    fieldLastError: string;
+    fieldSubject: string;
+    fieldLanguage: string;
+    colAttemptNumber: string;
+    colAttemptStatus: string;
+    colProvider: string;
+    colStartedAt: string;
+    colFinishedAt: string;
+    colError: string;
+    emptyDeliveryAttempts: string;
+
+    // Templates
+    templatesTitle: string;
+    templatesSubtitle: string;
+    newTemplateButton: string;
+    createTemplateTitle: string;
+    colTemplateEvent: string;
+    colTemplateChannel: string;
+    colTemplateLanguage: string;
+    colTemplateVersion: string;
+    colTemplateStatus: string;
+    fieldEventType: string;
+    fieldChannel: string;
+    fieldTemplateLanguage: string;
+    fieldBodyText: string;
+    fieldBodyHtml: string;
+    fieldNotes: string;
+    fieldAllowedVariables: string;
+    actionActivate: string;
+    actionArchive: string;
+    emptyTemplates: string;
+    templateDetailTitle: string;
+    sectionVersionHistory: string;
+    newVersionButton: string;
+
+    // Rules
+    rulesTitle: string;
+    rulesSubtitle: string;
+    newRuleButton: string;
+    createRuleTitle: string;
+    colRuleEvent: string;
+    colRuleChannel: string;
+    colRuleStrategy: string;
+    colRuleEnabled: string;
+    fieldRecipientStrategy: string;
+    fieldSpecificUser: string;
+    emptyRules: string;
+    actionEnable: string;
+    actionDisable: string;
+
+    // Manual test-send (restricted)
+    testSendTitle: string;
+    testSendSubtitle: string;
+    testSendButton: string;
+    testSendSuccess: string;
+    testSendFailure: string;
+    fieldTestDestination: string;
   };
 }
 

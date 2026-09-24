@@ -249,7 +249,28 @@ with a per-module `PAGE_SIZE` constant (uniformly 25) - there is no shared
 pagination helper, but the pattern itself is consistent everywhere it's
 needed (Leads, Viewings, Offers, Reservations, Move-Ins, Audit Logs).
 
-## 16. What this map deliberately does not cover
+## 16. Notifications & Communications: a queue + provider boundary
+
+The first outbound-communications code in this codebase (`docs/
+NOTIFICATIONS-COMMUNICATIONS.md` has the full architecture). Business
+modules never call a provider directly; they call
+`enqueueCommunicationEvent()` (`src/lib/communications/enqueue.ts`)
+strictly after their own transaction commits - the same post-commit gap
+`revalidatePath()` calls already use - which only ever writes a `QUEUED`
+`CommunicationMessage` row and never throws. A separate queue processor
+(`processQueuedCommunications()`, called only from the shared-secret-
+protected `POST /api/communications/process` route - not from any user
+session) claims and sends messages later via a provider-agnostic
+`CommunicationProvider` interface, currently resolved only to a
+deterministic mock (no real vendor credential exists in this codebase
+yet). Concurrency-safe claiming reuses this codebase's existing
+conditional-`updateMany` idiom rather than raw `SELECT ... FOR UPDATE
+SKIP LOCKED`; idempotency is a DB-unique key derived from business
+identifiers, never a timestamp. `CommunicationMessage`/
+`CommunicationDeliveryAttempt` are a deliberately separate concern from
+`AuditLog` (§9) - never overloaded into it.
+
+## 17. What this map deliberately does not cover
 
 Page-by-page UI component inventory, the exact Tailwind design tokens,
 and the CRM/Operations report catalog are already documented in each
@@ -258,6 +279,7 @@ module's own `docs/*.md` (`CRM-LEADS.md`, `VIEWING-MANAGEMENT.md`,
 `RESERVATION-TO-CONTRACT.md`, `MOVE-IN-HANDOVER.md`,
 `OWNERSHIP-ACCOUNTING.md`, `AUDIT-AND-FINANCIAL-CONTROLS.md`,
 `MAINTENANCE-MANAGEMENT.md`, `MOVE-OUT-MANAGEMENT.md`,
-`SECURITY-DEPOSIT-SETTLEMENT.md`, `TENANT-PORTAL.md`) - this
-document exists to connect those module-level maps into one picture of
-how the whole system actually fits together, not to repeat their detail.
+`SECURITY-DEPOSIT-SETTLEMENT.md`, `TENANT-PORTAL.md`,
+`NOTIFICATIONS-COMMUNICATIONS.md`) - this document exists to connect
+those module-level maps into one picture of how the whole system
+actually fits together, not to repeat their detail.

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateSchedule } from "@/lib/schedule";
 import { nextCounterValue, formatContractNumber } from "@/lib/numbering";
 import { issueInvoice } from "@/lib/invoicing";
+import { seedCommunicationDefaultsForOrganization } from "@/lib/communications/seed-defaults";
 
 /**
  * Idempotent demo dataset (org, admin user, properties, contracts, one paid
@@ -34,7 +35,7 @@ export async function seedDemoData() {
     },
   });
 
-  await prisma.user.upsert({
+  const admin = await prisma.user.upsert({
     where: { organizationId_email: { organizationId: org.id, email: "admin@demo-realestate.sa" } },
     update: {},
     create: {
@@ -290,6 +291,8 @@ export async function seedDemoData() {
     await prisma.invoice.update({ where: { id: invoice.id }, data: { paidAmount: 3500, status: "PAID" } });
     await prisma.paymentSchedule.update({ where: { id: firstSchedule.id }, data: { status: "PAID" } });
   }
+
+  await seedCommunicationDefaultsForOrganization(prisma, org.id, admin.id);
 
   return { organizationId: org.id };
 }

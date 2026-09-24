@@ -8,6 +8,9 @@ import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 import { nextCounterValue, formatMoveOutNumber } from "@/lib/numbering";
+import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
+import { buildRenterRecipient } from "@/lib/communications/recipients";
+import { resolveNotificationLanguage } from "@/lib/communications/language";
 import {
   blocksNewMoveOutForContract,
   isValidMoveOutTransition,
@@ -182,9 +185,10 @@ export async function scheduleMoveOut(formData: FormData) {
   const moveOutId = String(formData.get("moveOutId"));
   const { organizationId } = await requirePermission("moveOut.update");
   const t = getDictionary(await getLocale());
+  const locale = await getLocale();
   const scheduledAt = z.coerce.date().parse(formData.get("scheduledAt"));
 
-  await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const moveOut = await tx.moveOut.findUniqueOrThrow({ where: { id: moveOutId, organizationId } });
     const nextStatus: MoveOutStatus = moveOut.status === "DRAFT" ? "SCHEDULED" : moveOut.status;
     if (nextStatus !== moveOut.status && !isValidMoveOutTransition(moveOut.status, nextStatus)) {
@@ -202,7 +206,30 @@ export async function scheduleMoveOut(formData: FormData) {
       previousValues: { scheduledAt: moveOut.scheduledAt, status: moveOut.status },
       newValues: { scheduledAt: updated.scheduledAt, status: updated.status },
     });
+    return updated;
   });
+
+  const [renter, unit, contract] = await Promise.all([
+    prisma.renter.findUnique({ where: { id: updated.renterId } }),
+    prisma.unit.findUnique({ where: { id: updated.unitId } }),
+    prisma.contract.findUnique({ where: { id: updated.contractId } }),
+  ]);
+  if (renter) {
+    await enqueueCommunicationEvent({
+      organizationId,
+      eventType: "MOVE_OUT_SCHEDULED",
+      businessEntityType: "MoveOut",
+      businessEntityId: updated.id,
+      language: resolveNotificationLanguage(locale),
+      variables: {
+        moveOutNumber: updated.moveOutNumber,
+        scheduledAt: scheduledAt.toISOString().slice(0, 10),
+        unitNumber: unit?.unitNumber ?? "",
+        contractNumber: contract?.contractNumber ?? "",
+      },
+      recipients: [buildRenterRecipient(renter)],
+    });
+  }
 
   revalidatePath(`/operations/move-outs/${moveOutId}`);
   revalidatePath("/operations/move-outs");

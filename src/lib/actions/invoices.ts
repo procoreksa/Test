@@ -10,6 +10,9 @@ import { getLocale, getDictionary } from "@/lib/i18n";
 import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 import type { LineInput } from "@/lib/zatca/vat";
 import type { InvoiceLineKind } from "@prisma/client";
+import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
+import { buildRenterRecipient } from "@/lib/communications/recipients";
+import { resolveNotificationLanguage } from "@/lib/communications/language";
 
 const EXTRA_CHARGE_VAT_RATE = 15; // Commission/cleaning are always-taxable services, independent of the rent's VAT treatment.
 
@@ -176,6 +179,27 @@ export async function issueInvoiceForSchedule(formData: FormData) {
       },
     });
     return created;
+  });
+
+  // Fired strictly after the transaction above has committed (Critical
+  // Principle 3) - enqueueCommunicationEvent() never throws, so a
+  // notification failure can never affect an already-issued invoice.
+  await enqueueCommunicationEvent({
+    organizationId,
+    eventType: "INVOICE_ISSUED",
+    businessEntityType: "Invoice",
+    businessEntityId: invoice.id,
+    language: resolveNotificationLanguage(await getLocale()),
+    variables: {
+      invoiceNumber: invoice.invoiceNumber,
+      totalAmount: invoice.totalAmount.toString(),
+      currency: invoice.currency,
+      dueDate: invoice.dueDate ? format(invoice.dueDate, "yyyy-MM-dd") : "",
+      contractNumber: contract.contractNumber,
+      unitNumber,
+      renterName: contract.renter.fullName,
+    },
+    recipients: [buildRenterRecipient(contract.renter)],
   });
 
   revalidatePath("/invoices");

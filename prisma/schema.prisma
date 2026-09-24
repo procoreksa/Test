@@ -108,6 +108,11 @@ model Organization {
   corporateContacts              CorporateContact[]
   corporateOccupants             CorporateOccupant[]
   corporateHousingAllocations    CorporateHousingAllocation[]
+  communicationTemplates         CommunicationTemplate[]
+  communicationRules             CommunicationRule[]
+  communicationMessages          CommunicationMessage[]
+  communicationDeliveryAttempts  CommunicationDeliveryAttempt[]
+  communicationPreferences       CommunicationPreference[]
 
   @@map("organizations")
 }
@@ -161,6 +166,13 @@ model User {
   approvedLiabilities  MoveOutLiabilityAssessment[] @relation("AssessmentApprovedBy")
 
   managedCorporateAccounts CorporateAccount[] @relation("CorporateAccountManager")
+
+  createdCommunicationTemplates  CommunicationTemplate[] @relation("CommunicationTemplateCreatedBy")
+  activatedCommunicationTemplates CommunicationTemplate[] @relation("CommunicationTemplateActivatedBy")
+  createdCommunicationRules      CommunicationRule[]     @relation("CommunicationRuleCreatedBy")
+  specificRecipientForRules      CommunicationRule[]     @relation("CommunicationRuleSpecificUser")
+  communicationMessagesAsInternalRecipient CommunicationMessage[] @relation("CommunicationMessageInternalRecipient")
+  cancelledCommunicationMessages CommunicationMessage[]  @relation("CommunicationMessageCancelledBy")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -390,6 +402,7 @@ model Renter {
   securityDepositSettlements SecurityDepositSettlement[]
   tenantPortalAccount        TenantPortalAccount?
   corporateAccount           CorporateAccount?
+  communicationMessages      CommunicationMessage[]
 
   @@index([organizationId])
   @@map("renters")
@@ -772,9 +785,10 @@ model Owner {
   updatedBy String?
   deletedAt DateTime?
 
-  ownerships         PropertyOwnership[]
-  ledgerEntries      OwnerLedgerEntry[]
-  ownerPortalAccount OwnerPortalAccount?
+  ownerships            PropertyOwnership[]
+  ledgerEntries         OwnerLedgerEntry[]
+  ownerPortalAccount    OwnerPortalAccount?
+  communicationMessages CommunicationMessage[]
 
   @@index([organizationId])
   @@index([organizationId, deletedAt])
@@ -3454,6 +3468,8 @@ model CorporateContact {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  communicationMessages CommunicationMessage[]
+
   @@index([organizationId, corporateAccountId])
   @@map("corporate_contacts")
 }
@@ -3504,8 +3520,9 @@ model CorporateOccupant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  allocations         CorporateHousingAllocation[]
-  maintenanceRequests MaintenanceRequest[]
+  allocations           CorporateHousingAllocation[]
+  maintenanceRequests   MaintenanceRequest[]
+  communicationMessages CommunicationMessage[]
 
   @@index([organizationId, corporateAccountId, status])
   @@map("corporate_occupants")
@@ -3575,4 +3592,369 @@ model CorporateHousingAllocation {
   @@index([organizationId, startDate])
   @@index([organizationId, plannedEndDate])
   @@map("corporate_housing_allocations")
+}
+
+// =============================================================================
+// NOTIFICATIONS & COMMUNICATIONS (Prompt 19) - a centralized, provider-
+// agnostic outbound-communications foundation. See
+// docs/NOTIFICATIONS-COMMUNICATIONS.md for the full architecture rationale
+// (Step 1 audit). Business modules NEVER call an email/WhatsApp provider
+// directly - they call enqueueCommunicationEvent() (src/lib/communications/
+// enqueue.ts), strictly AFTER their own transaction commits, and a separate
+// queue processor (processQueuedCommunications()) does the actual sending
+// later. CommunicationMessage is a durable outbox in its own right (no
+// separate CommunicationOutboxEvent model exists - see "Outbox Consistency
+// Audit" in the docs for why that is a deliberate decision, not an
+// oversight). CommunicationMessage/CommunicationDeliveryAttempt are a
+// distinct concern from AuditLog and never overload it.
+// =============================================================================
+
+enum CommunicationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+/// Centralized business-event vocabulary. Defining a value here only adds it
+/// to the registry (src/lib/communications/events.ts) - it does NOT wire up
+/// an integration or seed a default Rule/Template. Only the 9 events marked
+/// "wired" in that registry have an actual call-site + seeded default Rule;
+/// the rest exist so the vocabulary is genuinely centralized from day one
+/// without silently auto-enabling every future notification.
+enum CommunicationEventType {
+  INVOICE_ISSUED
+  PAYMENT_RECEIVED
+  MAINTENANCE_REQUEST_CREATED
+  MAINTENANCE_SCHEDULED
+  MAINTENANCE_COMPLETED
+  MOVE_IN_SCHEDULED
+  MOVE_OUT_SCHEDULED
+  SECURITY_DEPOSIT_SETTLEMENT_POSTED
+  SECURITY_DEPOSIT_REFUND_RECORDED
+  CONTRACT_CREATED
+  CONTRACT_RENEWED
+  CONTRACT_TERMINATED
+  RESERVATION_CONFIRMED
+  TENANT_PORTAL_ACCOUNT_INVITED
+  OWNER_PORTAL_ACCOUNT_INVITED
+  CORPORATE_ALLOCATION_ACTIVATED
+}
+
+/// How a CommunicationRule resolves WHO receives a message for its event.
+/// Only RENTER is used by the 9 seeded default Rules in V1; the others are
+/// implemented in the resolver (src/lib/communications/recipients.ts) and
+/// unit-tested, but not wired to any default Rule yet - available for a
+/// future Rule to select via the Rule admin UI.
+enum CommunicationRecipientStrategy {
+  RENTER
+  OWNER
+  CORPORATE_PRIMARY_CONTACT
+  CORPORATE_HOUSING_CONTACT
+  ASSIGNED_STAFF
+  SPECIFIC_INTERNAL_USER
+}
+
+/// The actual resolved party type a CommunicationMessage/CommunicationPreference
+/// was generated for - distinct from CommunicationRecipientStrategy (the
+/// "how", on a Rule) vs. this (the "who, concretely", on a Message/Preference).
+enum CommunicationRecipientType {
+  RENTER
+  OWNER
+  CORPORATE_CONTACT
+  CORPORATE_OCCUPANT
+  INTERNAL_USER
+}
+
+enum CommunicationTemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+/// QUEUED -> PROCESSING -> (SENT -> DELIVERED -> READ) | FAILED, with
+/// QUEUED/PROCESSING -> CANCELLED also valid (Critical Principle 4:
+/// delivery status is authoritative - a message is never marked SENT merely
+/// because it was queued). See isValidStatusTransition() in
+/// src/lib/communications/status.ts for the enforced state machine.
+enum CommunicationMessageStatus {
+  QUEUED
+  PROCESSING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+  CANCELLED
+}
+
+/// Minimal on purpose - retryable-vs-permanent classification is a pure
+/// function over the provider's normalized error code
+/// (classifyProviderError() in src/lib/communications/retry.ts), not baked
+/// into this enum.
+enum CommunicationDeliveryAttemptStatus {
+  SENT
+  FAILED
+}
+
+/// A specific, versioned rendering of one event+channel+language's message
+/// content. Versioned via the existing Counter infrastructure (key
+/// `communicationTemplate:${eventType}:${channel}:${language}`), never a
+/// racy "max(version)+1" read (see docs/NOTIFICATIONS-COMMUNICATIONS.md,
+/// "Template versioning"). Only one ACTIVE version may exist per
+/// (organizationId, eventType, channel, language) - enforced by a partial
+/// unique index added by hand in the migration (Prisma's schema DSL cannot
+/// express a filtered/partial unique index), not by application code alone.
+model CommunicationTemplate {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  eventType CommunicationEventType
+  channel   CommunicationChannel
+  // "en" | "ar" - matches the existing cookie-based Locale convention
+  // (src/lib/i18n.ts) rather than introducing a second, conflicting locale
+  // enum.
+  language  String
+
+  version Int
+  status  CommunicationTemplateStatus @default(DRAFT)
+
+  // Email only - null for WhatsApp/other channels with no subject line.
+  subject String?
+
+  // The template source, with `{{variableName}}` placeholders - rendered by
+  // renderTemplate() (src/lib/communications/render.ts), which HTML-escapes
+  // every substituted value and rejects any variable not present in
+  // `variables` below (Step 21's "allow-list", never free-form
+  // interpolation).
+  bodyText String
+  // Email only - null for channels with no rich-text body (e.g. WhatsApp,
+  // which is send as bodyText per Meta's own template format).
+  bodyHtml String?
+
+  // The exhaustive allow-list of `{{variableName}}` placeholders this
+  // version's bodyText/bodyHtml/subject may reference - rendering throws if
+  // the template contains a placeholder not listed here, or if a required
+  // one is missing from the event's payload at render time.
+  variables String[]
+
+  createdByUserId String
+  createdByUser   User      @relation("CommunicationTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activatedAt     DateTime?
+  activatedByUserId String?
+  activatedByUser   User?   @relation("CommunicationTemplateActivatedBy", fields: [activatedByUserId], references: [id], onDelete: SetNull)
+  archivedAt      DateTime?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages CommunicationMessage[]
+
+  @@unique([organizationId, eventType, channel, language, version])
+  @@index([organizationId, eventType, channel, language, status])
+  @@map("communication_templates")
+}
+
+/// Whether/how one event+channel fires, and who receives it. Multiple Rules
+/// may exist for the same (eventType, channel) with different
+/// recipientStrategy values (e.g. notify both the Renter and Assigned
+/// Staff) - only one Rule per (org, eventType, channel, recipientStrategy)
+/// is meaningful, enforced below. A Rule with isEnabled = false never
+/// enqueues, even if a matching business event fires (Critical Principle
+/// 3/6: nothing sends without an explicit, visible Rule).
+model CommunicationRule {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  eventType         CommunicationEventType
+  channel           CommunicationChannel
+  recipientStrategy CommunicationRecipientStrategy
+
+  // SPECIFIC_INTERNAL_USER strategy only - the fixed User to notify,
+  // regardless of the business event's own participants. Null for every
+  // other strategy.
+  specificUserId String?
+  specificUser   User?   @relation("CommunicationRuleSpecificUser", fields: [specificUserId], references: [id], onDelete: SetNull)
+
+  isEnabled Boolean @default(true)
+
+  createdByUserId String
+  createdByUser   User   @relation("CommunicationRuleCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, eventType, channel, recipientStrategy])
+  @@index([organizationId, eventType, channel, isEnabled])
+  @@map("communication_rules")
+}
+
+/// One outbound message: the durable "outbox" row itself (Critical
+/// Principle 3 - enqueue is the only thing a business transaction's
+/// post-commit hook does; everything below happens later, out of band).
+/// idempotencyKey DB-enforces Critical Principle 5: the same business event
+/// retried (e.g. a page double-submit, a future at-least-once event replay)
+/// can never create a second Message for the same
+/// (event, business record, channel, recipient).
+model CommunicationMessage {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  eventType CommunicationEventType
+  channel   CommunicationChannel
+  language  String
+
+  status CommunicationMessageStatus @default(QUEUED)
+
+  recipientType CommunicationRecipientType
+  // Exactly one of the five below is set, matching recipientType - typed
+  // relations (not a polymorphic recipientId string) for the same
+  // referential-integrity reasons documented on
+  // MoveOutLiabilityAssessment's own typed source relations above.
+  renterId            String?
+  renter              Renter?            @relation(fields: [renterId], references: [id], onDelete: SetNull)
+  ownerId             String?
+  owner               Owner?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  corporateContactId  String?
+  corporateContact    CorporateContact?  @relation(fields: [corporateContactId], references: [id], onDelete: SetNull)
+  corporateOccupantId String?
+  corporateOccupant   CorporateOccupant? @relation(fields: [corporateOccupantId], references: [id], onDelete: SetNull)
+  internalUserId      String?
+  internalUser        User?              @relation("CommunicationMessageInternalRecipient", fields: [internalUserId], references: [id], onDelete: SetNull)
+
+  // Snapshot of the destination at enqueue time (email address / E.164
+  // phone) - never re-read live from the recipient record at send time, so
+  // a later profile edit can't silently redirect an already-queued message.
+  destinationRaw    String
+  // Precomputed masked form (e.g. "j***@example.com", "+9665*****123") for
+  // the Communication Center UI - the raw destination is never rendered in
+  // any list view (Step 63's privacy/logging requirement).
+  destinationMasked String
+
+  templateId      String?
+  template        CommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  templateVersion Int?
+
+  renderedSubject String?
+  // Frozen rendered output actually sent - independent of any later edit to
+  // the Template itself, so message history always reflects what a
+  // recipient actually received.
+  renderedBody    String
+  // The exact variable values used to render this message (audit/debug
+  // only - never re-used to re-render, since a manual retry re-renders
+  // fresh from the template's current ACTIVE version).
+  variablesSnapshot Json
+
+  // Traceability back to the business record that triggered this message
+  // (e.g. "Invoice" / <invoiceId>) - reference-only, no FK (the referenced
+  // record's own model varies per eventType), never used for
+  // authorization.
+  businessEntityType String
+  businessEntityId   String
+
+  idempotencyKey String
+
+  attemptCount  Int       @default(0)
+  maxAttempts   Int       @default(5)
+  lastAttemptAt DateTime?
+  nextAttemptAt DateTime?
+
+  // Set by the queue processor when it claims this row (via a conditional
+  // updateMany(... where: { status: "QUEUED" } ...) - see
+  // processQueuedCommunications()) and cleared on completion. A row stuck
+  // in PROCESSING past the stuck-processing-recovery threshold (worker
+  // crash mid-send) is recovered back to QUEUED by the next processor run.
+  claimedAt DateTime?
+  claimedBy String?
+
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  failedAt    DateTime?
+
+  cancelledAt       DateTime?
+  cancelledByUserId String?
+  cancelledByUser   User?     @relation("CommunicationMessageCancelledBy", fields: [cancelledByUserId], references: [id], onDelete: SetNull)
+
+  // Sanitized (no secrets/PII beyond what's already in this row) - the raw
+  // provider error, if any, lives only in CommunicationDeliveryAttempt.
+  lastErrorCode    String?
+  lastErrorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliveryAttempts CommunicationDeliveryAttempt[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, status, nextAttemptAt])
+  @@index([organizationId, eventType])
+  @@index([organizationId, createdAt])
+  @@index([organizationId, businessEntityType, businessEntityId])
+  @@map("communication_messages")
+}
+
+/// Append-only send-attempt history for one CommunicationMessage - never
+/// updated or deleted once created (same convention as AuditLog). Distinct
+/// from AuditLog itself (Critical Principle 2): this is delivery mechanics
+/// (which provider, which error, when), not a compliance record of a
+/// business-state change.
+model CommunicationDeliveryAttempt {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  messageId String
+  message   CommunicationMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  attemptNumber Int
+  status        CommunicationDeliveryAttemptStatus
+
+  // A plain tag ("mock", "resend", "whatchimp", ...) - never a
+  // vendor-specific schema leaking into this shared table.
+  providerName      String
+  providerMessageId String?
+
+  errorCode    String?
+  errorMessage String?
+
+  startedAt  DateTime
+  finishedAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@index([organizationId, messageId])
+  @@map("communication_delivery_attempts")
+}
+
+/// Per-recipient, per-channel opt-out flag. Deliberately keyed by a plain
+/// (recipientType, recipientId) pair rather than typed relations like
+/// CommunicationMessage above: this table is a low-stakes boolean toggle
+/// (a stale row surviving a deleted Renter/Contact is harmless), and a
+/// typed-FK composite unique constraint would be unenforceable here anyway
+/// (Postgres treats NULLs in the other four nullable FK columns as
+/// distinct, so duplicate rows could slip past a unique index). Built for
+/// the OPTIONAL classification path (src/lib/communications/events.ts) -
+/// all 9 seeded V1 events are TRANSACTIONAL and never consult this table,
+/// so it is real but currently inert; see
+/// docs/NOTIFICATIONS-COMMUNICATIONS.md, "Preferences & opt-out".
+model CommunicationPreference {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  recipientType CommunicationRecipientType
+  recipientId   String
+  channel       CommunicationChannel
+
+  optedOut        Boolean @default(false)
+  updatedByUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, recipientType, recipientId, channel])
+  @@map("communication_preferences")
 }

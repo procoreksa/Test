@@ -8,6 +8,9 @@ import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 import { nextCounterValue, formatMoveInNumber } from "@/lib/numbering";
+import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
+import { buildRenterRecipient } from "@/lib/communications/recipients";
+import { resolveNotificationLanguage } from "@/lib/communications/language";
 import {
   blocksNewMoveInForContract,
   isValidMoveInTransition,
@@ -146,9 +149,10 @@ export async function scheduleMoveIn(formData: FormData) {
   const moveInId = String(formData.get("moveInId"));
   const { organizationId } = await requirePermission("moveIn.update");
   const t = getDictionary(await getLocale());
+  const locale = await getLocale();
   const scheduledAt = z.coerce.date().parse(formData.get("scheduledAt"));
 
-  await prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     const moveIn = await tx.moveIn.findUniqueOrThrow({ where: { id: moveInId, organizationId } });
     const nextStatus: MoveInStatus = moveIn.status === "DRAFT" ? "SCHEDULED" : moveIn.status;
     if (nextStatus !== moveIn.status && !isValidMoveInTransition(moveIn.status, nextStatus)) {
@@ -166,7 +170,30 @@ export async function scheduleMoveIn(formData: FormData) {
       previousValues: { scheduledAt: moveIn.scheduledAt, status: moveIn.status },
       newValues: { scheduledAt: updated.scheduledAt, status: updated.status },
     });
+    return updated;
   });
+
+  const [renter, unit, contract] = await Promise.all([
+    prisma.renter.findUnique({ where: { id: updated.renterId } }),
+    prisma.unit.findUnique({ where: { id: updated.unitId } }),
+    prisma.contract.findUnique({ where: { id: updated.contractId } }),
+  ]);
+  if (renter) {
+    await enqueueCommunicationEvent({
+      organizationId,
+      eventType: "MOVE_IN_SCHEDULED",
+      businessEntityType: "MoveIn",
+      businessEntityId: updated.id,
+      language: resolveNotificationLanguage(locale),
+      variables: {
+        moveInNumber: updated.moveInNumber,
+        scheduledAt: scheduledAt.toISOString().slice(0, 10),
+        unitNumber: unit?.unitNumber ?? "",
+        contractNumber: contract?.contractNumber ?? "",
+      },
+      recipients: [buildRenterRecipient(renter)],
+    });
+  }
 
   revalidatePath(`/operations/move-ins/${moveInId}`);
   revalidatePath("/operations/move-ins");

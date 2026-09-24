@@ -139,7 +139,19 @@ export type Permission =
   | "corporateAllocation.end"
   | "corporateAllocation.cancel"
   | "corporateAllocation.transfer"
-  | "corporateHousingReports.view";
+  | "corporateHousingReports.view"
+  | "communications.view"
+  | "communications.message.view"
+  | "communications.retry"
+  | "communications.cancel"
+  | "communicationTemplate.view"
+  | "communicationTemplate.create"
+  | "communicationTemplate.version"
+  | "communicationTemplate.activate"
+  | "communicationRule.view"
+  | "communicationRule.create"
+  | "communicationRule.update"
+  | "communicationTest.send";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -275,6 +287,18 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "corporateAllocation.cancel",
   "corporateAllocation.transfer",
   "corporateHousingReports.view",
+  "communications.view",
+  "communications.message.view",
+  "communications.retry",
+  "communications.cancel",
+  "communicationTemplate.view",
+  "communicationTemplate.create",
+  "communicationTemplate.version",
+  "communicationTemplate.activate",
+  "communicationRule.view",
+  "communicationRule.create",
+  "communicationRule.update",
+  "communicationTest.send",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -441,6 +465,19 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "corporateAllocation.cancel",
   "corporateAllocation.transfer",
   "corporateHousingReports.view",
+  // Notifications & Communications: MANAGER gets the day-to-day operational
+  // surface (dashboard, message list/detail, manual retry/cancel, and
+  // read-only visibility into templates/rules so they can see what will
+  // fire) but never template/rule authoring - creating or activating a
+  // template/rule is a configuration change in the same higher-trust tier
+  // as settings.update, reserved for OWNER/ADMIN. No communicationTest.send
+  // either - that stays OWNER/ADMIN-only per docs/NOTIFICATIONS-COMMUNICATIONS.md.
+  "communications.view",
+  "communications.message.view",
+  "communications.retry",
+  "communications.cancel",
+  "communicationTemplate.view",
+  "communicationRule.view",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -508,6 +545,13 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   // CRM/Viewings/Offers.
   "corporateHousing.view",
   "corporateHousingReports.view",
+  // Notifications & Communications: ACCOUNTANT gets read-only visibility
+  // into the message log (e.g. confirming an INVOICE_ISSUED/PAYMENT_RECEIVED
+  // notification actually went out) - the same *.view-only posture already
+  // applied to moveIn.view/moveOut.view above. No retry/cancel, no
+  // template/rule access.
+  "communications.view",
+  "communications.message.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -535,6 +579,8 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "tenantPortalAccount.view",
   "ownerPortalAccount.view",
   "corporateHousing.view",
+  "communications.view",
+  "communications.message.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {
