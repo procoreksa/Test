@@ -294,7 +294,31 @@ picks a fail-safe order (write storage, then commit DB, compensating-
 delete on DB failure) and documents the residual risk honestly rather than
 claiming an atomicity it doesn't have.
 
-## 18. What this map deliberately does not cover
+## 18. Executive Dashboards: a read-only aggregation layer, never a second domain engine
+
+A management-intelligence layer over every existing module
+(`docs/EXECUTIVE-DASHBOARDS.md` has the full architecture):
+`Authoritative Domain Data -> Central KPI Definitions -> Bounded Aggregate
+Queries -> Dashboard DTOs -> Executive Views -> Drill-Down Reports`. The
+architectural discipline mirrors §16/§17's own "never a second resolver"
+philosophy, generalized from messaging/storage to business metrics: a code-
+level KPI registry (`src/lib/executive/kpi-registry.ts`, metadata only -
+never an executable query string) and a set of per-domain query modules
+(`src/lib/executive/{portfolio,leasing,collections,operations,maintenance,
+owner-financials,corporate-housing,communications,documents,attention}.ts`)
+that each reuse an existing pure formula function (`computeOccupancySummary()`
+§5, `summarizeOwnerLedgerEntries()` §6, `computeAllocationRate()`, the
+Maintenance SLA formulas, every CRM conversion-rate function from §7) rather
+than recomputing a competing definition. `OwnerLedgerEntry` remains the sole
+owner-financial authority end to end - Invoice totals are never multiplied by
+an ownership percentage here, the same boundary §6 already establishes.
+Unlike every other module in this map, this one is architecturally
+constrained to be **read-only**: no file under `src/lib/executive/` performs
+a Prisma write, and its read path deliberately skips the lazy
+`syncOverdueStatuses()` mutation §8's financial core otherwise relies on
+(see docs/TECHNICAL-DEBT.md item 12).
+
+## 19. What this map deliberately does not cover
 
 Page-by-page UI component inventory, the exact Tailwind design tokens,
 and the CRM/Operations report catalog are already documented in each

@@ -1941,6 +1941,64 @@ export interface Dictionary {
     portalDownloadButton: string;
     portalNoVersion: string;
   };
+  executive: {
+    navTitle: string;
+    title: string;
+    subtitle: string;
+
+    filterPeriod: string;
+    filterCompound: string;
+    filterBuilding: string;
+    filterAllCompounds: string;
+    filterAllBuildings: string;
+    filterApply: string;
+    periodLabel: Record<"TODAY" | "THIS_WEEK" | "THIS_MONTH" | "LAST_MONTH" | "THIS_QUARTER" | "THIS_YEAR" | "CUSTOM", string>;
+
+    sectionPortfolio: string;
+    sectionLeasingFunnel: string;
+    sectionCollections: string;
+    sectionOperations: string;
+    sectionMaintenance: string;
+    sectionCorporateHousing: string;
+    sectionOwnerFinancials: string;
+    sectionCommunications: string;
+    sectionDocuments: string;
+    sectionAttention: string;
+
+    kpiInfo: Record<string, { title: string; description: string }>;
+
+    agingBucketLabel: Record<"CURRENT" | "DAYS_1_30" | "DAYS_31_60" | "DAYS_61_90" | "DAYS_90_PLUS" | "UNDATED", string>;
+    agingTitle: string;
+
+    attentionItemLabel: Record<string, string>;
+    attentionEmpty: string;
+    attentionSeverityLabel: Record<"INFO" | "WARNING" | "CRITICAL", string>;
+
+    viewDetails: string;
+    restrictedNotice: string;
+    costRedactedNotice: string;
+
+    propertiesPageTitle: string;
+    collectionsPageTitle: string;
+    operationsPageTitle: string;
+    maintenancePageTitle: string;
+    backToOverview: string;
+
+    colCompound: string;
+    colBuilding: string;
+    colTotal: string;
+    colOccupied: string;
+    colVacant: string;
+    colOccupancyRate: string;
+
+    ownerNetBalance: string;
+    ownerTotalIncome: string;
+    ownerTotalExpenses: string;
+    ownerTotalDistributions: string;
+    refundsDueAmount: string;
+
+    readOnlyNotice: string;
+  };
   moveIn: {
     listTitle: string;
     listSubtitle: string;

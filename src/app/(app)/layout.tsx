@@ -18,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const allNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
     { href: "/dashboard", label: t.nav.dashboard, icon: "📊", permission: "dashboard.view" },
+    { href: "/executive", label: t.executive.navTitle, icon: "🧭", permission: "executiveDashboard.view" },
     { href: "/properties", label: t.nav.properties, icon: "🏢", permission: "property.view" },
     { href: "/compounds", label: t.nav.compounds, icon: "🏘️", permission: "property.view" },
     { href: "/buildings", label: t.nav.buildings, icon: "🏬", permission: "property.view" },

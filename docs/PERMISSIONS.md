@@ -372,6 +372,12 @@ create/delete, not edit. When one is added, gate it with the matching
 | document.download | ✅ | ✅ | ✅ | ✅ | ✅ |
 | document.visibility.manage | ✅ | ✅ | ❌ | ❌ | ❌ |
 | document.link.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
+| executiveDashboard.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| executiveFinancials.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| executiveOperations.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| executiveMaintenance.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| executiveOwnerFinancials.view | ✅ | ✅ | ❌ | ✅ | ❌ |
+| executiveCorporateHousing.view | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -561,6 +567,24 @@ Notes on judgment calls made while encoding the brief's policy:
   any permission in this table - the same separation already established
   for every other Tenant/Owner Portal resource (see docs/TENANT-PORTAL.md
   and docs/OWNER-PORTAL.md).
+
+- `executiveDashboard.view`, `executiveFinancials.view`,
+  `executiveOperations.view`, `executiveMaintenance.view`,
+  `executiveOwnerFinancials.view`, `executiveCorporateHousing.view` gate the
+  Executive Dashboards module (see `docs/EXECUTIVE-DASHBOARDS.md`). The
+  first five mirror each role's existing `*.view` breadth elsewhere in this
+  table - MANAGER/ACCOUNTANT/VIEWER already see property/invoice/payment/
+  maintenance/corporate-housing data operationally, so they get the matching
+  Executive aggregate view too. `executiveOwnerFinancials.view` is
+  deliberately more restrictive than that pattern: it exposes every owner's
+  `OwnerLedgerEntry` at once (org-wide), a materially more sensitive
+  aggregate than the single-owner statement `ownerLedger.view` already grants
+  MANAGER/VIEWER, so it is OWNER/ADMIN/ACCOUNTANT-only. Even within
+  `executiveMaintenance.view`, the maintenance-cost figure is separately
+  gated server-side by the caller's own `maintenance.cost.view` permission
+  (VIEWER holds the former but not the latter, so its cost figure comes back
+  `null` from the server action itself, never hidden only in the UI) - see
+  docs/EXECUTIVE-DASHBOARDS.md §8.
 
 ## 4. How to protect a new server action
 

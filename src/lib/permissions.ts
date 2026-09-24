@@ -159,7 +159,13 @@ export type Permission =
   | "document.restore"
   | "document.download"
   | "document.visibility.manage"
-  | "document.link.manage";
+  | "document.link.manage"
+  | "executiveDashboard.view"
+  | "executiveFinancials.view"
+  | "executiveOperations.view"
+  | "executiveMaintenance.view"
+  | "executiveOwnerFinancials.view"
+  | "executiveCorporateHousing.view";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -315,6 +321,12 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "document.download",
   "document.visibility.manage",
   "document.link.manage",
+  "executiveDashboard.view",
+  "executiveFinancials.view",
+  "executiveOperations.view",
+  "executiveMaintenance.view",
+  "executiveOwnerFinancials.view",
+  "executiveCorporateHousing.view",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -504,6 +516,20 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "document.version.create",
   "document.download",
   "document.link.manage",
+  // Executive Dashboards (docs/EXECUTIVE-DASHBOARDS.md): MANAGER gets every
+  // aggregate management-intelligence view built on data it already sees
+  // operationally elsewhere in this table (occupancy, leasing funnel,
+  // collections, move-in/move-out/maintenance, corporate housing) - but NOT
+  // executiveOwnerFinancials.view. The org-wide Owner Financial Overview
+  // aggregates every owner's OwnerLedgerEntry at once, which is a more
+  // sensitive exposure than the single-owner ledger.view MANAGER already
+  // holds, so it stays OWNER/ADMIN/ACCOUNTANT-only - a deliberate,
+  // documented field-level restriction, not an oversight.
+  "executiveDashboard.view",
+  "executiveFinancials.view",
+  "executiveOperations.view",
+  "executiveMaintenance.view",
+  "executiveCorporateHousing.view",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -587,6 +613,17 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "document.view",
   "document.create",
   "document.download",
+  // Executive Dashboards: ACCOUNTANT is the one non-OWNER/ADMIN role that
+  // already holds full owner-ledger authority (ownerLedger.view/create/
+  // reverse above), so it is the only other role trusted with the org-wide
+  // Owner Financial Overview - every other executive view too, matching
+  // ACCOUNTANT's already-broad *.view-everywhere financial posture.
+  "executiveDashboard.view",
+  "executiveFinancials.view",
+  "executiveOperations.view",
+  "executiveMaintenance.view",
+  "executiveOwnerFinancials.view",
+  "executiveCorporateHousing.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -621,6 +658,18 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   // restore/manage.
   "document.view",
   "document.download",
+  // Executive Dashboards: VIEWER gets read-only access to every executive
+  // view except executiveOwnerFinancials.view (same OWNER/ADMIN/ACCOUNTANT-
+  // only restriction as MANAGER above) - and even within
+  // executiveMaintenance.view, the maintenance-cost figures are further
+  // redacted server-side because VIEWER lacks maintenance.cost.view (see
+  // src/lib/executive/maintenance.ts) - a genuine field-level, not just
+  // page-level, RBAC boundary.
+  "executiveDashboard.view",
+  "executiveFinancials.view",
+  "executiveOperations.view",
+  "executiveMaintenance.view",
+  "executiveCorporateHousing.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

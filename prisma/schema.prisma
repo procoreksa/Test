@@ -365,6 +365,10 @@ model Unit {
   @@index([organizationId])
   @@index([propertyId])
   @@index([floorId])
+  // Executive Dashboards (docs/EXECUTIVE-DASHBOARDS.md): supports the
+  // Portfolio occupancy snapshot's organizationId+status filter, the same
+  // shape getDashboardStats()/getPortfolioSummary() already query.
+  @@index([organizationId, status])
   @@map("units")
 }
 
@@ -505,6 +509,10 @@ model Contract {
 
   @@unique([organizationId, contractNumber])
   @@index([organizationId])
+  // Executive Dashboards: supports Active Contracts / Contract Expiry
+  // (30/60/90-day) queries, which always filter by organizationId+status
+  // and range on endDate (src/lib/executive/leasing.ts).
+  @@index([organizationId, status, endDate])
   @@map("contracts")
 }
 
@@ -627,6 +635,10 @@ model Invoice {
   // filters by organizationId + a 6-month issueDate window rather than
   // scanning every invoice the organization has ever issued.
   @@index([organizationId, issueDate])
+  // Executive Dashboards: supports Outstanding Receivables' aging query
+  // (organizationId+status, ordered/filtered by dueDate -
+  // src/lib/executive/collections.ts).
+  @@index([organizationId, status, dueDate])
   @@map("invoices")
 }
 
