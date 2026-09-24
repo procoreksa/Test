@@ -47,6 +47,14 @@ model Organization {
   commercialRegistration String?
   vatNumber              String? // 15-digit Saudi VAT registration number
   country                String             @default("SA")
+  // IANA timezone name (Step 23, docs/AUTOMATION-SCHEDULED-JOBS.md "Timezone
+  // decision") - every existing organization in this codebase is Saudi-based
+  // (country defaults to "SA" above, currency is fixed SAR, ZATCA is
+  // Saudi-only), so a safe, explicit V1 default replaces the previously
+  // ambiguous server-local-time assumption for scheduled, tenant-facing
+  // automation. Validated as a real IANA zone at write time
+  // (src/lib/automation/timezone.ts) - never trusted as a free-text string.
+  timezone               String             @default("Asia/Riyadh")
   city                   String?
   district               String?
   street                 String?
@@ -116,6 +124,9 @@ model Organization {
   documents                      Document[]
   documentVersions               DocumentVersion[]
   documentLinks                  DocumentLink[]
+  communicationOutboxEvents      CommunicationOutboxEvent[]
+  automationJobs                 AutomationJob[]
+  automationSettings             AutomationSettings?
 
   @@map("organizations")
 }
@@ -170,12 +181,12 @@ model User {
 
   managedCorporateAccounts CorporateAccount[] @relation("CorporateAccountManager")
 
-  createdCommunicationTemplates  CommunicationTemplate[] @relation("CommunicationTemplateCreatedBy")
-  activatedCommunicationTemplates CommunicationTemplate[] @relation("CommunicationTemplateActivatedBy")
-  createdCommunicationRules      CommunicationRule[]     @relation("CommunicationRuleCreatedBy")
-  specificRecipientForRules      CommunicationRule[]     @relation("CommunicationRuleSpecificUser")
-  communicationMessagesAsInternalRecipient CommunicationMessage[] @relation("CommunicationMessageInternalRecipient")
-  cancelledCommunicationMessages CommunicationMessage[]  @relation("CommunicationMessageCancelledBy")
+  createdCommunicationTemplates            CommunicationTemplate[] @relation("CommunicationTemplateCreatedBy")
+  activatedCommunicationTemplates          CommunicationTemplate[] @relation("CommunicationTemplateActivatedBy")
+  createdCommunicationRules                CommunicationRule[]     @relation("CommunicationRuleCreatedBy")
+  specificRecipientForRules                CommunicationRule[]     @relation("CommunicationRuleSpecificUser")
+  communicationMessagesAsInternalRecipient CommunicationMessage[]  @relation("CommunicationMessageInternalRecipient")
+  cancelledCommunicationMessages           CommunicationMessage[]  @relation("CommunicationMessageCancelledBy")
 
   @@unique([organizationId, email])
   @@index([email])
@@ -3652,6 +3663,16 @@ enum CommunicationEventType {
   TENANT_PORTAL_ACCOUNT_INVITED
   OWNER_PORTAL_ACCOUNT_INVITED
   CORPORATE_ALLOCATION_ACTIVATED
+
+  // Automation & Scheduled Jobs (docs/AUTOMATION-SCHEDULED-JOBS.md, Step
+  // 27) - emitted only by a scheduled AutomationJob handler, never by a
+  // direct business action. Each is wired (COMMUNICATION_EVENT_REGISTRY)
+  // but the underlying reminder type itself defaults DISABLED per
+  // organization (AutomationSettings) until explicitly turned on.
+  RENT_DUE_REMINDER
+  CONTRACT_EXPIRY_REMINDER
+  MOVE_IN_REMINDER
+  MOVE_OUT_REMINDER
 }
 
 /// How a CommunicationRule resolves WHO receives a message for its event.
@@ -3751,12 +3772,12 @@ model CommunicationTemplate {
   // one is missing from the event's payload at render time.
   variables String[]
 
-  createdByUserId String
-  createdByUser   User      @relation("CommunicationTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
-  activatedAt     DateTime?
+  createdByUserId   String
+  createdByUser     User      @relation("CommunicationTemplateCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  activatedAt       DateTime?
   activatedByUserId String?
-  activatedByUser   User?   @relation("CommunicationTemplateActivatedBy", fields: [activatedByUserId], references: [id], onDelete: SetNull)
-  archivedAt      DateTime?
+  activatedByUser   User?     @relation("CommunicationTemplateActivatedBy", fields: [activatedByUserId], references: [id], onDelete: SetNull)
+  archivedAt        DateTime?
 
   notes String?
 
@@ -3823,21 +3844,21 @@ model CommunicationMessage {
 
   status CommunicationMessageStatus @default(QUEUED)
 
-  recipientType CommunicationRecipientType
+  recipientType       CommunicationRecipientType
   // Exactly one of the five below is set, matching recipientType - typed
   // relations (not a polymorphic recipientId string) for the same
   // referential-integrity reasons documented on
   // MoveOutLiabilityAssessment's own typed source relations above.
   renterId            String?
-  renter              Renter?            @relation(fields: [renterId], references: [id], onDelete: SetNull)
+  renter              Renter?                    @relation(fields: [renterId], references: [id], onDelete: SetNull)
   ownerId             String?
-  owner               Owner?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner               Owner?                     @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   corporateContactId  String?
-  corporateContact    CorporateContact?  @relation(fields: [corporateContactId], references: [id], onDelete: SetNull)
+  corporateContact    CorporateContact?          @relation(fields: [corporateContactId], references: [id], onDelete: SetNull)
   corporateOccupantId String?
-  corporateOccupant   CorporateOccupant? @relation(fields: [corporateOccupantId], references: [id], onDelete: SetNull)
+  corporateOccupant   CorporateOccupant?         @relation(fields: [corporateOccupantId], references: [id], onDelete: SetNull)
   internalUserId      String?
-  internalUser        User?              @relation("CommunicationMessageInternalRecipient", fields: [internalUserId], references: [id], onDelete: SetNull)
+  internalUser        User?                      @relation("CommunicationMessageInternalRecipient", fields: [internalUserId], references: [id], onDelete: SetNull)
 
   // Snapshot of the destination at enqueue time (email address / E.164
   // phone) - never re-read live from the recipient record at send time, so
@@ -3852,11 +3873,11 @@ model CommunicationMessage {
   template        CommunicationTemplate? @relation(fields: [templateId], references: [id], onDelete: Restrict)
   templateVersion Int?
 
-  renderedSubject String?
+  renderedSubject   String?
   // Frozen rendered output actually sent - independent of any later edit to
   // the Template itself, so message history always reflects what a
   // recipient actually received.
-  renderedBody    String
+  renderedBody      String
   // The exact variable values used to render this message (audit/debug
   // only - never re-used to re-render, since a manual retry re-renders
   // fresh from the template's current ACTIVE version).
@@ -4157,7 +4178,7 @@ model DocumentVersion {
   // Opaque, unpredictable, generated key (Step 20) - the sole pointer into
   // the storage adapter. Never rendered in HTML/JSON/URLs/filenames (Step
   // 67); key secrecy is never itself treated as authorization (Step 3/20).
-  storageKey String
+  storageKey      String
 
   scanStatus DocumentScanStatus @default(NOT_SCANNED)
 
@@ -4193,4 +4214,268 @@ model DocumentLink {
   @@unique([documentId, entityType, entityId])
   @@index([organizationId, entityType, entityId])
   @@map("document_links")
+}
+
+// ---------------------------------------------------------------------------
+// Automation & Scheduled Jobs (docs/AUTOMATION-SCHEDULED-JOBS.md)
+//
+// Two deliberately distinct models, not one polymorphic table (Critical
+// Principle 2): CommunicationOutboxEvent exists because something ALREADY
+// HAPPENED inside a business transaction (Payment received, Invoice issued,
+// ...) and must be durably recorded in that SAME transaction (Critical
+// Principle 1) - closing the exact crash window Prompt 19 left open
+// (business commit -> process crash -> enqueueCommunicationEvent() never
+// ran -> no CommunicationMessage ever created). AutomationJob exists
+// because TIME arrived (a rent-due reminder window, a contract-expiry
+// window, ...) - discovered by a scheduler, executed by a worker, and
+// re-checked for eligibility at execution time (a job scheduled when an
+// invoice was unpaid must skip silently if it was paid before the job ran).
+//
+// Neither model ever performs a network/provider call itself and neither
+// is a second delivery queue - CommunicationMessage (above) remains the
+// only outbound-delivery queue in this codebase. The full chain for a
+// critical business event is:
+//   business transaction -> CommunicationOutboxEvent (this transaction)
+//   -> outbox processor  -> CommunicationMessage
+//   -> communication delivery worker -> provider
+// and for a scheduled reminder:
+//   scheduler -> AutomationJob -> worker/handler -> CommunicationOutboxEvent
+//   -> outbox processor -> CommunicationMessage -> delivery worker -> provider
+//
+// At-least-once, never exactly-once (Critical Principle 3): every claim
+// below is a single conditional `updateMany(where: { status: <expected> })`,
+// the same atomic-claim idiom `processQueuedCommunications()` already uses
+// for CommunicationMessage - two concurrent workers racing for the same row
+// can only have one succeed, but a crash between "claimed" and "recorded
+// outcome" is recovered (stuck-threshold based, bounded) rather than lost,
+// which means a handler/processor MUST be safe to run more than once for
+// the same logical unit of work - idempotent DB writes (unique keys below)
+// are what make that safe, not a false promise of single delivery.
+// ---------------------------------------------------------------------------
+
+enum CommunicationOutboxEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+/// Durable intent to eventually create one or more CommunicationMessage rows
+/// for a business event - inserted in the SAME database transaction as the
+/// business mutation it follows from (see src/lib/automation/outbox-emit.ts,
+/// `emitCommunicationEventTx()`). Reuses the existing `CommunicationEventType`
+/// enum (never a parallel event vocabulary) and stores just enough safe,
+/// already-resolved data (`payloadJson`) to create messages later without
+/// re-deriving business state that might have since changed - Step 13's
+/// "necessary immutable references/snapshots," the same "resolved by the
+/// caller, snapshotted" philosophy `CommunicationMessage.destinationRaw`
+/// itself already established (see that model's own doc comment above).
+model CommunicationOutboxEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  eventType CommunicationEventType
+
+  // Logical idempotency key, reviewed per event type (Step 5) - never a
+  // blind reuse of "the business record's own id" when that record can
+  // legitimately re-emit the same event type more than once. See
+  // src/lib/automation/outbox-keys.ts for the exact key built per event.
+  eventKey String
+
+  payloadVersion Int
+  payloadJson    Json
+
+  status CommunicationOutboxEventStatus @default(PENDING)
+
+  // When this event becomes eligible for processing - `now()` for every
+  // current call site (nothing schedules a FUTURE outbox event in V1), but
+  // modeled explicitly so a retry's backoff delay is expressed the same way
+  // AutomationJob's own `availableAt` is, not a second retry vocabulary.
+  availableAt DateTime @default(now())
+
+  attemptCount Int @default(0)
+  maxAttempts  Int @default(5)
+
+  // Set by the processor when it claims this row (conditional `updateMany`,
+  // mirroring `CommunicationMessage.claimedAt`/`claimedBy` exactly) and
+  // cleared on completion or recovery. A row stuck PROCESSING past the
+  // stuck-threshold (worker crash mid-processing) is recovered back to
+  // PENDING by the next processor run - see src/lib/automation/outbox-processor.ts.
+  lockedAt DateTime?
+  lockedBy String?
+
+  processedAt DateTime?
+  failedAt    DateTime?
+
+  lastErrorCode    String?
+  lastErrorMessage String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // One durable intent per (organization, event type, logical occurrence) -
+  // the DB-enforced idempotency Step 5 requires. A retried business-action
+  // submission or an at-least-once replay collides here instead of creating
+  // a duplicate logical event.
+  @@unique([organizationId, eventType, eventKey])
+  @@index([status, availableAt])
+  @@index([organizationId])
+  @@map("communication_outbox_events")
+}
+
+enum AutomationJobType {
+  RENT_DUE_REMINDER
+  CONTRACT_EXPIRY_REMINDER
+  MOVE_IN_REMINDER
+  MOVE_OUT_REMINDER
+  MAINTENANCE_SLA_CHECK
+  COMMUNICATION_RECONCILIATION
+}
+
+enum AutomationJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+/// A durable, time-triggered unit of work discovered by the scheduler and
+/// executed by the worker (src/lib/automation/scheduler.ts /
+/// src/lib/automation/worker.ts) - never created because something already
+/// happened (that is CommunicationOutboxEvent's job, above). Every job type
+/// in this codebase is organization-scoped (no system-level/cross-tenant job
+/// exists in V1 - see docs/AUTOMATION-SCHEDULED-JOBS.md "Scheduler
+/// architecture"), so `organizationId` is deliberately required, not
+/// nullable, giving every query in this model a hard multi-tenancy boundary
+/// for free.
+model AutomationJob {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  jobType AutomationJobType
+
+  // Deterministic logical key reviewed per job type (Step 19) - e.g.
+  // "<scheduleId>:<offsetDays>:<dueDate>" for a rent reminder, so a changed
+  // due date legitimately produces a new logical reminder rather than
+  // colliding with a stale one. See src/lib/automation/job-keys.ts.
+  jobKey String
+
+  status AutomationJobStatus @default(PENDING)
+
+  // The time this job's underlying business window occurs (e.g. the
+  // reminder's target due/expiry/scheduled date) - informational/sortable,
+  // distinct from `availableAt` (when the worker may next attempt it).
+  scheduledFor DateTime
+  availableAt  DateTime @default(now())
+
+  attemptCount Int @default(0)
+  maxAttempts  Int @default(5)
+
+  lockedAt DateTime?
+  lockedBy String?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+  failedAt    DateTime?
+
+  lastErrorCode    String?
+  lastErrorMessage String?
+
+  payloadVersion Int  @default(1)
+  payloadJson    Json
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  attempts AutomationJobAttempt[]
+
+  // DB-enforced job idempotency (Step 19/81): running the scheduler twice
+  // (or two overlapping scheduler invocations) can never insert a second
+  // logical job for the same key.
+  @@unique([organizationId, jobType, jobKey])
+  @@index([status, availableAt])
+  @@index([organizationId, jobType])
+  @@map("automation_jobs")
+}
+
+enum AutomationJobAttemptOutcome {
+  COMPLETED
+  SKIPPED
+  RETRYABLE_FAILURE
+  PERMANENT_FAILURE
+}
+
+/// Append-only execution history (Step 46) - never mutated once written,
+/// only ever inserted. Improves operability (claim debugging, stuck-job
+/// investigation, "why did this fail three times") without overloading
+/// AutomationJob's own single mutable row with a full history.
+model AutomationJobAttempt {
+  id    String        @id @default(cuid())
+  jobId String
+  job   AutomationJob @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  attemptNumber Int
+  workerId      String
+
+  startedAt  DateTime
+  finishedAt DateTime?
+
+  outcome      AutomationJobAttemptOutcome?
+  errorCode    String?
+  errorMessage String?
+
+  createdAt DateTime @default(now())
+
+  @@index([jobId])
+  @@map("automation_job_attempts")
+}
+
+/// Per-organization typed switches (Step 37) - deliberately NOT a generic
+/// rule-builder/scripting surface (see the module's own no-feature-creep
+/// list). Every tenant-facing reminder defaults OFF (Step 38): deploying
+/// this code must never suddenly start emailing every existing tenant.
+/// System-reliability jobs (outbox processing, stuck recovery, delivery)
+/// are not gated by this table at all - they are operational, not
+/// tenant-facing, and are enabled by whether the worker routes are called.
+model AutomationSettings {
+  id             String       @id @default(cuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  rentReminderEnabled             Boolean @default(false)
+  contractExpiryReminderEnabled   Boolean @default(false)
+  moveInReminderEnabled           Boolean @default(false)
+  moveOutReminderEnabled          Boolean @default(false)
+  maintenanceSlaAutomationEnabled Boolean @default(false)
+
+  updatedByUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("automation_settings")
+}
+
+/// Critical Principle 7 ("no silent automation") - a durable, append-only
+/// record of every runAutomationScheduler() invocation, so an operator can
+/// answer "did the scheduler run, and when" from the database rather than
+/// from ephemeral route-response logs. System-level (no organizationId):
+/// one scheduler invocation discovers work across every organization in a
+/// single pass (src/lib/automation/scheduler.ts). Never read by any handler
+/// or business logic - purely an operational/observability record for the
+/// /automation dashboard.
+model AutomationSchedulerRun {
+  id    String   @id @default(cuid())
+  ranAt DateTime @default(now())
+
+  /// The exact RunAutomationSchedulerResult (per-reminder-type created
+  /// counts) - kept as-is rather than flattened into columns so a future
+  /// reminder type never needs a migration just to be recorded here.
+  resultJson Json
+
+  @@index([ranAt])
+  @@map("automation_scheduler_runs")
 }

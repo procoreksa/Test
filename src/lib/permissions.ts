@@ -165,7 +165,15 @@ export type Permission =
   | "executiveOperations.view"
   | "executiveMaintenance.view"
   | "executiveOwnerFinancials.view"
-  | "executiveCorporateHousing.view";
+  | "executiveCorporateHousing.view"
+  | "automation.view"
+  | "automation.settings.view"
+  | "automation.settings.update"
+  | "automation.job.view"
+  | "automation.job.retry"
+  | "automation.job.cancel"
+  | "automation.outbox.view"
+  | "automation.outbox.retry";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -327,6 +335,14 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "executiveMaintenance.view",
   "executiveOwnerFinancials.view",
   "executiveCorporateHousing.view",
+  "automation.view",
+  "automation.settings.view",
+  "automation.settings.update",
+  "automation.job.view",
+  "automation.job.retry",
+  "automation.job.cancel",
+  "automation.outbox.view",
+  "automation.outbox.retry",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -530,6 +546,19 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "executiveOperations.view",
   "executiveMaintenance.view",
   "executiveCorporateHousing.view",
+  // Automation & Scheduled Jobs (docs/AUTOMATION-SCHEDULED-JOBS.md): MANAGER
+  // gets the full operational surface - view dashboards/jobs/outbox and
+  // retry/cancel operational jobs - but never automation.settings.update,
+  // which is an organization-level configuration change reserved for
+  // OWNER/ADMIN, the same tier as every other *.settings.update in this
+  // table.
+  "automation.view",
+  "automation.settings.view",
+  "automation.job.view",
+  "automation.job.retry",
+  "automation.job.cancel",
+  "automation.outbox.view",
+  "automation.outbox.retry",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -624,6 +653,14 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   "executiveMaintenance.view",
   "executiveOwnerFinancials.view",
   "executiveCorporateHousing.view",
+  // Automation & Scheduled Jobs: ACCOUNTANT gets read-only visibility into
+  // jobs/outbox/settings (e.g. confirming a RENT_DUE_REMINDER actually ran)
+  // - the same *.view-only posture already applied to Communications above -
+  // but no retry/cancel and no settings mutation.
+  "automation.view",
+  "automation.settings.view",
+  "automation.job.view",
+  "automation.outbox.view",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -670,6 +707,13 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "executiveOperations.view",
   "executiveMaintenance.view",
   "executiveCorporateHousing.view",
+  // Automation & Scheduled Jobs: VIEWER gets read-only visibility into jobs
+  // and outbox (same read-only-everywhere posture as the rest of this
+  // table) but not automation.settings.view - VIEWER has no visibility into
+  // organization Settings anywhere else in this table either.
+  "automation.view",
+  "automation.job.view",
+  "automation.outbox.view",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

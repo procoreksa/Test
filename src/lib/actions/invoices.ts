@@ -10,9 +10,10 @@ import { getLocale, getDictionary } from "@/lib/i18n";
 import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
 import type { LineInput } from "@/lib/zatca/vat";
 import type { InvoiceLineKind } from "@prisma/client";
-import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
 import { buildRenterRecipient } from "@/lib/communications/recipients";
 import { resolveNotificationLanguage } from "@/lib/communications/language";
+import { emitCommunicationEventTx } from "@/lib/automation/outbox-emit";
+import { invoiceIssuedKey } from "@/lib/automation/outbox-keys";
 
 const EXTRA_CHARGE_VAT_RATE = 15; // Commission/cleaning are always-taxable services, independent of the rent's VAT treatment.
 
@@ -75,7 +76,8 @@ function invoiceLinePropertyNames(unit: {
 
 export async function issueInvoiceForSchedule(formData: FormData) {
   const { organizationId } = await requirePermission("invoice.create");
-  const t = getDictionary(await getLocale());
+  const locale = await getLocale();
+  const t = getDictionary(locale);
   const scheduleId = String(formData.get("scheduleId"));
   const selectedKinds = formData.getAll("kind").map(String) as InvoiceLineKind[];
 
@@ -178,28 +180,30 @@ export async function issueInvoiceForSchedule(formData: FormData) {
         lineKinds: selectedKinds,
       },
     });
-    return created;
-  });
+    // Durable intent, same transaction as the business mutation above
+    // (Critical Principle 1) - closes the exact crash window Prompt 19 left
+    // open (commit -> crash -> enqueue never ran -> no message ever
+    // created). See docs/AUTOMATION-SCHEDULED-JOBS.md.
+    await emitCommunicationEventTx(tx, {
+      organizationId,
+      eventType: "INVOICE_ISSUED",
+      eventKey: invoiceIssuedKey(created.id),
+      businessEntityType: "Invoice",
+      businessEntityId: created.id,
+      language: resolveNotificationLanguage(locale),
+      variables: {
+        invoiceNumber: created.invoiceNumber,
+        totalAmount: created.totalAmount.toString(),
+        currency: created.currency,
+        dueDate: created.dueDate ? format(created.dueDate, "yyyy-MM-dd") : "",
+        contractNumber: contract.contractNumber,
+        unitNumber,
+        renterName: contract.renter.fullName,
+      },
+      recipients: [buildRenterRecipient(contract.renter)],
+    });
 
-  // Fired strictly after the transaction above has committed (Critical
-  // Principle 3) - enqueueCommunicationEvent() never throws, so a
-  // notification failure can never affect an already-issued invoice.
-  await enqueueCommunicationEvent({
-    organizationId,
-    eventType: "INVOICE_ISSUED",
-    businessEntityType: "Invoice",
-    businessEntityId: invoice.id,
-    language: resolveNotificationLanguage(await getLocale()),
-    variables: {
-      invoiceNumber: invoice.invoiceNumber,
-      totalAmount: invoice.totalAmount.toString(),
-      currency: invoice.currency,
-      dueDate: invoice.dueDate ? format(invoice.dueDate, "yyyy-MM-dd") : "",
-      contractNumber: contract.contractNumber,
-      unitNumber,
-      renterName: contract.renter.fullName,
-    },
-    recipients: [buildRenterRecipient(contract.renter)],
+    return created;
   });
 
   revalidatePath("/invoices");

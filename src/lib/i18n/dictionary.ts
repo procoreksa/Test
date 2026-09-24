@@ -3434,6 +3434,111 @@ export interface Dictionary {
     testSendFailure: string;
     fieldTestDestination: string;
   };
+  automation: {
+    // Nav / group label
+    dashboardTitle: string;
+    dashboardSubtitle: string;
+    navSettings: string;
+    navJobs: string;
+    navOutbox: string;
+
+    // Dashboard cards
+    cardPendingJobs: string;
+    cardRunningJobs: string;
+    cardFailedJobs: string;
+    cardCompletedToday: string;
+    cardOutboxPending: string;
+    cardOutboxFailed: string;
+    cardCommunicationQueue: string;
+    sectionLastSchedulerRun: string;
+    lastSchedulerRunNever: string;
+
+    // Statuses (Job: PENDING/RUNNING/COMPLETED/FAILED/CANCELLED; Outbox
+    // reuses the same PENDING/RUNNING/COMPLETED/FAILED labels for its own
+    // PENDING/PROCESSING/PROCESSED/FAILED states - same underlying meaning,
+    // one glossary term each, never two different words for one concept).
+    statusPending: string;
+    statusRunning: string;
+    statusCompleted: string;
+    statusFailed: string;
+    statusCancelled: string;
+
+    // Settings
+    settingsTitle: string;
+    settingsSubtitle: string;
+    settingRentDueReminder: string;
+    settingContractExpiryReminder: string;
+    settingMoveInReminder: string;
+    settingMoveOutReminder: string;
+    settingMaintenanceSlaAutomation: string;
+    settingsSaveButton: string;
+    settingsSavedMessage: string;
+    settingsLastUpdated: (date: string) => string;
+    settingsNeverUpdated: string;
+
+    // Jobs list
+    jobsTitle: string;
+    jobsSubtitle: string;
+    colJobType: string;
+    colStatus: string;
+    colScheduledFor: string;
+    colAttempts: string;
+    colLastError: string;
+    colCreatedAt: string;
+    filterStatusAll: string;
+    filterApply: string;
+    emptyJobs: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, totalPages: number) => string;
+    jobTypeRentDueReminder: string;
+    jobTypeContractExpiryReminder: string;
+    jobTypeMoveInReminder: string;
+    jobTypeMoveOutReminder: string;
+    jobTypeMaintenanceSlaCheck: string;
+    jobTypeCommunicationReconciliation: string;
+
+    // Job detail
+    jobDetailTitle: string;
+    sectionJobInfo: string;
+    sectionAttemptHistory: string;
+    fieldJobType: string;
+    fieldJobKey: string;
+    fieldScheduledFor: string;
+    fieldAvailableAt: string;
+    fieldAttemptCount: string;
+    fieldMaxAttempts: string;
+    fieldLastError: string;
+    colAttemptNumber: string;
+    colAttemptWorker: string;
+    colAttemptOutcome: string;
+    colAttemptStartedAt: string;
+    colAttemptFinishedAt: string;
+    colAttemptError: string;
+    emptyAttempts: string;
+    actionRetryJob: string;
+    actionCancelJob: string;
+    jobNotFound: string;
+    cannotRetryNotFailed: string;
+    cannotCancelNotPending: string;
+    attemptOutcomeCompleted: string;
+    attemptOutcomeSkipped: string;
+    attemptOutcomeRetryableFailure: string;
+    attemptOutcomePermanentFailure: string;
+
+    // Outbox
+    outboxTitle: string;
+    outboxSubtitle: string;
+    colEvent: string;
+    colOutboxStatus: string;
+    colOutboxAttempts: string;
+    colAvailableAt: string;
+    colOutboxLastError: string;
+    emptyOutbox: string;
+    actionRetryOutbox: string;
+    outboxEventNotFound: string;
+    cannotRetryOutboxNotFailed: string;
+  };
 }
 
 export type { Locale } from "./config";

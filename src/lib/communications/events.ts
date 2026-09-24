@@ -164,6 +164,45 @@ export const COMMUNICATION_EVENT_REGISTRY: Record<CommunicationEventType, Commun
     variables: ["allocationNumber", "unitNumber"],
     description: "A corporate housing allocation was activated.",
   },
+
+  // --- Automation & Scheduled Jobs (docs/AUTOMATION-SCHEDULED-JOBS.md) -
+  // emitted only from src/lib/automation/handlers/*.ts, never from a direct
+  // business action. Wired, but the reminder itself is gated by a separate,
+  // per-organization AutomationSettings flag (default disabled) - being
+  // "wired" here only means a seeded default Rule/template CAN produce a
+  // message once an organization turns the reminder on.
+  RENT_DUE_REMINDER: {
+    eventType: "RENT_DUE_REMINDER",
+    classification: "TRANSACTIONAL",
+    wired: true,
+    defaultRecipientStrategy: "RENTER",
+    variables: ["amount", "currency", "dueDate", "unitNumber", "renterName"],
+    description: "A rent/receivable amount is due soon, due today, or overdue.",
+  },
+  CONTRACT_EXPIRY_REMINDER: {
+    eventType: "CONTRACT_EXPIRY_REMINDER",
+    classification: "TRANSACTIONAL",
+    wired: true,
+    defaultRecipientStrategy: "RENTER",
+    variables: ["contractNumber", "endDate", "unitNumber", "renterName"],
+    description: "A lease contract is approaching its end date.",
+  },
+  MOVE_IN_REMINDER: {
+    eventType: "MOVE_IN_REMINDER",
+    classification: "TRANSACTIONAL",
+    wired: true,
+    defaultRecipientStrategy: "RENTER",
+    variables: ["moveInNumber", "scheduledAt", "unitNumber"],
+    description: "A scheduled Move-In handover is coming up.",
+  },
+  MOVE_OUT_REMINDER: {
+    eventType: "MOVE_OUT_REMINDER",
+    classification: "TRANSACTIONAL",
+    wired: true,
+    defaultRecipientStrategy: "RENTER",
+    variables: ["moveOutNumber", "scheduledAt", "unitNumber"],
+    description: "A scheduled Move-Out hand-back is coming up.",
+  },
 };
 
 export function getEventDefinition(eventType: CommunicationEventType): CommunicationEventDefinition {

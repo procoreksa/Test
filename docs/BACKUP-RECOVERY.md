@@ -35,7 +35,16 @@ independent ones. Within Postgres itself, every table still matters - there
 is no "safe to lose" table in this schema: `AuditLog` is the immutable
 compliance trail, `Contract`/`Invoice`/`Payment`/`OwnerLedgerEntry` are the
 financial system of record, and everything else (CRM, property hierarchy,
-Move-In, Document metadata) feeds those.
+Move-In, Document metadata) feeds those. Automation & Scheduled Jobs
+(`docs/AUTOMATION-SCHEDULED-JOBS.md`) added five more tables, covered by the
+same backup process with no new infrastructure required - `CommunicationOutboxEvent`
+and `AutomationSettings` matter for business continuity (losing either
+means a durable notification intent, or an organization's reminder
+configuration, is gone), while `AutomationJobAttempt` and
+`AutomationSchedulerRun` are pure operational/observability history - safe
+to lose without any business-data consequence, but still restored
+automatically by the same whole-database backup, never excluded
+separately.
 
 ## 2. Automated backups
 

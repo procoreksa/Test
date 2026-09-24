@@ -34,7 +34,7 @@ export interface EnqueueCommunicationEventInput {
  */
 export async function enqueueCommunicationEvent(input: EnqueueCommunicationEventInput): Promise<void> {
   try {
-    await enqueueCommunicationEventInner(input);
+    await createCommunicationMessagesForEvent(input);
   } catch (error) {
     console.error("[communications] enqueue failed", {
       eventType: input.eventType,
@@ -45,7 +45,18 @@ export async function enqueueCommunicationEvent(input: EnqueueCommunicationEvent
   }
 }
 
-async function enqueueCommunicationEventInner(input: EnqueueCommunicationEventInput): Promise<void> {
+/**
+ * The actual rule-resolution -> template-render -> idempotent-CommunicationMessage-creation
+ * logic, factored out so both the legacy fire-and-forget wrapper above AND
+ * the durable outbox processor (src/lib/automation/outbox-processor.ts,
+ * Step 8) share exactly one implementation - never two competing ways to
+ * turn a resolved business event into CommunicationMessage rows. Unlike the
+ * wrapper above, this throws on a genuine failure (a DB error resolving
+ * rules/templates) - the outbox processor needs that to distinguish a
+ * retryable failure from success (Critical Principle 3), and the legacy
+ * wrapper already catches everything at its own call site.
+ */
+export async function createCommunicationMessagesForEvent(input: EnqueueCommunicationEventInput): Promise<void> {
   const definition = getEventDefinition(input.eventType);
   if (!definition.wired) return; // Defining an event in the registry never auto-enables it.
 

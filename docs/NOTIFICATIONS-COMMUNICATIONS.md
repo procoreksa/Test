@@ -84,6 +84,17 @@ transaction that already committed. The actual send happens later, out of
 band, in `processQueuedCommunications()` (§25), called only from the
 protected worker route (§34).
 
+**Superseded for the 9 wired events by Prompt 22** (§16/§35,
+docs/AUTOMATION-SCHEDULED-JOBS.md): the post-commit `enqueueCommunicationEvent()`
+call at each of those 9 sites was replaced by an in-transaction
+`emitCommunicationEventTx()` call that inserts a durable
+`CommunicationOutboxEvent` row instead, closing the crash-window gap this
+principle's own post-commit design otherwise leaves open. The queue-first,
+never-throwing design described in this section remains exactly as-is for
+any future event that is NOT one of those 9 (i.e. `enqueueCommunicationEvent()`
+itself, and its post-commit calling convention, are unchanged and still the
+right pattern for a notification with no strict durability requirement).
+
 ## 6. Critical Principle 4 - Delivery status is authoritative
 
 A message is never marked `SENT` merely because it was queued. The full
@@ -208,20 +219,41 @@ never consult this table, so it is real but currently inert.
 
 ## 16. Outbox Consistency Audit (Step 54) - the "no separate outbox model" decision
 
-**Decision: no `CommunicationOutboxEvent` model was added.** Reasoning: no
+**Superseded by Prompt 22 (docs/AUTOMATION-SCHEDULED-JOBS.md) - see the note
+at the end of this section.** Original Prompt 19 decision, kept here for
+history: no `CommunicationOutboxEvent` model was added. Reasoning: no
 message broker exists in this stack, so `CommunicationMessage` itself
 already serves as the durable outbox. The only residual gap is the narrow
 window between a business transaction committing and the (never-throwing)
 `enqueueCommunicationEvent()` call actually running - a crash in that exact
-window means the notification is silently never created. This is
-explicitly **not** claimed as exactly-once delivery: it is at-least-once
+window means the notification is silently never created. This was
+explicitly **not** claimed as exactly-once delivery: it was at-least-once
 *processing* once a message exists (the processor can retry, and a stuck-
 PROCESSING row is recovered, §26) plus idempotent *message creation*
-(§7) plus best-effort provider-side dedup (out of this phase's scope). A
-missed enqueue fails safe - as "notification never created," not as a
-duplicate - which is consistent with `revalidatePath()` itself already
+(§7) plus best-effort provider-side dedup (out of that phase's scope). A
+missed enqueue failed safe - as "notification never created," not as a
+duplicate - which was consistent with `revalidatePath()` itself already
 being an unguarded best-effort post-commit call elsewhere in this codebase.
-No stronger guarantee is claimed anywhere in code or in this document.
+
+**Prompt 22 update:** a `CommunicationOutboxEvent` model *was* added after
+all, specifically to close the crash-window gap this section originally
+accepted. All 9 wired call sites below (§35) now insert their
+`CommunicationOutboxEvent` row inside the **same transaction** as the
+business mutation (`emitCommunicationEventTx()`,
+`src/lib/automation/outbox-emit.ts`) instead of calling
+`enqueueCommunicationEvent()` post-commit - if the transaction commits, the
+durable intent is already on disk before the caller's function returns; if
+it rolls back, neither the mutation nor the intent ever existed. The full
+chain is now `Business Tx -> CommunicationOutboxEvent (same tx) -> Outbox
+Processor -> CommunicationMessage -> Delivery Worker (§25, unchanged) ->
+Provider`. This is still explicitly **at-least-once, never exactly-once**
+(Critical Principle 3 of docs/AUTOMATION-SCHEDULED-JOBS.md) - reconciliation
+(that document, §19/§20) exists purely as bounded, periodic defense-in-depth
+on top of this, never as the primary mechanism. `enqueueCommunicationEvent()`
+itself still exists, unchanged, as a thin fire-and-forget wrapper - it is
+simply no longer called from any of the 9 original hook points. See
+docs/AUTOMATION-SCHEDULED-JOBS.md §4/§11/§16/§17 for the full design and its
+real-DB durability proof.
 
 ## 17. Template versioning & the partial-unique-index migration
 
@@ -473,7 +505,14 @@ hit it periodically.
 
 ## 35. The 9 wired business events
 
-| Event | Hook (post-commit) | Variables |
+**Updated by Prompt 22** (docs/AUTOMATION-SCHEDULED-JOBS.md §17): every hook
+below now calls `emitCommunicationEventTx(tx, ...)` **inside** the same
+`prisma.$transaction(...)` as the business mutation, not
+`enqueueCommunicationEvent()` after it. The "Hook" column names the same
+function; only the call's position (in-transaction, not post-commit) and
+target function changed.
+
+| Event | Hook (same transaction) | Variables |
 |---|---|---|
 | `INVOICE_ISSUED` | `issueInvoiceForSchedule()`, `src/lib/actions/invoices.ts` | invoiceNumber, totalAmount, currency, dueDate, contractNumber, unitNumber, renterName |
 | `PAYMENT_RECEIVED` | `recordPayment()`, `src/lib/actions/payments.ts` | receiptNumber, amount, currency, paymentDate, invoiceNumber, renterName |
@@ -485,10 +524,12 @@ hit it periodically.
 | `SECURITY_DEPOSIT_SETTLEMENT_POSTED` | `postSecurityDepositSettlement()`, `src/lib/actions/security-deposits.ts` | settlementNumber, refundDue, additionalDue, currency, unitNumber |
 | `SECURITY_DEPOSIT_REFUND_RECORDED` | `recordSecurityDepositRefund()`, `src/lib/actions/security-deposits.ts` | settlementNumber, refundAmount, currency, method, unitNumber |
 
-Each hook is a plain post-commit call - never inside the business
-transaction. `postSecurityDepositSettlement()`'s own idempotent early-
-return path (already-`POSTED`) deliberately does **not** re-enqueue, since
-no actual state transition happened on that call.
+`postSecurityDepositSettlement()`'s own idempotent early-return path
+(already-`POSTED`) deliberately does **not** re-emit, since no actual state
+transition happened on that call. Each hook's `eventKey` is built by a
+dedicated function in `src/lib/automation/outbox-keys.ts`, reviewed per
+event type for whether the underlying record can legitimately re-fire (see
+docs/AUTOMATION-SCHEDULED-JOBS.md §11/§21).
 
 ## 36. Default EN/AR seed templates
 

@@ -318,7 +318,38 @@ a Prisma write, and its read path deliberately skips the lazy
 `syncOverdueStatuses()` mutation §8's financial core otherwise relies on
 (see docs/TECHNICAL-DEBT.md item 12).
 
-## 19. What this map deliberately does not cover
+## 19. Automation & Scheduled Jobs: closing the queue-first durability gap, plus time-based reminders
+
+`docs/AUTOMATION-SCHEDULED-JOBS.md` has the full architecture. Two
+structurally separate pipelines sharing execution infrastructure but never
+semantics: `Business Tx -> CommunicationOutboxEvent (same tx) -> Outbox
+Processor -> CommunicationMessage -> §16's unchanged delivery worker`, and
+`Scheduler -> AutomationJob -> Worker -> Handler -> CommunicationOutboxEvent
+-> (same outbox pipeline)`. This closes the one durability gap §16's own
+post-commit `enqueueCommunicationEvent()` design knowingly left open (a
+crash between commit and that call silently loses the notification intent)
+by inserting the outbox row inside the **same transaction** as the business
+mutation for all 9 of §16's wired events - `emitCommunicationEventTx()`
+never swallows an insert failure, unlike its post-commit predecessor, so
+the whole business transaction fails together with it if the intent can't
+be durably recorded. Reconciliation exists purely as periodic
+defense-in-depth on top of that, never the primary mechanism, and is
+bounded by a hard historical-safety cutoff so it can never notify for a
+pre-feature record. The scheduler/worker split (discover-and-insert vs.
+claim-and-execute) mirrors §16's own claim-idiom philosophy exactly - every
+claim is the same conditional `updateMany` this codebase already uses
+everywhere concurrency safety matters, never a new locking primitive. Every
+reminder handler is authoritative-source-only (§8's `PaymentSchedule`, the
+Contract/MoveIn/MoveOut records themselves) and re-validates eligibility
+fresh at execution time rather than trusting its own scheduling-time
+snapshot - the same "never a second competing calculation" discipline §18
+already established for KPIs, applied here to "is this reminder still
+true." No automation code in this module ever mutates Invoice/Payment/
+Contract-status/Maintenance-SLA/Communications state itself (Maintenance
+SLA automation is detection-only in V1, emitting nothing) - authority stays
+exactly where §7/§8/§10's own modules already put it.
+
+## 20. What this map deliberately does not cover
 
 Page-by-page UI component inventory, the exact Tailwind design tokens,
 and the CRM/Operations report catalog are already documented in each
@@ -328,6 +359,7 @@ module's own `docs/*.md` (`CRM-LEADS.md`, `VIEWING-MANAGEMENT.md`,
 `OWNERSHIP-ACCOUNTING.md`, `AUDIT-AND-FINANCIAL-CONTROLS.md`,
 `MAINTENANCE-MANAGEMENT.md`, `MOVE-OUT-MANAGEMENT.md`,
 `SECURITY-DEPOSIT-SETTLEMENT.md`, `TENANT-PORTAL.md`,
-`NOTIFICATIONS-COMMUNICATIONS.md`, `DOCUMENT-MANAGEMENT.md`) - this
+`NOTIFICATIONS-COMMUNICATIONS.md`, `DOCUMENT-MANAGEMENT.md`,
+`EXECUTIVE-DASHBOARDS.md`, `AUTOMATION-SCHEDULED-JOBS.md`) - this
 document exists to connect those module-level maps into one picture of how
 the whole system actually fits together, not to repeat their detail.

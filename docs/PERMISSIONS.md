@@ -378,8 +378,30 @@ create/delete, not edit. When one is added, gate it with the matching
 | executiveMaintenance.view | ✅ | ✅ | ✅ | ✅ | ✅ |
 | executiveOwnerFinancials.view | ✅ | ✅ | ❌ | ✅ | ❌ |
 | executiveCorporateHousing.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| automation.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| automation.settings.view | ✅ | ✅ | ✅ | ✅ | ❌ |
+| automation.settings.update | ✅ | ✅ | ❌ | ❌ | ❌ |
+| automation.job.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| automation.job.retry | ✅ | ✅ | ✅ | ❌ | ❌ |
+| automation.job.cancel | ✅ | ✅ | ✅ | ❌ | ❌ |
+| automation.outbox.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| automation.outbox.retry | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
+
+- **Automation & Scheduled Jobs (docs/AUTOMATION-SCHEDULED-JOBS.md).**
+  MANAGER gets every operational permission (view dashboards/jobs/outbox,
+  retry/cancel a job, retry an outbox event) except
+  `automation.settings.update` - turning a tenant-facing reminder on or off
+  is organization-level configuration, the same higher-trust tier as every
+  other `*.settings.update` in this table, so it stays OWNER/ADMIN-only.
+  ACCOUNTANT gets read-only visibility (`automation.view`/
+  `automation.settings.view`/`automation.job.view`/`automation.outbox.view`)
+  but no retry/cancel and no settings mutation - the same broad-but-
+  non-mutating posture it already holds for Communications above. VIEWER
+  gets `automation.view`/`automation.job.view`/`automation.outbox.view`
+  only, deliberately excluding `automation.settings.view` - VIEWER has no
+  visibility into organization Settings anywhere else in this table either.
 
 - **Maintenance Management (docs/MAINTENANCE-MANAGEMENT.md).** No new role
   was introduced. MANAGER holds every `maintenance.*` operational

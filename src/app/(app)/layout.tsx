@@ -94,6 +94,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   ];
   const communicationsNavItems = allCommunicationsNavItems.filter((item) => can(item.permission, role));
 
+  // Its own navigation group (docs/AUTOMATION-SCHEDULED-JOBS.md) - scheduled
+  // reminders and the durable communication outbox are operational
+  // infrastructure, not part of any single business module's own pipeline,
+  // so it never folds into Operations/Communications above.
+  const allAutomationNavItems: Array<{ href: string; label: string; icon: string; permission: Permission }> = [
+    { href: "/automation", label: t.automation.dashboardTitle, icon: "🤖", permission: "automation.view" },
+    { href: "/automation/jobs", label: t.automation.navJobs, icon: "🗓️", permission: "automation.job.view" },
+    { href: "/automation/outbox", label: t.automation.navOutbox, icon: "📮", permission: "automation.outbox.view" },
+    { href: "/automation/settings", label: t.automation.navSettings, icon: "⚙️", permission: "automation.settings.view" },
+  ];
+  const automationNavItems = allAutomationNavItems.filter((item) => can(item.permission, role));
+
   const brandMark = (
     <div className="flex items-center gap-2">
       <div className="w-8 h-8 rounded-full overflow-hidden ring-1 ring-brand-gold/60 shrink-0 bg-white">
@@ -155,6 +167,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.communications.dashboardTitle}</p>
                   {communicationsNavItems.map((commItem) => (
                     <NavLink key={commItem.href} {...commItem} />
+                  ))}
+                </div>
+              )}
+              {item.href === "/renters" && automationNavItems.length > 0 && (
+                <div className="pt-3 mt-2 border-t border-brand-black-line">
+                  <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-white/30">{t.automation.dashboardTitle}</p>
+                  {automationNavItems.map((autoItem) => (
+                    <NavLink key={autoItem.href} {...autoItem} />
                   ))}
                 </div>
               )}

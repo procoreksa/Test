@@ -30,9 +30,10 @@ import {
   isRefundAmountAllowed,
   computeSettlementCompletionStatus,
 } from "@/lib/security-deposit-rules";
-import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
 import { buildRenterRecipient } from "@/lib/communications/recipients";
 import { resolveNotificationLanguage } from "@/lib/communications/language";
+import { emitCommunicationEventTx } from "@/lib/automation/outbox-emit";
+import { securityDepositSettlementPostedKey, securityDepositRefundRecordedKey } from "@/lib/automation/outbox-keys";
 
 const PAGE_SIZE = 25;
 
@@ -725,35 +726,35 @@ export async function postSecurityDepositSettlement(settlementId: string): Promi
         newValues: { status: newStatus, depositApplied: depositApplied.toString(), refundDue: refundDue.toString(), additionalDue: additionalDue.toString() },
       });
 
+      const [renter, unit] = await Promise.all([
+        tx.renter.findUnique({ where: { id: settlement.renterId } }),
+        tx.unit.findUnique({ where: { id: settlement.unitId } }),
+      ]);
+      if (renter) {
+        // Durable intent, same transaction as the settlement posting above
+        // (Critical Principle 1) - see docs/AUTOMATION-SCHEDULED-JOBS.md.
+        await emitCommunicationEventTx(tx, {
+          organizationId,
+          eventType: "SECURITY_DEPOSIT_SETTLEMENT_POSTED",
+          eventKey: securityDepositSettlementPostedKey(settlement.id),
+          businessEntityType: "SecurityDepositSettlement",
+          businessEntityId: settlement.id,
+          language: resolveNotificationLanguage(locale),
+          variables: {
+            settlementNumber: settlement.settlementNumber,
+            refundDue: refundDue.toString(),
+            additionalDue: additionalDue.toString(),
+            currency: "SAR",
+            unitNumber: unit?.unitNumber ?? "",
+          },
+          recipients: [buildRenterRecipient(renter)],
+        });
+      }
+
       return { id: settlement.id, posted: true, refundDue, additionalDue };
     },
     { isolationLevel: "Serializable" }
   );
-
-  if (result.posted) {
-    const settlement = await prisma.securityDepositSettlement.findUniqueOrThrow({ where: { id: settlementId } });
-    const [renter, unit] = await Promise.all([
-      prisma.renter.findUnique({ where: { id: settlement.renterId } }),
-      prisma.unit.findUnique({ where: { id: settlement.unitId } }),
-    ]);
-    if (renter) {
-      await enqueueCommunicationEvent({
-        organizationId,
-        eventType: "SECURITY_DEPOSIT_SETTLEMENT_POSTED",
-        businessEntityType: "SecurityDepositSettlement",
-        businessEntityId: settlement.id,
-        language: resolveNotificationLanguage(locale),
-        variables: {
-          settlementNumber: settlement.settlementNumber,
-          refundDue: (result.refundDue ?? new Prisma.Decimal(0)).toString(),
-          additionalDue: (result.additionalDue ?? new Prisma.Decimal(0)).toString(),
-          currency: "SAR",
-          unitNumber: unit?.unitNumber ?? "",
-        },
-        recipients: [buildRenterRecipient(renter)],
-      });
-    }
-  }
 
   revalidatePath(`/operations/settlements/${settlementId}`);
   return result.id;
@@ -843,33 +844,35 @@ export async function recordSecurityDepositRefund(formData: FormData): Promise<s
         newValues: { amount: parsed.amount, settlementId: parsed.settlementId, newStatus },
       });
 
+      const [renter, unit] = await Promise.all([
+        tx.renter.findUnique({ where: { id: settlement.renterId } }),
+        tx.unit.findUnique({ where: { id: settlement.unitId } }),
+      ]);
+      if (renter) {
+        // Durable intent, same transaction as the refund creation above
+        // (Critical Principle 1) - see docs/AUTOMATION-SCHEDULED-JOBS.md.
+        await emitCommunicationEventTx(tx, {
+          organizationId,
+          eventType: "SECURITY_DEPOSIT_REFUND_RECORDED",
+          eventKey: securityDepositRefundRecordedKey(refund.id),
+          businessEntityType: "SecurityDepositRefund",
+          businessEntityId: refund.id,
+          language: resolveNotificationLanguage(locale),
+          variables: {
+            settlementNumber: settlement.settlementNumber,
+            refundAmount: parsed.amount.toString(),
+            currency: "SAR",
+            method: parsed.method ?? "",
+            unitNumber: unit?.unitNumber ?? "",
+          },
+          recipients: [buildRenterRecipient(renter)],
+        });
+      }
+
       return refund.id;
     },
     { isolationLevel: "Serializable" }
   );
-
-  const settlement = await prisma.securityDepositSettlement.findUniqueOrThrow({ where: { id: parsed.settlementId } });
-  const [renter, unit] = await Promise.all([
-    prisma.renter.findUnique({ where: { id: settlement.renterId } }),
-    prisma.unit.findUnique({ where: { id: settlement.unitId } }),
-  ]);
-  if (renter) {
-    await enqueueCommunicationEvent({
-      organizationId,
-      eventType: "SECURITY_DEPOSIT_REFUND_RECORDED",
-      businessEntityType: "SecurityDepositRefund",
-      businessEntityId: refundId,
-      language: resolveNotificationLanguage(locale),
-      variables: {
-        settlementNumber: settlement.settlementNumber,
-        refundAmount: parsed.amount.toString(),
-        currency: "SAR",
-        method: parsed.method ?? "",
-        unitNumber: unit?.unitNumber ?? "",
-      },
-      recipients: [buildRenterRecipient(renter)],
-    });
-  }
 
   revalidatePath(`/operations/settlements/${parsed.settlementId}`);
   return refundId;

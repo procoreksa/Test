@@ -8,9 +8,10 @@ import { nextCounterValue, formatReceiptNumber } from "@/lib/numbering";
 import { getLocale, getDictionary, currencyFormatter } from "@/lib/i18n";
 import { recomputeScheduleStatus } from "@/lib/schedule-status";
 import { auditCreate, auditAction, requirePermissionAudited } from "@/lib/audit";
-import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
 import { buildRenterRecipient } from "@/lib/communications/recipients";
 import { resolveNotificationLanguage } from "@/lib/communications/language";
+import { emitCommunicationEventTx } from "@/lib/automation/outbox-emit";
+import { paymentReceivedKey } from "@/lib/automation/outbox-keys";
 
 function paymentSchema(t: ReturnType<typeof getDictionary>) {
   return z.object({
@@ -36,7 +37,7 @@ export async function recordPayment(formData: FormData) {
     notes: formData.get("notes") || undefined,
   });
 
-  const { payment, invoice } = await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx) => {
     const invoice = await tx.invoice.findUniqueOrThrow({
       where: { id: parsed.invoiceId, organizationId },
       include: { lines: { select: { paymentScheduleId: true } } },
@@ -93,28 +94,29 @@ export async function recordPayment(formData: FormData) {
       },
     });
 
-    return { payment, invoice };
+    const renter = await tx.renter.findUnique({ where: { id: invoice.renterId } });
+    if (renter) {
+      // Durable intent, same transaction as the Payment/Invoice mutations
+      // above (Critical Principle 1) - see docs/AUTOMATION-SCHEDULED-JOBS.md.
+      await emitCommunicationEventTx(tx, {
+        organizationId,
+        eventType: "PAYMENT_RECEIVED",
+        eventKey: paymentReceivedKey(payment.id),
+        businessEntityType: "Payment",
+        businessEntityId: payment.id,
+        language: resolveNotificationLanguage(locale),
+        variables: {
+          receiptNumber: payment.receiptNumber,
+          amount: payment.amount.toString(),
+          currency: invoice.currency,
+          paymentDate: payment.paymentDate.toISOString().slice(0, 10),
+          invoiceNumber: invoice.invoiceNumber,
+          renterName: renter.fullName,
+        },
+        recipients: [buildRenterRecipient(renter)],
+      });
+    }
   });
-
-  const renter = await prisma.renter.findUnique({ where: { id: invoice.renterId } });
-  if (renter) {
-    await enqueueCommunicationEvent({
-      organizationId,
-      eventType: "PAYMENT_RECEIVED",
-      businessEntityType: "Payment",
-      businessEntityId: payment.id,
-      language: resolveNotificationLanguage(locale),
-      variables: {
-        receiptNumber: payment.receiptNumber,
-        amount: payment.amount.toString(),
-        currency: invoice.currency,
-        paymentDate: payment.paymentDate.toISOString().slice(0, 10),
-        invoiceNumber: invoice.invoiceNumber,
-        renterName: renter.fullName,
-      },
-      recipients: [buildRenterRecipient(renter)],
-    });
-  }
 
   revalidatePath("/invoices");
   revalidatePath("/collections");

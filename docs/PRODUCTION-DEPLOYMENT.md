@@ -87,6 +87,8 @@ Required in every environment:
 | `DATABASE_URL` | Runtime (pooled) Postgres connection | Required |
 | `DIRECT_URL` | Migration (direct) Postgres connection | Required; same as `DATABASE_URL` locally |
 | `AUTH_SECRET` | NextAuth JWT signing secret | Required; must be a real random secret in production, never the `.env.example` placeholder |
+| `COMMUNICATIONS_WORKER_SECRET` | Gates `POST /api/communications/process` (the notification delivery worker) | Required once any notification is expected to actually send - see `docs/NOTIFICATIONS-COMMUNICATIONS.md` §34 |
+| `AUTOMATION_WORKER_SECRET` | Gates `POST /api/automation/{scheduler,worker,outbox,reconciliation}` | Required once any scheduled reminder or the outbox is expected to run - deliberately a separate secret from `COMMUNICATIONS_WORKER_SECRET` so each stage is independently rotatable; see `docs/AUTOMATION-SCHEDULED-JOBS.md` §39 |
 
 Optional (ZATCA e-invoicing, only needed once the organization onboards
 with ZATCA):
@@ -227,6 +229,26 @@ future needs, for whoever scopes that work:
    `AUTH_SECRET`).
 6. Smoke-test login and one representative page per major module before
    announcing the environment as live.
+
+## 10a. Background workers & scheduled jobs
+
+Five routes must be hit periodically by an external cron/scheduled-task
+caller (Vercel Cron, Cloud Scheduler, or the hosting platform's own
+equivalent) - nothing in this codebase calls itself on a timer:
+
+| Route | Cadence | Purpose |
+|---|---|---|
+| `POST /api/communications/process?token=$COMMUNICATIONS_WORKER_SECRET` | 1-5 min | Sends queued `CommunicationMessage` rows via the provider adapter |
+| `POST /api/automation/scheduler?token=$AUTOMATION_WORKER_SECRET` | 15-60 min | Discovers due reminders, inserts `AutomationJob` rows |
+| `POST /api/automation/worker?token=$AUTOMATION_WORKER_SECRET` | 5-15 min | Claims and executes due `AutomationJob` rows |
+| `POST /api/automation/outbox?token=$AUTOMATION_WORKER_SECRET` | 1-5 min | Drains `CommunicationOutboxEvent` into `CommunicationMessage` |
+| `POST /api/automation/reconciliation?token=$AUTOMATION_WORKER_SECRET` | daily/hourly | Defense-in-depth fill for any durably-missing outbox event |
+
+None of these imply sub-minute real-time delivery. If none is configured,
+the application still functions correctly for every other feature - only
+notifications/reminders never actually send/fire (they queue up safely,
+nothing is lost). See `docs/AUTOMATION-SCHEDULED-JOBS.md` §39 for the full
+runbook (secret rotation, backlog diagnosis, duplicate investigation).
 
 ## 11. Rollback strategy
 

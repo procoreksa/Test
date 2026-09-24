@@ -17,9 +17,10 @@ import { getLocale, getDictionary } from "@/lib/i18n";
 import { auditCreate, auditUpdate, auditAction, requirePermissionAudited } from "@/lib/audit";
 import { nextCounterValue, formatMaintenanceRequestNumber, formatMaintenanceWorkOrderNumber, formatMaintenanceVendorNumber } from "@/lib/numbering";
 import { resolveMaintenanceLocation } from "@/lib/operations/maintenance-location";
-import { enqueueCommunicationEvent } from "@/lib/communications/enqueue";
 import { buildRenterRecipient } from "@/lib/communications/recipients";
 import { resolveNotificationLanguage } from "@/lib/communications/language";
+import { emitCommunicationEventTx } from "@/lib/automation/outbox-emit";
+import { maintenanceRequestCreatedKey, maintenanceScheduledKey, maintenanceCompletedKey } from "@/lib/automation/outbox-keys";
 import {
   isValidMaintenanceRequestTransition,
   isValidMaintenanceWorkOrderTransition,
@@ -240,34 +241,38 @@ export async function createMaintenanceRequest(formData: FormData): Promise<stri
         newValues: { scopeType: created.scopeType, category: created.category, priority: created.priority, unitId: created.unitId, buildingId: created.buildingId, compoundId: created.compoundId },
       });
 
+      if (created.renterId) {
+        const [renter, unit] = await Promise.all([
+          tx.renter.findUnique({ where: { id: created.renterId } }),
+          created.unitId ? tx.unit.findUnique({ where: { id: created.unitId } }) : Promise.resolve(null),
+        ]);
+        if (renter) {
+          // Durable intent, same transaction as the MaintenanceRequest
+          // creation above (Critical Principle 1) - see
+          // docs/AUTOMATION-SCHEDULED-JOBS.md.
+          await emitCommunicationEventTx(tx, {
+            organizationId,
+            eventType: "MAINTENANCE_REQUEST_CREATED",
+            eventKey: maintenanceRequestCreatedKey(created.id),
+            businessEntityType: "MaintenanceRequest",
+            businessEntityId: created.id,
+            language: resolveNotificationLanguage(locale),
+            variables: {
+              requestNumber: created.requestNumber,
+              title: created.title,
+              category: created.category,
+              priority: created.priority,
+              unitNumber: unit?.unitNumber ?? "",
+            },
+            recipients: [buildRenterRecipient(renter)],
+          });
+        }
+      }
+
       return created;
     },
     { isolationLevel: "Serializable" }
   );
-
-  if (requestResult.renterId) {
-    const [renter, unit] = await Promise.all([
-      prisma.renter.findUnique({ where: { id: requestResult.renterId } }),
-      requestResult.unitId ? prisma.unit.findUnique({ where: { id: requestResult.unitId } }) : Promise.resolve(null),
-    ]);
-    if (renter) {
-      await enqueueCommunicationEvent({
-        organizationId,
-        eventType: "MAINTENANCE_REQUEST_CREATED",
-        businessEntityType: "MaintenanceRequest",
-        businessEntityId: requestResult.id,
-        language: resolveNotificationLanguage(locale),
-        variables: {
-          requestNumber: requestResult.requestNumber,
-          title: requestResult.title,
-          category: requestResult.category,
-          priority: requestResult.priority,
-          unitNumber: unit?.unitNumber ?? "",
-        },
-        recipients: [buildRenterRecipient(renter)],
-      });
-    }
-  }
 
   revalidatePath("/operations/maintenance/requests");
   revalidatePath("/operations");
@@ -694,36 +699,42 @@ export async function scheduleWorkOrder(workOrderId: string, formData: FormData)
       entityDisplayName: workOrder.workOrderNumber,
       metadata: { scheduledStart: parsed.scheduledStart, scheduledEnd: parsed.scheduledEnd },
     });
-  });
 
-  await enqueueMaintenanceWorkOrderNotification({
-    organizationId,
-    workOrderId,
-    eventType: "MAINTENANCE_SCHEDULED",
-    locale,
-    extraVariables: { scheduledDate: parsed.scheduledStart.toISOString().slice(0, 10) },
+    await emitMaintenanceWorkOrderNotificationTx(tx, {
+      organizationId,
+      workOrderId,
+      eventType: "MAINTENANCE_SCHEDULED",
+      eventKey: maintenanceScheduledKey(workOrderId, parsed.scheduledStart),
+      locale,
+      extraVariables: { scheduledDate: parsed.scheduledStart.toISOString().slice(0, 10) },
+    });
   });
 
   revalidatePath(`/operations/maintenance/work-orders/${workOrderId}`);
 }
 
-/** Shared by scheduleWorkOrder()/completeWorkOrder() - both need the same Request -> Renter/Unit traversal to notify the tenant. */
-async function enqueueMaintenanceWorkOrderNotification(params: {
-  organizationId: string;
-  workOrderId: string;
-  eventType: "MAINTENANCE_SCHEDULED" | "MAINTENANCE_COMPLETED";
-  locale: string;
-  extraVariables: Record<string, string>;
-}): Promise<void> {
-  const workOrder = await prisma.maintenanceWorkOrder.findUnique({
+/** Shared by scheduleWorkOrder()/completeWorkOrder() - both need the same Request -> Renter/Unit traversal to notify the tenant. Runs inside the caller's own transaction (Critical Principle 1) - see docs/AUTOMATION-SCHEDULED-JOBS.md. */
+async function emitMaintenanceWorkOrderNotificationTx(
+  tx: Prisma.TransactionClient,
+  params: {
+    organizationId: string;
+    workOrderId: string;
+    eventType: "MAINTENANCE_SCHEDULED" | "MAINTENANCE_COMPLETED";
+    eventKey: string;
+    locale: string;
+    extraVariables: Record<string, string>;
+  }
+): Promise<void> {
+  const workOrder = await tx.maintenanceWorkOrder.findUnique({
     where: { id: params.workOrderId },
     include: { request: { include: { renter: true, unit: true } } },
   });
   if (!workOrder?.request.renter) return;
 
-  await enqueueCommunicationEvent({
+  await emitCommunicationEventTx(tx, {
     organizationId: params.organizationId,
     eventType: params.eventType,
+    eventKey: params.eventKey,
     businessEntityType: "MaintenanceWorkOrder",
     businessEntityId: workOrder.id,
     language: resolveNotificationLanguage(params.locale),
@@ -856,14 +867,15 @@ export async function completeWorkOrder(workOrderId: string, formData: FormData)
     });
 
     await auditAction(tx, { action: "UPDATE", entityType: "MaintenanceWorkOrder", entityId: workOrder.id, entityDisplayName: workOrder.workOrderNumber, metadata: { to: "COMPLETED" } });
-  });
 
-  await enqueueMaintenanceWorkOrderNotification({
-    organizationId,
-    workOrderId,
-    eventType: "MAINTENANCE_COMPLETED",
-    locale,
-    extraVariables: { completedDate: new Date().toISOString().slice(0, 10) },
+    await emitMaintenanceWorkOrderNotificationTx(tx, {
+      organizationId,
+      workOrderId,
+      eventType: "MAINTENANCE_COMPLETED",
+      eventKey: maintenanceCompletedKey(workOrderId),
+      locale,
+      extraVariables: { completedDate: new Date().toISOString().slice(0, 10) },
+    });
   });
 
   revalidatePath(`/operations/maintenance/work-orders/${workOrderId}`);
