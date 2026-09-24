@@ -1,13 +1,17 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
+import { isAuthorizedWorkerRequest } from "@/lib/security/worker-auth";
 import { processQueuedCommunications } from "@/lib/communications/processor";
+import { handleWorkerRouteError } from "@/lib/api-error";
 
 /**
  * Protected internal worker route - the only way processQueuedCommunications()
  * ever runs. Gated by a dedicated shared secret (not AUTH_SECRET - this
  * route triggers real provider sends, a materially different blast radius
- * than the demo-seed route it otherwise mirrors), reusing the same
- * `?token=` + `timingSafeEqual` idiom as src/app/api/admin/seed/route.ts.
+ * than the demo-seed route it otherwise mirrors), read from the
+ * `Authorization: Bearer <token>` header via the centralized
+ * isAuthorizedWorkerRequest() helper (Prompt 23 Step 21/22 - never a
+ * `?token=` query-string parameter, never re-implementing its own
+ * timing-safe comparison).
  *
  * No scheduler exists in this codebase (see docs/NOTIFICATIONS-COMMUNICATIONS.md,
  * "Scheduling boundary") - an external cron/scheduled-task caller is
@@ -16,12 +20,7 @@ import { processQueuedCommunications } from "@/lib/communications/processor";
  * never run unbounded.
  */
 function isAuthorized(request: Request): boolean {
-  const token = new URL(request.url).searchParams.get("token") ?? "";
-  const secret = process.env.COMMUNICATIONS_WORKER_SECRET ?? "";
-  const tokenBuf = Buffer.from(token);
-  const secretBuf = Buffer.from(secret);
-  if (!secret || tokenBuf.length !== secretBuf.length) return false;
-  return timingSafeEqual(tokenBuf, secretBuf);
+  return isAuthorizedWorkerRequest(request, process.env.COMMUNICATIONS_WORKER_SECRET);
 }
 
 export async function POST(request: Request) {
@@ -36,9 +35,6 @@ export async function POST(request: Request) {
     const result = await processQueuedCommunications(batchSize);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleWorkerRouteError("communications.process.failed", error);
   }
 }

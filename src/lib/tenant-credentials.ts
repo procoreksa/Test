@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { checkAndRecordLoginAttempt } from "@/lib/login-rate-limiter";
 
 /**
  * The Tenant Portal's login rule and its audit trail - deliberately kept in
@@ -73,6 +74,14 @@ export async function verifyTenantCredentials(
   meta: { ipAddress?: string | null; userAgent?: string | null } = {}
 ): Promise<TenantCredentialAuthResult | null> {
   const normalizedEmail = email.toLowerCase().trim();
+
+  // Hardening (Prompt 23 - login rate limiting): checked before any
+  // account lookup/bcrypt.compare() - a throttled attempt fails exactly
+  // like any other rejection (a bare `return null`), preserving the "no
+  // email-enumeration signal" property documented above.
+  const { limited } = await checkAndRecordLoginAttempt({ principalType: "TENANT", identifier: normalizedEmail, ipAddress: meta.ipAddress ?? null });
+  if (limited) return null;
+
   const account = await prisma.tenantPortalAccount.findFirst({ where: { emailNormalized: normalizedEmail } });
 
   if (!account || account.status !== "ACTIVE") {

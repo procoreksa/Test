@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import type { AuditAction } from "@/lib/audit";
 import { shouldRevalidateSession, refreshSessionClaims } from "@/lib/auth-session-refresh";
+import { checkAndRecordLoginAttempt } from "@/lib/login-rate-limiter";
 
 /**
  * Writes a LOGIN/LOGIN_FAILED/LOGOUT row directly via `prisma`, deliberately
@@ -101,6 +102,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!email || !password) return null;
 
         const normalizedEmail = email.toLowerCase().trim();
+
+        // Hardening (Prompt 23 - login rate limiting): checked BEFORE any
+        // database lookup or bcrypt.compare() call, so a throttled request
+        // never reaches either - it fails exactly like a wrong password
+        // (a bare `return null`), never a distinguishable error, keeping
+        // this codebase's existing "identical generic failure for every
+        // rejection reason" anti-enumeration property intact.
+        const { limited } = await checkAndRecordLoginAttempt({ principalType: "INTERNAL", identifier: normalizedEmail, ipAddress });
+        if (limited) return null;
+
         const user = await prisma.user.findFirst({
           where: { email: normalizedEmail, isActive: true },
           include: { organization: true },

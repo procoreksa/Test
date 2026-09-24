@@ -88,13 +88,28 @@ Required in every environment:
 | `DIRECT_URL` | Migration (direct) Postgres connection | Required; same as `DATABASE_URL` locally |
 | `AUTH_SECRET` | NextAuth JWT signing secret | Required; must be a real random secret in production, never the `.env.example` placeholder |
 | `COMMUNICATIONS_WORKER_SECRET` | Gates `POST /api/communications/process` (the notification delivery worker) | Required once any notification is expected to actually send - see `docs/NOTIFICATIONS-COMMUNICATIONS.md` §34 |
-| `AUTOMATION_WORKER_SECRET` | Gates `POST /api/automation/{scheduler,worker,outbox,reconciliation}` | Required once any scheduled reminder or the outbox is expected to run - deliberately a separate secret from `COMMUNICATIONS_WORKER_SECRET` so each stage is independently rotatable; see `docs/AUTOMATION-SCHEDULED-JOBS.md` §39 |
+| `AUTOMATION_WORKER_SECRET` | Gates `POST /api/automation/{scheduler,worker,outbox,reconciliation}` and `GET /api/ops/health` | Required once any scheduled reminder or the outbox is expected to run - deliberately a separate secret from `COMMUNICATIONS_WORKER_SECRET` so each stage is independently rotatable; see `docs/AUTOMATION-SCHEDULED-JOBS.md` §39 |
+| `DOCUMENT_S3_ENDPOINT` | S3-compatible storage endpoint URL | **Required in production** (Prompt 23, Critical Rule 5) - production must not run on `LOCAL_DEV` storage; see §5 below |
+| `DOCUMENT_S3_REGION` | S3-compatible storage region | Required alongside the other four `DOCUMENT_S3_*` variables |
+| `DOCUMENT_S3_BUCKET` | S3-compatible storage bucket name | Required alongside the other four `DOCUMENT_S3_*` variables |
+| `DOCUMENT_S3_ACCESS_KEY_ID` | S3-compatible storage access key | Required alongside the other four `DOCUMENT_S3_*` variables |
+| `DOCUMENT_S3_SECRET_ACCESS_KEY` | S3-compatible storage secret key | Required alongside the other four `DOCUMENT_S3_*` variables |
 
-Optional (ZATCA e-invoicing, only needed once the organization onboards
-with ZATCA):
+Required only if that specific route is ever exposed in production:
+
+| Variable | Purpose | Notes |
+|---|---|---|
+| `ADMIN_SEED_SECRET` | Gates `POST /api/admin/seed` | Never `AUTH_SECRET` (Prompt 23 hardening - a worker secret must never double as the session-signing secret) |
+| `ALLOW_PRODUCTION_SEED` | Must be exactly `"true"` for `/api/admin/seed` to run at all when `NODE_ENV=production` | Defaults closed (any other value, including unset, refuses the route in production) - see `src/app/api/admin/seed/route.ts` |
+
+Optional (independent per-principal auth secrets, storage addressing, ZATCA
+e-invoicing):
 
 | Variable | Purpose |
 |---|---|
+| `OWNER_AUTH_SECRET` | Independent Owner Portal signing secret (derived from `AUTH_SECRET` if unset) |
+| `TENANT_AUTH_SECRET` | Independent Tenant Portal signing secret (derived from `AUTH_SECRET` if unset) |
+| `DOCUMENT_S3_FORCE_PATH_STYLE` | `"true"` (default) or `"false"` - path-style vs. virtual-hosted-style S3 addressing |
 | `ZATCA_ENVIRONMENT` | `sandbox` or production |
 | `ZATCA_API_BASE_URL` | Fatoora endpoint |
 | `ZATCA_ONBOARDING_OTP` | One-time onboarding credential |
@@ -127,42 +142,57 @@ client-side JavaScript and must never hold a secret.
 ## 5. Storage
 
 Document Management (`docs/DOCUMENT-MANAGEMENT.md`) added the adapter
-boundary (`DocumentStorageProvider`) `docs/STORAGE-ARCHITECTURE.md`
-anticipated, but **no real production object-storage account is
-configured in this environment** - do not claim production-readiness for
-file uploads without first provisioning one. Two adapters exist:
+boundary (`DocumentStorageProvider`); Prompt 23's hardening pass closed
+the previously-open gap by wiring a real client behind it. Two adapters
+exist:
 
-- **`LOCAL_DEV`** (the default when nothing below is set) - filesystem-
-  backed, explicitly non-production (see §2's caveat above). Fine for
-  local development and this environment's own tests only.
-- **`S3_COMPATIBLE`** - the production adapter boundary. It becomes active
-  automatically once all five of these environment variables are set:
-  `DOCUMENT_S3_ENDPOINT`, `DOCUMENT_S3_REGION`, `DOCUMENT_S3_BUCKET`,
-  `DOCUMENT_S3_ACCESS_KEY_ID`, `DOCUMENT_S3_SECRET_ACCESS_KEY` - join the
-  environment-variable table above, following the same "never commit,
-  never expose via `NEXT_PUBLIC_`" rules. **Important**: as of this pass,
-  setting these variables makes the adapter report itself "configured" but
-  every actual operation still throws (`StorageProviderNotConfiguredError`/
-  "no client implementation is wired in yet") - no S3-compatible client
-  library was added or wired up, since no real credentials exist in this
-  environment to test one against (see
-  `docs/DOCUMENT-MANAGEMENT.md` §20). **Do not set these variables in a
-  real production environment yet** - doing so today would make uploads
-  start failing outright instead of silently falling back to `LOCAL_DEV`.
-  A future task must add a real S3-compatible client (e.g. the AWS SDK v3
-  `@aws-sdk/client-s3`, which works against Supabase Storage, R2,
-  MinIO, and real S3 alike) behind the existing `DocumentStorageProvider`
-  interface before these variables are safe to set anywhere real traffic
-  reaches them.
+- **`LOCAL_DEV`** (the fallback when the five `DOCUMENT_S3_*` variables
+  aren't all set) - filesystem-backed, explicitly non-production (see
+  §2's caveat above). Fine for local development and this environment's
+  own tests only. **Production refuses to start on this adapter** -
+  `src/instrumentation.ts` fails closed at server startup if
+  `NODE_ENV=production` and the S3 configuration is missing/partial
+  (Critical Rule 3/5); `getDefaultStorageProviderKind()` independently
+  throws the same refusal if ever reached directly.
+- **`S3_COMPATIBLE`** - the production adapter, now a real client built on
+  the official AWS SDK v3 (`@aws-sdk/client-s3` + `@smithy/
+  node-http-handler`), which works unmodified against real AWS S3 and any
+  S3-compatible provider (Cloudflare R2, MinIO, Backblaze B2, Supabase
+  Storage) via a custom `DOCUMENT_S3_ENDPOINT`. Becomes active once all
+  five `DOCUMENT_S3_*` variables (§4 above) are set. Bounded connection
+  (5s)/request (15s) timeouts and a bounded retry count (2 attempts) - no
+  infinite waits, no retry storms. Private-by-default (no ACL ever set);
+  the only read path is the server-side, re-authorized download route -
+  see `docs/PRODUCTION-SECURITY.md` §10.
+- **What has and hasn't been verified:** the real adapter class was
+  exercised end-to-end (put/get/exists/delete, not-found handling,
+  idempotent delete, a full backup-delete-restore-checksum-verify cycle)
+  against a local, in-process S3-compatible test server - see
+  `docs/BACKUP-RECOVERY.md` §7b. It has **not** been exercised against a
+  real AWS/R2/MinIO account, since none exists in this environment - do
+  not claim "production storage verified against a live provider" until
+  that's actually done with real credentials in a real environment.
 
-## 6. Health check
+## 6. Health check (three tiers - Prompt 23)
 
-`GET /api/health` (added this pass) - unauthenticated, returns
-`{ status, database }` and a `200`/`503` status code, checking only that
-the app process is up and can run `SELECT 1` against Postgres. Configure
-the hosting platform's own health-check probe to hit this path. It
-deliberately never returns database host/version/credentials/schema
-details - safe to leave publicly reachable.
+- **`GET /api/health`** - public, unauthenticated **liveness**. Never
+  touches the database. Returns `{ status, timestamp, version }`. Point
+  the hosting platform's liveness probe here.
+- **`GET /api/health/ready`** - public, unauthenticated **readiness**.
+  Checks DB reachability and production config validity; returns
+  `200`/`503` and `{ status, timestamp, checks: { database, config } }`.
+  Point the hosting platform's readiness probe / load-balancer health
+  check here (not at `/api/health`) so traffic stops reaching an instance
+  that can't actually serve it.
+- **`GET /api/ops/health`** - protected (`Authorization: Bearer
+  $AUTOMATION_WORKER_SECRET`) **operational health** for a human operator:
+  automation/outbox backlog counts and oldest-pending ages, communication
+  failure count, active storage provider. Never wire an automated
+  orchestrator probe to this one - it needs the secret.
+
+All three deliberately never return a database host/version/credential/
+schema detail, bucket name, or organization-specific data - safe to leave
+`/api/health` and `/api/health/ready` publicly reachable.
 
 ## 7. Backups
 
@@ -183,11 +213,24 @@ This portability was verified by inspection (no `@supabase/*` or
 Render-specific package appears in `package.json`), not by actually
 testing a second provider in this pass.
 
-## 9. Observability (Step 54 - documented, not built)
+## 9. Observability
 
-No monitoring vendor is integrated, and none should be added purely for
-this hardening pass (per the brief's explicit instruction). Documented
-future needs, for whoever scopes that work:
+**Structured logging - added this pass** (`src/lib/logging.ts`): a
+lightweight, dependency-free JSON-line logger (`logInfo`/`logWarn`/
+`logError`/`logSecurityEvent`), with centralized, case-insensitive
+redaction of anything secret-shaped before it's ever serialized (see
+`docs/PRODUCTION-SECURITY.md` §14). Every worker/protected-API route's
+catch block now calls `handleWorkerRouteError()`
+(`src/lib/api-error.ts`), which logs the real (redacted) error under a
+`correlationId` and returns only `{ ok: false, error: "INTERNAL_ERROR",
+correlationId }` to the caller - never the raw exception message. This is
+still intentionally "just enough to investigate an incident from logs
+alone," not a full observability platform - no monitoring vendor is
+integrated, and none should be added purely for a hardening pass. `/api/
+ops/health` (§6) gives an operator a place to actively check backlog/
+failure state; nothing pages anyone automatically yet.
+
+Documented future needs, for whoever scopes that work:
 
 - **Application errors** - a Next.js-native error-tracking integration
   (e.g. Sentry's official Next.js SDK) would be the natural fit given the
@@ -202,53 +245,104 @@ future needs, for whoever scopes that work:
   (`LOGIN_FAILED` rows) - a future dashboard/alert reading from that table
   is cheaper to build than a separate logging pipeline, since the data
   already exists.
-- **Payment/storage failures** - no payment gateway exists yet. A storage
-  adapter now exists (Document Management,
-  `docs/DOCUMENT-MANAGEMENT.md`) with a compensating-delete strategy for
-  storage/DB inconsistency (§24-25 there) - a production deployment should
-  alert on repeated orphaned-object cleanup failures once a real
-  `S3_COMPATIBLE` client is wired in, but no such alerting exists yet.
-- Until any of the above exists, `console.error` in a genuinely
-  unexpected-error `catch` block (not the routine, expected
-  validation-error `throw`s this codebase already uses throughout) is a
-  reasonable, zero-dependency stopgap - not added in this pass since
-  nothing currently throws an error that isn't already an expected,
-  translated validation failure.
+- **Payment/storage failures** - no payment gateway exists yet. The
+  storage adapter (Document Management, `docs/DOCUMENT-MANAGEMENT.md`,
+  now a real S3-compatible client as of this pass) has a compensating-
+  delete strategy for storage/DB inconsistency (§24-25 there) - a
+  production deployment should alert on repeated orphaned-object cleanup
+  failures, but no external alerting vendor exists yet to wire that into;
+  the structured logs (§9 above) at least make the failure greppable.
 
-## 10. Deployment sequence (a fresh production rollout)
+## 10. Deployment sequence (25-step chronological checklist, Prompt 23)
 
-1. Provision the Postgres database (Supabase project, or equivalent);
-   note both the pooled and direct connection strings.
-2. Set all required environment variables (§4) on the hosting platform.
-3. Deploy - the build step runs `prisma generate && prisma migrate deploy && next build`
-   automatically, so migrations are applied before the new build serves
-   any traffic.
-4. Verify `/api/health` returns `{"status":"ok","database":"ok"}`.
-5. Seed initial data if needed (`prisma/seed.ts` / the `/api/admin/seed`
-   bootstrap endpoint already in this codebase, token-gated by
-   `AUTH_SECRET`).
-6. Smoke-test login and one representative page per major module before
-   announcing the environment as live.
+1. Provision the PostgreSQL database (Supabase project, or equivalent).
+2. Note both the pooled (`DATABASE_URL`) and direct (`DIRECT_URL`)
+   connection strings.
+3. Provision the S3-compatible object storage bucket (AWS S3, Cloudflare
+   R2, MinIO, Backblaze B2, or equivalent) - required; production refuses
+   to start on `LOCAL_DEV` storage (§5).
+4. Configure the bucket's own security: private by default (no public
+   read/list ACL, no public bucket policy), versioning enabled if the
+   provider supports it (§7).
+5. Set all required environment variables (§4) on the hosting platform:
+   `DATABASE_URL`, `DIRECT_URL`, `AUTH_SECRET`.
+6. Generate a real, random `AUTH_SECRET` (32+ random bytes) - never the
+   `.env.example` placeholder.
+7. Generate a real, random `AUTOMATION_WORKER_SECRET`, independent from
+   `AUTH_SECRET`.
+8. Configure `COMMUNICATIONS_WORKER_SECRET` and the real communications
+   provider's own credentials once a real provider is wired (currently
+   mock-only - see `docs/NOTIFICATIONS-COMMUNICATIONS.md`).
+9. Set all five `DOCUMENT_S3_*` variables from steps 3-4.
+10. Install dependencies with the committed lockfile
+    (`npm ci`, never a bare `npm install`, for a reproducible build).
+11. Deploy - the build step runs `prisma generate && prisma migrate deploy
+    && next build` automatically.
+12. **Before the migration step runs**, ensure a fresh, verified database
+    backup exists (§7) - the build script above runs the migration
+    automatically, so this backup must be current *before* triggering the
+    deploy, not after.
+13. `prisma migrate deploy` applies pending migrations (never `migrate
+    dev` in production).
+14. At server startup, `src/instrumentation.ts` runs
+    `assertValidProductionEnvironment()` - the process refuses to start at
+    all if required production configuration is invalid (§6/Critical Rule
+    3). A startup failure here means step 5-9 was incomplete; fix the
+    missing/invalid variable and redeploy.
+15. App serves traffic once startup validation passes.
+16. Verify `GET /api/health` returns `{"status":"ok",...}`.
+17. Verify `GET /api/health/ready` returns `200` with both `checks.database`
+    and `checks.config` `true`.
+18. Register the worker/cron routes (§10a) with the hosting platform's
+    scheduled-task mechanism (Vercel Cron, Cloud Scheduler, or
+    equivalent) - nothing in this codebase calls itself on a timer.
+19. Confirm each worker route's cadence matches §10a's recommendations.
+20. Smoke-test: internal staff login (`/login`).
+21. Smoke-test: Tenant Portal login (`/portal/login`) and Owner Portal
+    login (`/owner-portal/login`), if either portal has real accounts yet.
+22. Smoke-test: one document upload + download round-trip through the
+    internal Document Center, confirming the S3-compatible adapter is
+    genuinely working end-to-end against the real provisioned bucket.
+23. Smoke-test: trigger one business event that emits a
+    `CommunicationOutboxEvent` (e.g. issue an invoice), then manually
+    invoke `/api/automation/outbox` and `/api/communications/process`
+    once to confirm the outbox→message pipeline works end-to-end.
+24. Confirm monitoring/alerting coverage per whatever the operating team
+    has set up (§9) - this codebase does not include its own alerting.
+25. Announce the environment as live; keep the pre-migration backup
+    (step 12) retained independently of the regular rolling schedule for
+    24-48 hours post-deploy (§7).
 
 ## 10a. Background workers & scheduled jobs
 
 Five routes must be hit periodically by an external cron/scheduled-task
 caller (Vercel Cron, Cloud Scheduler, or the hosting platform's own
-equivalent) - nothing in this codebase calls itself on a timer:
+equivalent) - nothing in this codebase calls itself on a timer. **Prompt
+23 hardening: the secret is now passed via the `Authorization` header,
+never a `?token=` query-string parameter** (a query string is captured by
+access logs/`Referer` headers - see `docs/PRODUCTION-SECURITY.md` §7):
 
 | Route | Cadence | Purpose |
 |---|---|---|
-| `POST /api/communications/process?token=$COMMUNICATIONS_WORKER_SECRET` | 1-5 min | Sends queued `CommunicationMessage` rows via the provider adapter |
-| `POST /api/automation/scheduler?token=$AUTOMATION_WORKER_SECRET` | 15-60 min | Discovers due reminders, inserts `AutomationJob` rows |
-| `POST /api/automation/worker?token=$AUTOMATION_WORKER_SECRET` | 5-15 min | Claims and executes due `AutomationJob` rows |
-| `POST /api/automation/outbox?token=$AUTOMATION_WORKER_SECRET` | 1-5 min | Drains `CommunicationOutboxEvent` into `CommunicationMessage` |
-| `POST /api/automation/reconciliation?token=$AUTOMATION_WORKER_SECRET` | daily/hourly | Defense-in-depth fill for any durably-missing outbox event |
+| `POST /api/communications/process` (`Authorization: Bearer $COMMUNICATIONS_WORKER_SECRET`) | 1-5 min | Sends queued `CommunicationMessage` rows via the provider adapter |
+| `POST /api/automation/scheduler` (`Authorization: Bearer $AUTOMATION_WORKER_SECRET`) | 15-60 min | Discovers due reminders, inserts `AutomationJob` rows |
+| `POST /api/automation/worker` (`Authorization: Bearer $AUTOMATION_WORKER_SECRET`) | 5-15 min | Claims and executes due `AutomationJob` rows |
+| `POST /api/automation/outbox` (`Authorization: Bearer $AUTOMATION_WORKER_SECRET`) | 1-5 min | Drains `CommunicationOutboxEvent` into `CommunicationMessage` |
+| `POST /api/automation/reconciliation` (`Authorization: Bearer $AUTOMATION_WORKER_SECRET`) | daily/hourly | Defense-in-depth fill for any durably-missing outbox event |
+
+Example invocation: `curl -X POST -H "Authorization: Bearer
+$AUTOMATION_WORKER_SECRET" https://your-app/api/automation/worker`.
 
 None of these imply sub-minute real-time delivery. If none is configured,
 the application still functions correctly for every other feature - only
 notifications/reminders never actually send/fire (they queue up safely,
 nothing is lost). See `docs/AUTOMATION-SCHEDULED-JOBS.md` §39 for the full
 runbook (secret rotation, backlog diagnosis, duplicate investigation).
+
+Seeding demo data, if ever needed against a real deployment: `POST
+/api/admin/seed` with `Authorization: Bearer $ADMIN_SEED_SECRET` - refuses
+to run at all in production unless `ALLOW_PRODUCTION_SEED=true` is also
+explicitly set (off by default; see `docs/PRODUCTION-SECURITY.md` §7).
 
 ## 11. Rollback strategy
 
@@ -265,10 +359,16 @@ migration against a live production database.
 
 ## 12. Logs
 
-No structured logging exists yet (see §9) - today, "logs" means whatever
-the hosting platform captures from stdout/stderr (Next.js's own
-request/build output) plus the `AuditLog` table for every business
-mutation and security event. Confirmed during this pass: nothing writes
-PII, financial data, tokens, cookies, or full form payloads to any log
-stream, because nothing writes to any log stream at all currently (see
-`docs/SECURITY-REVIEW.md` §"Logging").
+"Logs" means whatever the hosting platform captures from stdout/stderr -
+now including this pass's structured JSON-line logger (§9,
+`src/lib/logging.ts`) alongside Next.js's own request/build output - plus
+the `AuditLog` table for every business mutation and security event.
+Every log line is passed through centralized redaction before being
+serialized (`docs/PRODUCTION-SECURITY.md` §14) - no password, secret,
+token, authorization header, cookie, access key, or database URL is ever
+written to a log stream, and connection-string/AWS-key-shaped values
+inside an otherwise-innocuous string are pattern-scrubbed as defense in
+depth. Prior to this pass, confirmed zero `console.log`/`console.error`
+calls existed anywhere in `src/` (see `docs/SECURITY-REVIEW.md`
+§"Logging") - the baseline this pass's logging module was deliberately
+built to extend without regressing.

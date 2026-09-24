@@ -1,24 +1,22 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import packageJson from "../../../../package.json";
 
 /**
- * Minimal production health check (docs/PRODUCTION-DEPLOYMENT.md, "Health
- * check"). Deliberately unauthenticated (a load balancer/orchestrator must
- * be able to call it with no session) and deliberately minimal - it proves
- * the app process is up and can reach Postgres, nothing else. It never
- * returns the database host/version, credentials, schema details, or any
- * environment variable - only a plain ok/degraded status per check, so it
- * carries no information an attacker could use.
+ * Public LIVENESS check (Prompt 23 - "liveness-vs-readiness-vs-operational
+ * health distinction"). Answers exactly one question: "is the Node
+ * process up and able to handle an HTTP request at all?" - nothing more.
+ * Deliberately does NOT touch the database or any other dependency (that
+ * belongs to /api/health/ready below) - a liveness probe that depends on
+ * an external service can cause an orchestrator to kill/restart a
+ * perfectly healthy process during a transient DB blip, which is exactly
+ * the failure mode liveness checks exist to avoid.
+ *
+ * Coarse and unauthenticated by design (a load balancer/orchestrator must
+ * be able to call it with no session): only `status`/`timestamp`/
+ * `version` - never a database host, credentials, schema detail, queue
+ * count, or organization count (Critical Rule 4/Step "public health
+ * endpoint review").
  */
 export async function GET() {
-  let databaseOk = false;
-  try {
-    await prisma.$queryRaw`SELECT 1`;
-    databaseOk = true;
-  } catch {
-    databaseOk = false;
-  }
-
-  const status = databaseOk ? "ok" : "degraded";
-  return NextResponse.json({ status, database: databaseOk ? "ok" : "unreachable" }, { status: databaseOk ? 200 : 503 });
+  return NextResponse.json({ status: "ok", timestamp: new Date().toISOString(), version: packageJson.version });
 }

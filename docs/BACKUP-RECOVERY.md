@@ -130,7 +130,112 @@ needed.
    reason to prefer PITR over daily-only backups where the plan
    supports it).
 
-## 7. What this document does not cover
+## 7. Restore drill - actually executed (Prompt 23, Critical Rule 8)
+
+"A backup procedure alone is insufficient" - so, per Critical Rule 8, both a
+database restore and an object-storage restore were actually performed
+during this hardening pass, against isolated throwaway resources (never
+the shared dev/test databases). Both passed with full integrity
+verification, not just "the command exited 0."
+
+### 8a. Database restore drill (real PostgreSQL, `pg_dump`/`pg_restore`)
+
+1. Created an isolated, disposable source database
+   (`rental_saas_restore_drill_src`) and ran `prisma migrate deploy`
+   against it from empty - **this step failed on the first attempt**, and
+   is itself a real finding: see §9 below, "Migration-ordering bug found
+   and fixed by this drill."
+2. Once the corrected migration history applied cleanly, inserted a known
+   fixture row (`organizations` row `id = 'drill-org-1'`).
+3. Took a real backup: `pg_dump -Fc` to a `.dump` file (338,915 bytes).
+4. Simulated an incident: `DELETE FROM organizations WHERE id =
+   'drill-org-1'` against the source database - confirmed the row was
+   gone (`count = 0`).
+5. Created a second, separate isolated database
+   (`rental_saas_restore_drill_restored`) and restored the backup into it
+   with `pg_restore --no-owner --no-privileges`.
+6. **Verified, not assumed:**
+   - The fixture row exists again in the restored database with its exact
+     original values (`id`, `name`, `vatNumber`).
+   - Table count matches between source and restored databases (71 = 71).
+   - Foreign-key constraints exist and are intact in the restored database
+     (spot-checked `automation_job_attempts_jobId_fkey` and others).
+   - `prisma migrate status` against the restored database reports
+     **"Database schema is up to date!"** - the actual Prisma tooling this
+     application depends on recognizes the restored database as
+     healthy, not just `psql` queries run by hand.
+7. Cleaned up both throwaway databases afterward - the drill never touched
+   the real dev/test databases' data.
+
+### 8b. Object storage restore drill (real S3-compatible adapter, local test server)
+
+No real AWS/R2 account exists in this environment (per §"What must be
+backed up" above and `docs/DOCUMENT-MANAGEMENT.md`), so this drill ran
+against a local, in-process S3-compatible test server (`s3rver`) - but
+exercised the actual, real `S3CompatibleStorageProvider` class
+(`src/lib/documents/providers/s3-compatible.ts`) that production traffic
+uses, not a mock of it:
+
+1. `putObject()` a real fixture PDF (539 bytes) and computed its SHA-256
+   checksum.
+2. "Backed up" the object by reading it back and writing a second copy to
+   a separate `backup/...` key (simulating the versioning/cross-region
+   copy a real bucket's backup policy would maintain - see §"Object
+   storage backup documentation" for the real requirement).
+3. Simulated an incident: `deleteObject()` the original key, confirmed
+   `exists()` now returns `false`.
+4. Restored: read the backup copy and `putObject()` it back to the
+   original key.
+5. **Verified, not assumed:** re-read the restored object and computed its
+   SHA-256 checksum - it matched the original exactly
+   (`a78d7377e33aecc9442102b344653c3feacc9442201d166c1d853088283e8703`),
+   and a byte-for-byte `Buffer.equals()` comparison also passed.
+
+**What this does and doesn't prove:** the adapter's put/get/delete/exists
+logic, checksum integrity through a full backup-delete-restore cycle, and
+the real AWS SDK v3 wire protocol against an S3-compatible HTTP endpoint
+are all genuinely exercised. What it does NOT prove: behavior against a
+real AWS/R2/MinIO account's specific auth/IAM edge cases, or real
+cross-region replication - those remain "implemented but not
+live-verified against a real provider," to be confirmed once a real
+object-storage account is provisioned.
+
+## 8. Migration-ordering bug found and fixed by this drill
+
+Attempting the restore drill's own first step - `prisma migrate deploy`
+against a genuinely empty database - failed with `P3006: relation
+"move_outs" does not exist`. This is `docs/TECHNICAL-DEBT.md`'s
+previously-known item #8 (originally found only via `prisma migrate dev`'s
+shadow-database rebuild), but the drill proved it is NOT merely a
+dev-tooling inconvenience: it also breaks a genuine first-time production
+database bootstrap via `prisma migrate deploy`, since the
+`security_deposit_settlement` migration (originally timestamped
+`20260923094528`) has a foreign key into `move_outs`, a table not created
+until the later `move_out_management` migration (`20261105090000`).
+
+**Fixed during this pass**, exactly as `docs/TECHNICAL-DEBT.md` item #8
+already prescribed: the migration folder was renamed to
+`20261105090001_security_deposit_settlement` (sorting immediately after
+`move_out_management`, confirmed via `grep` that no migration in between
+the two original timestamps ever references the `security_deposit_settlements`
+table, so the reorder is safe). Verified twice:
+
+- A fresh `prisma migrate deploy` against a new empty database now
+  succeeds end-to-end (all 27 migrations apply cleanly - this is exactly
+  what the drill's own first step needed, and now what a real first-time
+  production deployment will experience).
+- The two already-migrated databases in this environment (dev and test)
+  were reconciled via the official, sanctioned `npx prisma migrate
+  resolve --applied 20261105090001_security_deposit_settlement` command
+  (never a raw SQL edit of `_prisma_migrations`) - `prisma migrate status`
+  now reports "Database schema is up to date!" on both.
+
+This is a genuine production-readiness fix (Prompt 23's own "migration
+safety review" step), not a business-logic change - no column, table,
+constraint, or data was altered, only the chronological position of one
+already-additive migration file.
+
+## 9. What this document does not cover
 
 Actual backup automation, cross-region replication, and disaster-recovery
 failover across hosting regions are provider-configuration and

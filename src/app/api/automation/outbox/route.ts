@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedAutomationRequest } from "@/lib/automation/route-auth";
 import { processCommunicationOutbox } from "@/lib/automation/outbox-processor";
+import { handleWorkerRouteError } from "@/lib/api-error";
 
 /**
  * Step 8/62 - turns durable CommunicationOutboxEvent rows into
@@ -22,9 +23,6 @@ export async function POST(request: Request) {
     const result = await processCommunicationOutbox(batchSize);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleWorkerRouteError("automation.outbox.failed", error);
   }
 }

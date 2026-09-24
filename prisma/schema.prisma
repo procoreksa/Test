@@ -4479,3 +4479,36 @@ model AutomationSchedulerRun {
   @@index([ranAt])
   @@map("automation_scheduler_runs")
 }
+
+/// Login rate limiting (Prompt 23 hardening - Step "login rate limiting",
+/// finding V/W). A DB-backed fixed-window counter, deliberately not
+/// Redis/an in-memory limiter: this app has no other shared-state
+/// infrastructure, and adding one "solely for fashion" for a single V1
+/// feature was explicitly rejected in favor of this table - acceptable for
+/// V1, with the tradeoffs documented in docs/PRODUCTION-SECURITY.md.
+///
+/// `bucketKey` is never a raw email/IP - see src/lib/rate-limit.ts's
+/// hashRateLimitKey() - so this table never stores anything that is itself
+/// PII, only an opaque SHA-256 digest of `${kind}:${principalType}:${value}`.
+/// One row per (bucketKey, windowStart) - `checkAndRecordLoginAttempt()`
+/// upserts with an atomic `attemptCount: { increment: 1 }`, so two
+/// concurrent requests in the same window can never under-count each
+/// other (Postgres serializes concurrent upserts on the same unique key).
+/// Bounded growth: `windowStart` moves forward every
+/// LOGIN_RATE_LIMIT_WINDOW_MS, and stale rows are cheap, narrow, and
+/// naturally prunable by `createdAt` from an external maintenance job -
+/// this table only ever holds counters, never a login history log (that
+/// already exists, unredacted, in `AuditLog`).
+model LoginRateLimitEntry {
+  id           String   @id @default(cuid())
+  bucketKey    String
+  windowStart  DateTime
+  attemptCount Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([bucketKey, windowStart])
+  @@index([windowStart])
+  @@map("login_rate_limit_entries")
+}

@@ -18,7 +18,9 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1140.0",
     "@prisma/client": "^6.19.3",
+    "@smithy/node-http-handler": "^4.12.1",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
@@ -40,6 +42,7 @@
     "dotenv": "^16.6.1",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "s3rver": "^3.7.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5",

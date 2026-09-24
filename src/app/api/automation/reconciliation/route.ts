@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedAutomationRequest } from "@/lib/automation/route-auth";
 import { runCommunicationReconciliation } from "@/lib/automation/reconciliation";
+import { handleWorkerRouteError } from "@/lib/api-error";
 
 /**
  * Step 15/62 - defense-in-depth only (never the primary durability
@@ -20,9 +21,6 @@ export async function POST(request: Request) {
     const result = await runCommunicationReconciliation();
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleWorkerRouteError("automation.reconciliation.failed", error);
   }
 }

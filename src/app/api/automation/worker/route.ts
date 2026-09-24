@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedAutomationRequest } from "@/lib/automation/route-auth";
 import { runAutomationWorker } from "@/lib/automation/worker";
+import { handleWorkerRouteError } from "@/lib/api-error";
 
 /**
  * Step 48/62 - claims and executes already-scheduled, due AutomationJob rows
@@ -22,9 +23,6 @@ export async function POST(request: Request) {
     const result = await runAutomationWorker(batchSize);
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleWorkerRouteError("automation.worker.failed", error);
   }
 }

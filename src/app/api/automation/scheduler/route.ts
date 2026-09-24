@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedAutomationRequest } from "@/lib/automation/route-auth";
 import { runAutomationScheduler } from "@/lib/automation/scheduler";
+import { handleWorkerRouteError } from "@/lib/api-error";
 
 /**
  * Step 20/62 - discovers eligible business records and idempotently inserts
@@ -19,9 +20,6 @@ export async function POST(request: Request) {
     const result = await runAutomationScheduler();
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleWorkerRouteError("automation.scheduler.failed", error);
   }
 }
