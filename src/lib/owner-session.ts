@@ -2,6 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/owner-auth";
 import { getEffectiveOwners, type AssetLevel } from "@/lib/ownership";
+import { resolveOwnerEntitlementForEntity } from "@/lib/documents/entity-registry";
+import { isDocumentAccessible, isPortalDownloadAllowedForStatus } from "@/lib/documents/visibility";
 
 /**
  * The Owner Portal's own authorization boundary - deliberately never
@@ -125,6 +127,41 @@ export async function requireOwnerLedgerAccess(entryId: string) {
   const entry = await prisma.ownerLedgerEntry.findFirst({ where: { id: entryId, organizationId, ownerId } });
   if (!entry) notFound();
   return { entry, organizationId, ownerId };
+}
+
+/**
+ * Document dual-gate (Step 58-60): the document must exist in this org AND
+ * (visibility says OWNER_VISIBLE AND live ownership entitlement against its
+ * security context confirms this exact owner) - resolved via the
+ * centralized entity registry (src/lib/documents/entity-registry.ts),
+ * which itself calls getEffectiveOwners() for every asset-shaped entity
+ * type, exactly like every other Owner Portal resource helper above. An
+ * ownership override on a Unit (Owner A owns the parent Compound, but Unit
+ * X is explicitly reassigned to Owner B) is never distinguishable from
+ * "does not exist" here, same anti-enumeration convention as the rest of
+ * this file. Archived documents are treated as fully inaccessible (Step
+ * 76), not merely non-downloadable.
+ */
+export async function requireOwnerDocumentAccess(documentId: string) {
+  const { organizationId, ownerId } = await principal();
+  const document = await prisma.document.findFirst({
+    where: { id: documentId, organizationId },
+    include: { currentVersion: true },
+  });
+  if (!document) notFound();
+
+  const hasLiveEntitlement = await resolveOwnerEntitlementForEntity(prisma, {
+    organizationId,
+    ownerId,
+    entityType: document.securityContextEntityType,
+    entityId: document.securityContextEntityId,
+  });
+  const accessible =
+    isDocumentAccessible({ principalType: "OWNER", visibility: document.visibility, status: document.status, hasLiveEntitlement }) &&
+    isPortalDownloadAllowedForStatus("OWNER", document.status);
+  if (!accessible) notFound();
+
+  return { document, organizationId, ownerId };
 }
 
 export { principal as requireOwnerPrincipal };

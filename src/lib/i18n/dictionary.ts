@@ -721,6 +721,14 @@ export interface Dictionary {
     settlementRefundExceedsRemaining: string;
     settlementRefundAmountInvalid: string;
     settlementCancelReasonRequired: string;
+    documentFileRequired: string;
+    documentFileEmpty: string;
+    documentFileTooLarge: string;
+    documentFileTypeNotAllowed: string;
+    documentFileExtensionMismatch: string;
+    documentFileSignatureMismatch: string;
+    documentEntityNotFound: string;
+    documentNotFound: string;
   };
   zatca: {
     notConfigured: string;
@@ -946,6 +954,9 @@ export interface Dictionary {
     LOGIN_FAILED: string;
     LOGOUT: string;
     PERMISSION_DENIED: string;
+    ARCHIVE: string;
+    RESTORE: string;
+    DOWNLOAD: string;
   };
   auditTimeline: {
     title: string;
@@ -1821,6 +1832,115 @@ export interface Dictionary {
     "RENTER" | "OWNER" | "CORPORATE_PRIMARY_CONTACT" | "CORPORATE_HOUSING_CONTACT" | "ASSIGNED_STAFF" | "SPECIFIC_INTERNAL_USER",
     string
   >;
+  documentCategoryLabel: Record<
+    | "CONTRACT"
+    | "IDENTITY"
+    | "OWNERSHIP_DEED"
+    | "BANK_DETAIL"
+    | "MOVE_IN_EVIDENCE"
+    | "MOVE_OUT_EVIDENCE"
+    | "SECURITY_DEPOSIT_EVIDENCE"
+    | "MAINTENANCE_EVIDENCE"
+    | "PAYMENT_RECEIPT"
+    | "CORPORATE_ACCOUNT_DOCUMENT"
+    | "BUILDING_PLAN"
+    | "GENERAL"
+    | "OTHER",
+    string
+  >;
+  documentStatusLabel: Record<"ACTIVE" | "ARCHIVED", string>;
+  documentVisibilityLabel: Record<"INTERNAL_ONLY" | "TENANT_VISIBLE" | "OWNER_VISIBLE", string>;
+  documentEntityTypeLabel: Record<
+    | "RENTER"
+    | "OWNER"
+    | "CONTRACT"
+    | "UNIT"
+    | "COMPOUND"
+    | "BUILDING"
+    | "INVOICE"
+    | "PAYMENT"
+    | "MAINTENANCE_REQUEST"
+    | "MOVE_IN"
+    | "MOVE_OUT"
+    | "SECURITY_DEPOSIT_SETTLEMENT"
+    | "CORPORATE_ACCOUNT"
+    | "CORPORATE_OCCUPANT",
+    string
+  >;
+  documents: {
+    navTitle: string;
+    listTitle: string;
+    listSubtitle: string;
+    newButton: string;
+    newTitle: string;
+    newSubtitle: string;
+    detailTitle: string;
+    backLabel: string;
+
+    filterCategory: string;
+    filterStatus: string;
+    filterSearch: string;
+    filterAll: string;
+    filterApply: string;
+
+    colDocumentNumber: string;
+    colTitle: string;
+    colCategory: string;
+    colStatus: string;
+    colVisibility: string;
+    colEntity: string;
+    colCurrentVersion: string;
+    colCreatedAt: string;
+    empty: string;
+    previous: string;
+    next: string;
+    pageOf: (page: number, total: number) => string;
+
+    fieldTitle: string;
+    fieldCategory: string;
+    fieldVisibility: string;
+    fieldEntityType: string;
+    fieldEntityId: string;
+    fieldEntityIdHint: string;
+    fieldFile: string;
+    fileHint: string;
+    createButton: string;
+
+    sectionCurrentVersion: string;
+    sectionVersionHistory: string;
+    sectionLinks: string;
+    sectionAuditTrail: string;
+    colVersionNumber: string;
+    colFileName: string;
+    colFileSize: string;
+    colMimeType: string;
+    colUploadedAt: string;
+    downloadButton: string;
+    previewButton: string;
+    noCurrentVersion: string;
+    uploadNewVersionTitle: string;
+    uploadNewVersionButton: string;
+    changeVisibilityTitle: string;
+    changeVisibilityButton: string;
+    archiveButton: string;
+    restoreButton: string;
+    archivedBadge: string;
+    activeBadge: string;
+    addLinkTitle: string;
+    addLinkButton: string;
+    removeLinkButton: string;
+    fieldLinkEntityType: string;
+    fieldLinkEntityId: string;
+    emptyLinks: string;
+    emptyAuditTrail: string;
+    securityContextLabel: string;
+
+    portalTitle: string;
+    portalSubtitle: string;
+    portalEmpty: string;
+    portalDownloadButton: string;
+    portalNoVersion: string;
+  };
   moveIn: {
     listTitle: string;
     listSubtitle: string;
@@ -2636,6 +2756,7 @@ export interface Dictionary {
     navMaintenance: string;
     navMoveOut: string;
     navSecurityDeposit: string;
+    navDocuments: string;
     navProfile: string;
 
     // Login
@@ -2812,6 +2933,7 @@ export interface Dictionary {
     navLedger: string;
     navStatements: string;
     navMaintenance: string;
+    navDocuments: string;
     navProfile: string;
 
     // Login

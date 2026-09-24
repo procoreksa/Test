@@ -8,16 +8,34 @@ operational process, not application code.
 
 ## 1. What must be backed up
 
-Everything lives in one Postgres database - there is no secondary
-datastore yet (see `docs/STORAGE-ARCHITECTURE.md` for the future object-
-storage addition, which will need its own, separate backup story once it
-exists: object storage providers back up differently than a relational
-database, and "backups" for it usually means versioning/replication
-settings on the bucket, not a pg_dump-shaped process). Within Postgres,
-every table matters - there is no "safe to lose" table in this schema:
-`AuditLog` is the immutable compliance trail, `Contract`/`Invoice`/
-`Payment`/`OwnerLedgerEntry` are the financial system of record, and
-everything else (CRM, property hierarchy, Move-In) feeds those.
+Postgres is no longer the only place this application writes durable data.
+Document Management (`docs/DOCUMENT-MANAGEMENT.md`) added a real, separate
+datastore: uploaded file bytes, addressed by `DocumentVersion.storageKey`,
+live behind a storage adapter - either the `LOCAL_DEV` filesystem adapter
+(dev-only, not covered by any backup process, not durable) or, once
+configured, an `S3_COMPATIBLE` object store. **A database-only backup is no
+longer sufficient to restore this application's data**: restoring only the
+Postgres dump after a real incident would bring back every `Document`/
+`DocumentVersion` row (metadata, checksums, storage keys) with **no actual
+file bytes behind any of them** - every download would 404 against a
+missing object (the same safe, non-leaking failure mode
+`docs/DOCUMENT-MANAGEMENT.md` §28 documents for this exact scenario, but as
+a mass-incident instead of an isolated integrity problem). Object storage
+providers back up differently than a relational database - "backups" for
+one usually means versioning/replication settings on the bucket, not a
+pg_dump-shaped process - and that story is not yet built or documented
+further than this paragraph, since no real object-storage account is
+configured in this environment (`docs/DOCUMENT-MANAGEMENT.md` §20/40).
+**Before this application holds real user documents in production**,
+whoever configures the `S3_COMPATIBLE` adapter must also stand up that
+object store's own backup/versioning story and keep it restorable in
+lockstep with the database backup below - a Postgres restore and an
+object-storage restore must be treated as one recovery unit, not two
+independent ones. Within Postgres itself, every table still matters - there
+is no "safe to lose" table in this schema: `AuditLog` is the immutable
+compliance trail, `Contract`/`Invoice`/`Payment`/`OwnerLedgerEntry` are the
+financial system of record, and everything else (CRM, property hierarchy,
+Move-In, Document metadata) feeds those.
 
 ## 2. Automated backups
 

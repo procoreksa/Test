@@ -113,6 +113,9 @@ model Organization {
   communicationMessages          CommunicationMessage[]
   communicationDeliveryAttempts  CommunicationDeliveryAttempt[]
   communicationPreferences       CommunicationPreference[]
+  documents                      Document[]
+  documentVersions               DocumentVersion[]
+  documentLinks                  DocumentLink[]
 
   @@map("organizations")
 }
@@ -3957,4 +3960,225 @@ model CommunicationPreference {
 
   @@unique([organizationId, recipientType, recipientId, channel])
   @@map("communication_preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Document Management (docs/DOCUMENT-MANAGEMENT.md)
+//
+// Business Entity -> DocumentLink -> Document -> DocumentVersion -> Storage
+// Adapter -> Authorized Download -> Audit. Metadata and bytes are strictly
+// separated (Critical Principle 1): Document/DocumentVersion below store
+// only metadata; actual file bytes live behind the DocumentStorageProvider
+// abstraction (src/lib/documents/providers/), addressed only by
+// DocumentVersion.storageKey - which is never exposed in any client-facing
+// payload (Step 67). This deliberately does NOT reuse the
+// Organization.logoUrl base64-in-Postgres pattern (that stays a narrowly
+// scoped exception - see docs/STORAGE-ARCHITECTURE.md) and deliberately does
+// NOT replace or migrate the existing metadata-only MoveInAttachment/
+// MoveOutAttachment/MaintenanceAttachment models, which remain fully
+// functional and untouched - a Document may additionally be linked to the
+// same parent entities those models describe, but this is purely additive
+// (Steps 49-51/92-94).
+// ---------------------------------------------------------------------------
+
+/// The fixed V1 set of business entities a Document's security context or a
+/// DocumentLink may reference (Step 5). Deliberately a plain enum consumed
+/// only through the centralized authorization registry
+/// (src/lib/documents/entity-registry.ts) - never a scattered per-page
+/// switch statement (Step 6).
+enum DocumentEntityType {
+  RENTER
+  OWNER
+  CONTRACT
+  UNIT
+  COMPOUND
+  BUILDING
+  INVOICE
+  PAYMENT
+  MAINTENANCE_REQUEST
+  MOVE_IN
+  MOVE_OUT
+  SECURITY_DEPOSIT_SETTLEMENT
+  CORPORATE_ACCOUNT
+  CORPORATE_OCCUPANT
+}
+
+/// Coarse classification for filtering/display only - category never itself
+/// grants access (Step 7); actual authorization is always
+/// visibility + live entitlement against the security context (Step 10).
+enum DocumentCategory {
+  CONTRACT
+  IDENTITY
+  OWNERSHIP_DEED
+  BANK_DETAIL
+  MOVE_IN_EVIDENCE
+  MOVE_OUT_EVIDENCE
+  SECURITY_DEPOSIT_EVIDENCE
+  MAINTENANCE_EVIDENCE
+  PAYMENT_RECEIPT
+  CORPORATE_ACCOUNT_DOCUMENT
+  BUILDING_PLAN
+  GENERAL
+  OTHER
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+/// A flag only - never sufficient on its own. Every download/preview still
+/// re-runs live entitlement against the security context (Step 9/10); this
+/// merely says which portals are even eligible to attempt that check.
+enum DocumentVisibility {
+  INTERNAL_ONLY
+  TENANT_VISIBLE
+  OWNER_VISIBLE
+}
+
+/// LOCAL_DEV is filesystem-backed, outside any public static directory,
+/// explicitly non-production (Step 17). S3_COMPATIBLE is the production
+/// adapter boundary - buildable/testable with no real credentials present,
+/// remaining disabled/validate-only until AWS/S3-compatible env vars are
+/// configured (Step 18) - see src/lib/documents/providers/.
+enum StorageProvider {
+  LOCAL_DEV
+  S3_COMPATIBLE
+}
+
+/// Honest placeholder (Step 26): no malware scanning exists in this
+/// codebase today. Every version is created NOT_SCANNED and stays that way;
+/// the other values exist only so a future real scanner integration has
+/// somewhere to write its result without a schema change.
+enum DocumentScanStatus {
+  NOT_SCANNED
+  CLEAN
+  BLOCKED
+  FAILED
+}
+
+/// One Document = one metadata record + version history, secured by exactly
+/// ONE authoritative "primary security context" (securityContextEntityType/
+/// Id below) - never a set of equally-trusted links (Step 11/12), which
+/// would let a caller "confused-deputy" their way in via a secondary
+/// relation. Any further entity relations are recorded separately in
+/// DocumentLink and are non-authorizing discoverability metadata only.
+model Document {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  documentNumber String // DOC-000001 (src/lib/numbering.ts formatDocumentNumber(), Counter key "document")
+
+  title      String
+  category   DocumentCategory
+  status     DocumentStatus     @default(ACTIVE)
+  visibility DocumentVisibility @default(INTERNAL_ONLY)
+
+  // The one authoritative security context (Step 11/12) - deliberately a
+  // plain (type, id) pair rather than a typed relation, since the
+  // referenced model varies per entityType (same pattern as
+  // CommunicationMessage.businessEntityType/Id above). Every authorization
+  // decision anywhere in the app resolves against THIS pair, and only this
+  // pair, via src/lib/documents/entity-registry.ts.
+  securityContextEntityType DocumentEntityType
+  securityContextEntityId   String
+
+  // Security-context immutability (Step 73): changeable only via a
+  // dedicated, audited action restricted to OWNER/ADMIN
+  // (changeDocumentSecurityContext() in src/lib/actions/documents.ts) -
+  // never a bare field update. Null until first changed.
+  securityContextChangedAt       DateTime?
+  securityContextChangedByUserId String?
+
+  // Nullable + a separate unique FK (rather than a computed "max version"
+  // read) so the finalize step of the upload flow (Step 27/30) can create
+  // the Document row before the first DocumentVersion exists, then flip
+  // this pointer as the last, atomic step - see createDocumentWithFile()/
+  // addDocumentVersion() for the concurrency-safe update.
+  currentVersionId String?          @unique
+  currentVersion   DocumentVersion? @relation("DocumentCurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+
+  createdByUserId String
+
+  archivedAt       DateTime?
+  archivedByUserId String?
+  restoredAt       DateTime?
+  restoredByUserId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versions DocumentVersion[] @relation("DocumentVersions")
+  links    DocumentLink[]
+
+  @@unique([organizationId, documentNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, securityContextEntityType, securityContextEntityId])
+  @@index([organizationId, category])
+  @@index([organizationId, createdAt])
+  @@map("documents")
+}
+
+/// Immutable once created (Step 5/Critical Principle 5) - a new upload
+/// never overwrites or deletes a prior version's row, only adds a new one
+/// and re-points Document.currentVersionId. versionNumber starts at 1 and
+/// is assigned inside the same transaction as the Counter-style concurrency
+/// guard in addDocumentVersion() (Step 14/32) - never a racy "max+1" read.
+model DocumentVersion {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  documentId String
+  document   Document @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+
+  versionNumber Int
+
+  // Sanitized display filename (Step 21) - never the literal storage path.
+  fileName       String
+  mimeType       String
+  fileSize       Int
+  checksumSha256 String // integrity only (Step 25) - never used for authorization
+
+  storageProvider StorageProvider
+  // Opaque, unpredictable, generated key (Step 20) - the sole pointer into
+  // the storage adapter. Never rendered in HTML/JSON/URLs/filenames (Step
+  // 67); key secrecy is never itself treated as authorization (Step 3/20).
+  storageKey String
+
+  scanStatus DocumentScanStatus @default(NOT_SCANNED)
+
+  uploadedByUserId String
+  createdAt        DateTime @default(now())
+
+  currentForDocument Document? @relation("DocumentCurrentVersion")
+
+  @@unique([documentId, versionNumber])
+  @@index([organizationId, documentId])
+  @@map("document_versions")
+}
+
+/// Secondary, NON-authorizing discoverability links only (Step 11/12) - e.g.
+/// showing a Contract's Document also on the linked Renter's page. Never
+/// consulted by any authorization check; the DB-level unique constraint
+/// (Step 72) prevents accidental duplicate identical links from a
+/// resubmitted form.
+model DocumentLink {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  entityType DocumentEntityType
+  entityId   String
+
+  createdByUserId String
+  createdAt       DateTime @default(now())
+
+  @@unique([documentId, entityType, entityId])
+  @@index([organizationId, entityType, entityId])
+  @@map("document_links")
 }

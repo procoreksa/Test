@@ -270,7 +270,31 @@ identifiers, never a timestamp. `CommunicationMessage`/
 `CommunicationDeliveryAttempt` are a deliberately separate concern from
 `AuditLog` (§9) - never overloaded into it.
 
-## 17. What this map deliberately does not cover
+## 17. Document Management: a storage adapter + link-authorization-registry boundary
+
+The first file-upload code in this codebase (`docs/DOCUMENT-MANAGEMENT.md`
+has the full architecture). Two new architectural seams, mirroring §16's
+own "business modules never call the mechanism directly" philosophy applied
+to storage instead of messaging: a `DocumentStorageProvider` interface
+(`putObject`/`getObject`/`exists`/`deleteObject`, resolved via a factory to
+either a filesystem-backed `LOCAL_DEV` adapter or a not-yet-implemented
+`S3_COMPATIBLE` boundary) that no page or action ever bypasses, and a
+centralized entity-authorization registry
+(`src/lib/documents/entity-registry.ts`) that is the single place every
+supported business-entity type's existence/tenant-entitlement/owner-
+entitlement check lives - reusing `getEffectiveOwners()` (§12) rather than
+building a second ownership resolver. A `Document`'s authorization is
+governed by exactly one `(securityContextEntityType, securityContextEntityId)`
+pair, never a set of equally-trusted links, and every download/preview
+re-authorizes that pair fresh on every request (no caching) through one of
+three principal-specific routes (internal/Tenant Portal/Owner Portal - §11-
+12), all funneling into one shared streaming/header core. Storage/DB
+consistency has no cross-system transaction to rely on, so this module
+picks a fail-safe order (write storage, then commit DB, compensating-
+delete on DB failure) and documents the residual risk honestly rather than
+claiming an atomicity it doesn't have.
+
+## 18. What this map deliberately does not cover
 
 Page-by-page UI component inventory, the exact Tailwind design tokens,
 and the CRM/Operations report catalog are already documented in each
@@ -280,6 +304,6 @@ module's own `docs/*.md` (`CRM-LEADS.md`, `VIEWING-MANAGEMENT.md`,
 `OWNERSHIP-ACCOUNTING.md`, `AUDIT-AND-FINANCIAL-CONTROLS.md`,
 `MAINTENANCE-MANAGEMENT.md`, `MOVE-OUT-MANAGEMENT.md`,
 `SECURITY-DEPOSIT-SETTLEMENT.md`, `TENANT-PORTAL.md`,
-`NOTIFICATIONS-COMMUNICATIONS.md`) - this document exists to connect
-those module-level maps into one picture of how the whole system
-actually fits together, not to repeat their detail.
+`NOTIFICATIONS-COMMUNICATIONS.md`, `DOCUMENT-MANAGEMENT.md`) - this
+document exists to connect those module-level maps into one picture of how
+the whole system actually fits together, not to repeat their detail.

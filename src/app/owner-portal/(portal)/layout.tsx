@@ -31,6 +31,7 @@ export default async function OwnerPortalLayout({ children }: { children: React.
     { href: "/owner-portal/ledger", label: t.ownerPortal.navLedger, icon: "📒" },
     { href: "/owner-portal/statements", label: t.ownerPortal.navStatements, icon: "🧾" },
     { href: "/owner-portal/maintenance", label: t.ownerPortal.navMaintenance, icon: "🛠️" },
+    { href: "/owner-portal/documents", label: t.ownerPortal.navDocuments, icon: "📁" },
     { href: "/owner-portal/profile", label: t.ownerPortal.navProfile, icon: "👤" },
   ];
 

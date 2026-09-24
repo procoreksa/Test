@@ -36,7 +36,10 @@ export type AuditAction =
   | "LOGIN"
   | "LOGIN_FAILED"
   | "LOGOUT"
-  | "PERMISSION_DENIED";
+  | "PERMISSION_DENIED"
+  | "ARCHIVE"
+  | "RESTORE"
+  | "DOWNLOAD";
 
 /**
  * Coarse category used only for UI filtering/role-based visibility on

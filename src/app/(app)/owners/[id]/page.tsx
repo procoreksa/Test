@@ -8,6 +8,7 @@ import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { AuditTimeline } from "@/components/audit-timeline";
 import { OwnerPortalAccountPanel } from "@/components/owner-portal-account-panel";
+import { DocumentsCard } from "@/components/documents-card";
 
 function assetLabel(
   locale: Awaited<ReturnType<typeof getLocale>>,
@@ -309,10 +310,7 @@ export default async function OwnerProfilePage({ params }: { params: Promise<{ i
         />
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <h2 className="font-semibold text-slate-800 mb-1">{t.owners.profile.documentsPlaceholderTitle}</h2>
-        <p className="text-sm text-slate-400">{t.owners.profile.documentsPlaceholderBody}</p>
-      </div>
+      {can("document.view", role) && <DocumentsCard entityType="OWNER" entityId={owner.id} />}
 
       <AuditTimeline entityType="Owner" entityId={owner.id} />
     </div>

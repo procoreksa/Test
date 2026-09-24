@@ -17,7 +17,8 @@ Git repository (this repo)
         ▼
 Application hosting (Render Web Service, or equivalent)
   - runs `next build` then `next start`
-  - stateless - no local filesystem writes assumed to persist
+  - stateless for everything except document uploads while only
+    LOCAL_DEV storage is configured - see §2/§5
         │
         ▼
 PostgreSQL (Supabase, or any managed Postgres)
@@ -25,8 +26,9 @@ PostgreSQL (Supabase, or any managed Postgres)
   - one direct connection string for migrations (DIRECT_URL)
         │
         ▼
-(Future) Object storage (Supabase Storage, or S3-compatible)
-  - not implemented yet - see docs/STORAGE-ARCHITECTURE.md
+Object storage (Supabase Storage, or S3-compatible)
+  - adapter boundary exists (docs/DOCUMENT-MANAGEMENT.md); no real
+    account configured in this environment - see §5
 ```
 
 ## 2. Application
@@ -37,13 +39,17 @@ PostgreSQL (Supabase, or any managed Postgres)
   ever serves traffic).
 - **Start:** `npm run start` → `next start -p ${PORT:-3000}` (already
   respects a platform-injected `PORT`, matching Render's own convention).
-- **Statelessness:** the app writes nothing to local disk that needs to
-  survive a restart or persist across instances (no session store on
-  disk, no uploaded file written locally - see
-  `docs/STORAGE-ARCHITECTURE.md` for why file uploads aren't built yet).
-  This means it's safe to run multiple instances behind a load balancer
-  with no sticky-session requirement (NextAuth's JWT strategy needs no
-  server-side session store either).
+- **Statelessness:** no session store on disk (NextAuth's JWT strategy
+  needs no server-side session store). **Caveat added by Document
+  Management (docs/DOCUMENT-MANAGEMENT.md):** the `LOCAL_DEV` storage
+  adapter *does* write uploaded files to local disk
+  (`var/document-storage/` by default) and is explicitly documented as
+  non-production - it is neither durable across restarts on ephemeral
+  filesystems nor safe to run behind multiple instances (each instance
+  would see only the files it personally wrote). Production deployment
+  requires configuring the `S3_COMPATIBLE` adapter (§5 below) before this
+  app can be considered stateless/multi-instance-safe with real user
+  uploads in play.
 
 ## 3. Database
 
@@ -118,10 +124,34 @@ client-side JavaScript and must never hold a secret.
 
 ## 5. Storage
 
-Not implemented yet - see `docs/STORAGE-ARCHITECTURE.md`. When it is,
-its own connection details (a Supabase Storage service-role key, or S3
-credentials) join the environment-variable table above, following the
-same "never commit, never expose via `NEXT_PUBLIC_`" rules.
+Document Management (`docs/DOCUMENT-MANAGEMENT.md`) added the adapter
+boundary (`DocumentStorageProvider`) `docs/STORAGE-ARCHITECTURE.md`
+anticipated, but **no real production object-storage account is
+configured in this environment** - do not claim production-readiness for
+file uploads without first provisioning one. Two adapters exist:
+
+- **`LOCAL_DEV`** (the default when nothing below is set) - filesystem-
+  backed, explicitly non-production (see §2's caveat above). Fine for
+  local development and this environment's own tests only.
+- **`S3_COMPATIBLE`** - the production adapter boundary. It becomes active
+  automatically once all five of these environment variables are set:
+  `DOCUMENT_S3_ENDPOINT`, `DOCUMENT_S3_REGION`, `DOCUMENT_S3_BUCKET`,
+  `DOCUMENT_S3_ACCESS_KEY_ID`, `DOCUMENT_S3_SECRET_ACCESS_KEY` - join the
+  environment-variable table above, following the same "never commit,
+  never expose via `NEXT_PUBLIC_`" rules. **Important**: as of this pass,
+  setting these variables makes the adapter report itself "configured" but
+  every actual operation still throws (`StorageProviderNotConfiguredError`/
+  "no client implementation is wired in yet") - no S3-compatible client
+  library was added or wired up, since no real credentials exist in this
+  environment to test one against (see
+  `docs/DOCUMENT-MANAGEMENT.md` §20). **Do not set these variables in a
+  real production environment yet** - doing so today would make uploads
+  start failing outright instead of silently falling back to `LOCAL_DEV`.
+  A future task must add a real S3-compatible client (e.g. the AWS SDK v3
+  `@aws-sdk/client-s3`, which works against Supabase Storage, R2,
+  MinIO, and real S3 alike) behind the existing `DocumentStorageProvider`
+  interface before these variables are safe to set anywhere real traffic
+  reaches them.
 
 ## 6. Health check
 
@@ -170,9 +200,12 @@ future needs, for whoever scopes that work:
   (`LOGIN_FAILED` rows) - a future dashboard/alert reading from that table
   is cheaper to build than a separate logging pipeline, since the data
   already exists.
-- **Payment/storage failures** - not applicable yet (no payment gateway,
-  no storage backend exists in this codebase); revisit when either is
-  built.
+- **Payment/storage failures** - no payment gateway exists yet. A storage
+  adapter now exists (Document Management,
+  `docs/DOCUMENT-MANAGEMENT.md`) with a compensating-delete strategy for
+  storage/DB inconsistency (§24-25 there) - a production deployment should
+  alert on repeated orphaned-object cleanup failures once a real
+  `S3_COMPATIBLE` client is wired in, but no such alerting exists yet.
 - Until any of the above exists, `console.error` in a genuinely
   unexpected-error `catch` block (not the routine, expected
   validation-error `throw`s this codebase already uses throughout) is a

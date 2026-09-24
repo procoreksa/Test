@@ -364,6 +364,14 @@ create/delete, not edit. When one is added, gate it with the matching
 | communicationRule.create | ✅ | ✅ | ❌ | ❌ | ❌ |
 | communicationRule.update | ✅ | ✅ | ❌ | ❌ | ❌ |
 | communicationTest.send | ✅ | ✅ | ❌ | ❌ | ❌ |
+| document.view | ✅ | ✅ | ✅ | ✅ | ✅ |
+| document.create | ✅ | ✅ | ✅ | ✅ | ❌ |
+| document.version.create | ✅ | ✅ | ✅ | ❌ | ❌ |
+| document.archive | ✅ | ✅ | ❌ | ❌ | ❌ |
+| document.restore | ✅ | ✅ | ❌ | ❌ | ❌ |
+| document.download | ✅ | ✅ | ✅ | ✅ | ✅ |
+| document.visibility.manage | ✅ | ✅ | ❌ | ❌ | ❌ |
+| document.link.manage | ✅ | ✅ | ✅ | ❌ | ❌ |
 
 Notes on judgment calls made while encoding the brief's policy:
 
@@ -520,6 +528,39 @@ Notes on judgment calls made while encoding the brief's policy:
   action, not a general edit of message content - a `CommunicationMessage`'s
   rendered content is immutable once created, mirroring `AuditLog`'s own
   immutability.
+
+- **Document Management (docs/DOCUMENT-MANAGEMENT.md).** No new role was
+  introduced. OWNER/ADMIN hold every permission, including the two
+  higher-trust ones (`document.archive`/`.restore` and
+  `document.visibility.manage`) - changing a document's security context,
+  archiving/restoring it, and deciding whether a portal can ever see it are
+  all in the same higher-trust tier as `settings.update`. MANAGER gets the
+  day-to-day operational surface (`document.view`/`.create`/
+  `.version.create`/`.download`/`.link.manage`) but never archive/restore/
+  visibility management. ACCOUNTANT gets `document.view`/`.create`/
+  `.download` - it can view, download, and upload finance-shaped evidence
+  (e.g. a `PAYMENT_RECEIPT` scan attached to an Invoice/Payment/Contract,
+  Step 53's "uploaded external payment evidence" case), matching
+  ACCOUNTANT's own broad create access to Invoices/Payments elsewhere in
+  this table, but never version/archive/restore/visibility/link management.
+  VIEWER gets `document.view`/`.download` only, the same read-only posture
+  as everywhere else in this table. There is no `document.delete` - a
+  document's lifecycle only ever reaches `ARCHIVED` (`document.archive`,
+  reversible via `document.restore`), never hard-deleted, matching this
+  table's no-hard-delete policy everywhere else; its version history is
+  separately immutable by design (Critical Principle 5 of
+  docs/DOCUMENT-MANAGEMENT.md), so there is no per-version delete
+  permission either. `document.download` is deliberately its own
+  permission rather than folded into `document.view`: viewing a document's
+  metadata in a list and actually retrieving its bytes are different
+  privilege levels in every other file-handling system, and keeping them
+  separate leaves room for a future "can see this exists but not open it"
+  policy without an RBAC change. Tenant Portal and Owner Portal document
+  access is governed entirely by each portal's own entitlement layer
+  (`requireTenantDocumentAccess()`/`requireOwnerDocumentAccess()`), never by
+  any permission in this table - the same separation already established
+  for every other Tenant/Owner Portal resource (see docs/TENANT-PORTAL.md
+  and docs/OWNER-PORTAL.md).
 
 ## 4. How to protect a new server action
 

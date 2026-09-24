@@ -98,3 +98,8 @@ export function formatCorporateAccountNumber(seq: number): string {
 export function formatCorporateHousingAllocationNumber(seq: number): string {
   return `CHA-${String(seq).padStart(6, "0")}`;
 }
+
+/** No year component, matching formatMoveInNumber() - a Document Management record number is an internal operational reference, not a legal/tax document series. */
+export function formatDocumentNumber(seq: number): string {
+  return `DOC-${String(seq).padStart(6, "0")}`;
+}

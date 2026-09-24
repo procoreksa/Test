@@ -151,7 +151,15 @@ export type Permission =
   | "communicationRule.view"
   | "communicationRule.create"
   | "communicationRule.update"
-  | "communicationTest.send";
+  | "communicationTest.send"
+  | "document.view"
+  | "document.create"
+  | "document.version.create"
+  | "document.archive"
+  | "document.restore"
+  | "document.download"
+  | "document.visibility.manage"
+  | "document.link.manage";
 
 const ALL_PERMISSIONS: readonly Permission[] = [
   "dashboard.view",
@@ -299,6 +307,14 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "communicationRule.create",
   "communicationRule.update",
   "communicationTest.send",
+  "document.view",
+  "document.create",
+  "document.version.create",
+  "document.archive",
+  "document.restore",
+  "document.download",
+  "document.visibility.manage",
+  "document.link.manage",
 ];
 
 // MANAGER: full operational access, but never organization-level configuration
@@ -478,6 +494,16 @@ const MANAGER_PERMISSIONS: readonly Permission[] = [
   "communications.cancel",
   "communicationTemplate.view",
   "communicationRule.view",
+  // Document Management (docs/DOCUMENT-MANAGEMENT.md): MANAGER gets the
+  // day-to-day operational surface - view/create/upload a new version/
+  // download/link a document to another entity - but never archive/
+  // restore or manage visibility, which are higher-trust actions in the
+  // same tier as settings.update, reserved for OWNER/ADMIN.
+  "document.view",
+  "document.create",
+  "document.version.create",
+  "document.download",
+  "document.link.manage",
 ];
 
 // ACCOUNTANT: full financial workflow (invoices, cancellations, payments,
@@ -552,6 +578,15 @@ const ACCOUNTANT_PERMISSIONS: readonly Permission[] = [
   // template/rule access.
   "communications.view",
   "communications.message.view",
+  // Document Management: ACCOUNTANT can view/download and upload
+  // finance-shaped documents (e.g. a PAYMENT_RECEIPT evidence scan
+  // attached to an Invoice/Payment/Contract) since ACCOUNTANT already
+  // creates Invoices/Payments elsewhere in this table - but never
+  // archive/restore/manage visibility/manage links, which stay
+  // MANAGER-or-above.
+  "document.view",
+  "document.create",
+  "document.download",
 ];
 
 // VIEWER: read-only everywhere, no mutations of any kind.
@@ -581,6 +616,11 @@ const VIEWER_PERMISSIONS: readonly Permission[] = [
   "corporateHousing.view",
   "communications.view",
   "communications.message.view",
+  // Document Management: VIEWER can view/download, same read-only posture
+  // as every other module in this table - never create/version/archive/
+  // restore/manage.
+  "document.view",
+  "document.download",
 ];
 
 export const ROLE_PERMISSIONS: Record<UserRole, readonly Permission[]> = {

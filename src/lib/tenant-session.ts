@@ -1,6 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/tenant-auth";
+import { resolveTenantEntitlementForEntity } from "@/lib/documents/entity-registry";
+import { isDocumentAccessible, isPortalDownloadAllowedForStatus } from "@/lib/documents/visibility";
 
 /**
  * The Tenant Portal's own authorization boundary - deliberately never
@@ -96,6 +98,38 @@ export async function requireTenantSettlementAccess(settlementId: string) {
   const settlement = await prisma.securityDepositSettlement.findFirst({ where: { id: settlementId, organizationId, renterId } });
   if (!settlement) notFound();
   return { settlement, organizationId, renterId };
+}
+
+/**
+ * Document dual-gate (Step 55/56): the document must exist in this org AND
+ * (visibility says TENANT_VISIBLE AND live entitlement against its
+ * security context confirms this exact renter). Live entitlement is
+ * resolved fresh on every call via the centralized entity registry
+ * (src/lib/documents/entity-registry.ts) - never cached, never inferred
+ * from the fact that a DocumentLink row happens to exist. Archived
+ * documents are treated as fully inaccessible to the Tenant Portal (Step
+ * 76), not merely non-downloadable, so they never leak through here either.
+ */
+export async function requireTenantDocumentAccess(documentId: string) {
+  const { organizationId, renterId } = await principal();
+  const document = await prisma.document.findFirst({
+    where: { id: documentId, organizationId },
+    include: { currentVersion: true },
+  });
+  if (!document) notFound();
+
+  const hasLiveEntitlement = await resolveTenantEntitlementForEntity(prisma, {
+    organizationId,
+    renterId,
+    entityType: document.securityContextEntityType,
+    entityId: document.securityContextEntityId,
+  });
+  const accessible =
+    isDocumentAccessible({ principalType: "TENANT", visibility: document.visibility, status: document.status, hasLiveEntitlement }) &&
+    isPortalDownloadAllowedForStatus("TENANT", document.status);
+  if (!accessible) notFound();
+
+  return { document, organizationId, renterId };
 }
 
 export { principal as requireTenantPrincipal };

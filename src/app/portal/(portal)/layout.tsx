@@ -29,6 +29,7 @@ export default async function PortalLayout({ children }: { children: React.React
     { href: "/portal/maintenance", label: t.tenantPortal.navMaintenance, icon: "🛠️" },
     { href: "/portal/move-out", label: t.tenantPortal.navMoveOut, icon: "📤" },
     { href: "/portal/security-deposit", label: t.tenantPortal.navSecurityDeposit, icon: "🏦" },
+    { href: "/portal/documents", label: t.tenantPortal.navDocuments, icon: "📁" },
     { href: "/portal/profile", label: t.tenantPortal.navProfile, icon: "👤" },
   ];
 

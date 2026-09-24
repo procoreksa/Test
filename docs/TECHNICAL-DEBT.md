@@ -41,6 +41,8 @@ write-ups, evidence, and residual-risk notes on each.
 | 10 | Notifications & Communications (`docs/NOTIFICATIONS-COMMUNICATIONS.md`) has three deliberate V1 scope boundaries recorded here for visibility: (a) no scheduler/cron exists anywhere in this codebase, so rent-due and contract-expiry reminder notifications are not implemented - only the 9 mandated business-event-triggered notifications are wired; (b) notification language is resolved from the acting staff member's own current locale cookie at enqueue time (there is no per-recipient or per-organization stored language preference anywhere in the schema to consult instead) - a reasonable proxy given this codebase's real usage pattern, but not a true recipient preference; (c) only a deterministic mock Email/WhatsApp provider exists - no real provider credential, and no WhatsApp template has (or could have) real Meta Business approval, since none was ever submitted. | `src/lib/communications/*`, `src/lib/actions/communications.ts` | (a) Build a scheduler in a dedicated future task once a job-scheduling approach is chosen for this codebase (see `docs/NOTIFICATIONS-COMMUNICATIONS.md` §40). (b) Add a stored per-recipient/per-organization language preference field once there's a real product need, then update `resolveNotificationLanguage()`'s callers to consult it before falling back to the acting user's locale. (c) Implement a real `CommunicationProvider` (e.g. Resend for email) behind the existing `getProviderForChannel()` seam, and separately pursue Meta Business WhatsApp template approval, before enabling the `WHATSAPP` channel for any real send. |
 | 7 | An `ACTIVE` Contract does not currently transition automatically to `EXPIRED` when its `endDate` passes - `ContractStatus.EXPIRED` is a defined enum value that is never actually set by any code anywhere in this codebase (confirmed during the Move-Out Management Phase 1 audit). A Contract simply stays `ACTIVE` indefinitely past its own end date until something else (a manual termination, or a renewal) changes its status. Move-Out Management Phase 2 deliberately left this gap unfixed - Decision 5 of that phase's own brief was explicit: "Document the existing Contract expiry gap as Technical Debt" and "Do not fix that gap as part of Move-Out." Move-Out's own eligibility rule was written to tolerate the gap rather than paper over it: an `ACTIVE` Contract remains eligible for a Move-Out even after its `endDate` has passed (see `docs/MOVE-OUT-MANAGEMENT.md` §3, "Contract eligibility"), so the gap does not block the operational workflow it would otherwise interact with most. | `src/lib/actions/contracts.ts` (no `ContractStatus.EXPIRED` writer exists anywhere) | A dedicated future task: either a scheduled job (cron/worker) that sweeps `ACTIVE` Contracts past `endDate` into `EXPIRED`, or a lazy check computed at read time (mirroring how `PaymentSchedule`/`Invoice` overdue status is already synced lazily elsewhere in this codebase via `syncOverdueStatuses()`) - needs its own design decision on which approach fits this codebase's existing patterns, plus a decision on what (if anything) should happen to a Unit/PaymentSchedule when a Contract expires this way, since that interacts with the same Unit-vacancy invariant Move-Out Management Phase 2 just tightened (Decision 1). Out of scope for a drive-by fix. |
 
+| 11 | Document Management (`docs/DOCUMENT-MANAGEMENT.md`) has three deliberate V1 boundaries recorded here for visibility: (a) the `S3_COMPATIBLE` storage adapter is a validated boundary, not a working client - setting its five environment variables makes it report "configured" but every operation still throws, since no real S3-compatible SDK or credentials exist in this environment to build/test one against; production file uploads today can only use the explicitly non-production `LOCAL_DEV` filesystem adapter. (b) This codebase has no dedicated Renter detail page and no general Unit detail page (only the narrowly-scoped `/units/[id]/ownership`), so the reusable `DocumentsCard` integration component was wired into the Owner and Contract-edit pages only, not Renter/Unit - those entities' documents remain fully manageable via the centralized `/documents` list (filterable by entity) in the meantime. (c) A storage-write success followed by an unrecoverable process crash before the compensating delete can run (on a DB-transaction failure) can leave an orphaned storage object with no DB reference - a storage-cost problem, never a security problem (Critical Principle 3: a bare key is never itself authorization), but not swept up by any cleanup job today. | `src/lib/documents/providers/s3-compatible.ts`, `src/components/documents-card.tsx`, `src/lib/actions/documents.ts` (`createDocumentWithFile`/`addDocumentVersion`'s compensating delete) | (a) Add a real S3-compatible client (e.g. `@aws-sdk/client-s3`) behind the existing `DocumentStorageProvider` interface once a real object-storage account is provisioned - no other file needs to change. (b) Build dedicated Renter/Unit detail pages when there's a real product need for one, then drop in the existing `DocumentsCard` component. (c) A periodic reconciliation job (list bucket objects, cross-reference against `DocumentVersion.storageKey`, delete/flag true orphans) once real object storage exists and this becomes a measurable cost. |
+
 ## P3 - Low
 
 | # | Issue | Affected module | Recommended future action |
@@ -71,17 +73,20 @@ write-ups, evidence, and residual-risk notes on each.
 
 ## Explicitly not addressed (by design, per the hardening brief's scope)
 
-- Any new business module (Owner Portal, Vendor Portal, Preventive
-  Maintenance, WhatsApp/email automation, AI, payment gateway, Document
-  Management, object-storage uploads, e-signature, mobile app,
-  subscription billing, marketplace) - out of scope for a hardening-only
-  task. (Maintenance Management, Move-Out Management, Security Deposit
-  Settlement, and the Tenant Portal were all likewise out of scope for the
-  hardening pass this line was originally written for, but have since been
-  built - see `docs/MAINTENANCE-MANAGEMENT.md` §33,
-  `docs/MOVE-OUT-MANAGEMENT.md`, `docs/SECURITY-DEPOSIT-SETTLEMENT.md`, and
-  `docs/TENANT-PORTAL.md` for what remains genuinely future-scope within
-  each.)
+- Any new business module (Vendor Portal, Preventive Maintenance,
+  WhatsApp/email automation beyond what Notifications built, AI, payment
+  gateway, e-signature, mobile app, subscription billing, marketplace) -
+  out of scope for a hardening-only task. (Maintenance Management,
+  Move-Out Management, Security Deposit Settlement, the Tenant Portal, the
+  Owner Portal, Corporate Housing, Notifications & Communications, and
+  Document Management/object-storage uploads were all likewise out of
+  scope for the hardening pass this line was originally written for, but
+  have since been built - see `docs/MAINTENANCE-MANAGEMENT.md` §33,
+  `docs/MOVE-OUT-MANAGEMENT.md`, `docs/SECURITY-DEPOSIT-SETTLEMENT.md`,
+  `docs/TENANT-PORTAL.md`, `docs/OWNER-PORTAL.md`,
+  `docs/CORPORATE-HOUSING.md`, `docs/NOTIFICATIONS-COMMUNICATIONS.md`, and
+  `docs/DOCUMENT-MANAGEMENT.md` for what remains genuinely future-scope
+  within each.)
 - Redesigning VAT/ZATCA/accounting logic - frozen by the brief's own
   explicit instruction; issues found there (P2 #2 above) are recorded,
   not touched.

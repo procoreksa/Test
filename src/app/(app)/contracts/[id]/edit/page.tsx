@@ -14,6 +14,7 @@ import { getLocale, getDictionary, pickLocalized, shortDateFormatter, currencyFo
 import { unitLocationLabel } from "@/lib/unit-location";
 import { AuditTimeline } from "@/components/audit-timeline";
 import { TenantPortalAccountPanel } from "@/components/tenant-portal-account-panel";
+import { DocumentsCard } from "@/components/documents-card";
 
 export default async function EditContractPage({
   params,
@@ -307,6 +308,8 @@ export default async function EditContractPage({
           </button>
         </div>
       </form>
+
+      {can("document.view", role) && <DocumentsCard entityType="CONTRACT" entityId={contract.id} />}
 
       <AuditTimeline entityType="Contract" entityId={contract.id} />
     </div>
