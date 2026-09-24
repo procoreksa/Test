@@ -55,8 +55,9 @@ const createSchema = z.object({
 });
 
 export interface CreateOwnerAccountResult {
-  accountId: string;
-  temporaryPassword: string;
+  error?: string;
+  accountId?: string;
+  temporaryPassword?: string;
 }
 
 /**
@@ -81,15 +82,19 @@ export async function createOwnerPortalAccount(formData: FormData): Promise<Crea
     phone: formData.get("phone") || undefined,
   });
 
+  // Returned, not thrown - see the comment in deleteUnit() (units.ts): a
+  // thrown Server Action error's message is redacted by Next.js in a
+  // genuine production build once the action is invoked as a plain async
+  // call rather than a <form>'s own native `action`.
   const owner = await prisma.owner.findFirst({ where: { id: parsed.ownerId, organizationId } });
-  if (!owner) throw new Error(t.ownerPortal.ownerNotFound);
+  if (!owner) return { error: t.ownerPortal.ownerNotFound };
 
   const existing = await prisma.ownerPortalAccount.findUnique({ where: { ownerId: parsed.ownerId } });
-  if (existing) throw new Error(t.ownerPortal.accountAlreadyExists);
+  if (existing) return { error: t.ownerPortal.accountAlreadyExists };
 
   const emailNormalized = parsed.email.toLowerCase().trim();
   const dup = await prisma.ownerPortalAccount.findUnique({ where: { organizationId_emailNormalized: { organizationId, emailNormalized } } });
-  if (dup) throw new Error(t.ownerPortal.emailAlreadyInUse);
+  if (dup) return { error: t.ownerPortal.emailAlreadyInUse };
 
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await bcrypt.hash(temporaryPassword, 10);
@@ -179,7 +184,8 @@ export async function disableOwnerPortalAccount(formData: FormData) {
 }
 
 export interface ResetPasswordResult {
-  temporaryPassword: string;
+  error?: string;
+  temporaryPassword?: string;
 }
 
 /** Never displays or returns the OLD credential, only issues a brand-new one; the account must change it again on next login. */
@@ -189,7 +195,8 @@ export async function resetOwnerPortalAccountPassword(formData: FormData): Promi
   const t = getDictionary(await getLocale());
 
   const account = await prisma.ownerPortalAccount.findFirst({ where: { id: accountId, organizationId } });
-  if (!account) throw new Error(t.ownerPortal.accountNotFound);
+  // Returned, not thrown - see the comment in deleteUnit() (units.ts).
+  if (!account) return { error: t.ownerPortal.accountNotFound };
 
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await bcrypt.hash(temporaryPassword, 10);

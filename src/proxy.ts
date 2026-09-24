@@ -26,13 +26,19 @@ export default auth((req) => {
 
   const isLoggedIn = Boolean(req.auth);
   const isLoginPage = req.nextUrl.pathname.startsWith("/login");
+  // The root path is the public portal-selector landing page (Prompt 24
+  // real-user Finding 1) - it renders its own "already logged in ->
+  // /dashboard" redirect (src/app/page.tsx), so this gate must let an
+  // unauthenticated request through to it exactly like /login, instead of
+  // redirecting it to /login before the selector ever gets a chance to render.
+  const isRootPage = req.nextUrl.pathname === "/";
 
-  if (!isLoggedIn && !isLoginPage) {
+  if (!isLoggedIn && !isLoginPage && !isRootPage) {
     const loginUrl = new URL("/login", req.nextUrl.origin);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isLoggedIn && isLoginPage) {
+  if (isLoggedIn && (isLoginPage || isRootPage)) {
     return NextResponse.redirect(new URL("/dashboard", req.nextUrl.origin));
   }
 

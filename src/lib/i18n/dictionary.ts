@@ -79,6 +79,16 @@ export interface Dictionary {
     submit: string;
     seedHint: string;
   };
+  portalSelector: {
+    title: string;
+    subtitle: string;
+    staffTitle: string;
+    staffSubtitle: string;
+    tenantTitle: string;
+    tenantSubtitle: string;
+    ownerTitle: string;
+    ownerSubtitle: string;
+  };
   dashboard: {
     title: string;
     subtitle: string;
@@ -627,6 +637,8 @@ export interface Dictionary {
     logoTooLarge: string;
     logoInvalidType: string;
     ownerHasHistory: string;
+    unitHasHistory: string;
+    renterHasHistory: string;
     ownershipExceeds100: (total: string) => string;
     ownershipAssetRequired: string;
     ledgerAlreadyReversed: string;
@@ -3538,6 +3550,31 @@ export interface Dictionary {
     actionRetryOutbox: string;
     outboxEventNotFound: string;
     cannotRetryOutboxNotFailed: string;
+  };
+
+  staffUsers: {
+    title: string;
+    subtitle: string;
+    colName: string;
+    colEmail: string;
+    colRole: string;
+    colStatus: string;
+    statusActive: string;
+    statusInactive: string;
+    createTitle: string;
+    fieldName: string;
+    fieldEmail: string;
+    fieldRole: string;
+    createSubmit: string;
+    changeRole: string;
+    activate: string;
+    deactivate: string;
+    resetPassword: string;
+    temporaryPasswordTitle: string;
+    temporaryPasswordNotice: string;
+    emailAlreadyInUse: string;
+    cannotDeactivateSelf: string;
+    you: string;
   };
 }
 

@@ -34,6 +34,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/documents", label: t.documents.navTitle, icon: "📁", permission: "document.view" },
     { href: "/audit-logs", label: t.nav.auditLogs, icon: "🛡️", permission: "audit.view" },
     { href: "/settings", label: t.nav.settings, icon: "⚙️", permission: "settings.view" },
+    { href: "/settings/users", label: t.staffUsers.title, icon: "👤", permission: "staffUser.view" },
   ];
   const navItems = allNavItems.filter((item) => can(item.permission, role));
 

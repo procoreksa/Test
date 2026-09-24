@@ -26,11 +26,37 @@ None found.
 See `docs/SECURITY-REVIEW.md` and `docs/PERFORMANCE-REVIEW.md` for full
 write-ups, evidence, and residual-risk notes on each.
 
+**A fifth P1 was found and fixed during Prompt 24's real-user UAT
+(real-user Finding 5's investigation), not part of the original hardening
+pass:** every `useActionState`-based safe-error-display flow in the
+codebase (delete buttons, Staff Users admin, Owner/Tenant Portal account
+admin) threw a plain `Error` from the Server Action and relied on the
+client reading `err.message` from the caught rejection. This worked under
+`next dev` but was **silently redacted to a generic "Minified React error
+#441" digest in a genuine production build** - Next.js redacts the message
+of any error thrown from a Server Action once it's invoked as a plain
+async function call (rather than passed directly as a `<form>`'s own
+native `action`), which is exactly the pattern this codebase used
+everywhere. **Fixed**: the affected actions now return `{ error: string }`
+for their known/expected failures instead of throwing, and callers read
+`result.error` from the resolved value. Full root-cause writeup and the
+list of every action/component pair fixed: `docs/FINAL-UAT-GO-LIVE.md`
+(D-006). **Residual risk, recorded here rather than fixed as tooling in
+this pass (feature freeze):** any *future* code that reintroduces
+"throw inside a `useActionState` updater, read `err.message`" will
+silently reproduce this defect, invisibly under `next dev`. Recommended
+convention going forward: a Server Action must return `{ error }` for any
+failure it wants displayed to the user; it may still throw for a genuinely
+unexpected/unanticipated error, but must never rely on `err.message`
+surviving the client/server boundary for an *expected* validation case. A
+lint rule or code-review checklist item enforcing this was not added in
+this pass to keep the diff scoped to the confirmed defect.
+
 ## P2 - Medium (documented, not fixed this pass)
 
 | # | Issue | Affected module | Recommended future action |
 |---|---|---|---|
-| 1 | `deleteUnit()`/`deleteRenter()`/`deleteBuilding()`/`deleteFloor()`/`deleteCompound()` have no pre-check for dependent history (Contracts/Invoices/etc.) before attempting delete - unlike `deleteOwner()`, which already checks and raises a friendly error. The underlying safety property already holds (Postgres's default FK behavior blocks the delete), so this is a UX/error-clarity gap, not a data-loss risk. | `src/lib/actions/{units,renters,buildings,floors,compounds}.ts` | Add the same `count()`-then-friendly-error pattern `deleteOwner()` already uses, one module at a time, each with its own translated validation message and test. |
+| 1 | ~~`deleteUnit()`/`deleteRenter()`/`deleteBuilding()`/`deleteFloor()`/`deleteCompound()` have no pre-check for dependent history~~ **`deleteUnit()`/`deleteRenter()` RESOLVED (Prompt 24, real-user Finding 5).** Both now catch the underlying `Prisma.PrismaClientKnownRequestError` (`P2003`, FK-restrict) generically and return a friendly, translated (EN/AR) message instead of letting it reach the user raw - `deleteOwner()`'s own pre-check + soft-delete pattern was already correct and is unchanged. See `docs/FINAL-UAT-GO-LIVE.md` (D-005). **`deleteBuilding()`/`deleteFloor()`/`deleteCompound()` remain unresolved** - same UX/error-clarity gap, not a data-loss risk (Postgres's FK-restrict still blocks the delete; only the friendly-message translation is missing). | `src/lib/actions/{buildings,floors,compounds}.ts` | Add the same `try/catch` P2003-translation pattern `deleteUnit()`/`deleteRenter()` now use, one module at a time, each with its own translated validation message and test - and use the "return `{ error }`, never throw" shape from the item below, not a plain throw. |
 | 2 | VAT/invoice-total calculation (`src/lib/zatca/vat.ts`) uses native floating-point arithmetic with a manual `round2()` helper, not `Prisma.Decimal`, despite computing values that ARE persisted (unlike the presentation-only/classification-only rounding used elsewhere). Not demonstrated to produce an actual wrong total at this codebase's real-estate transaction scale, and explicitly out of scope for this hardening pass ("VAT logic unchanged," "do NOT redesign accounting"). | `src/lib/zatca/vat.ts` | A dedicated future task: migrate to `Prisma.Decimal` arithmetic throughout, with full ZATCA re-certification testing (this is tax-authority-facing code; any change here needs its own compliance sign-off, not a drive-by edit). |
 | 3 | No business timezone is pinned anywhere - every "today"/date-boundary calculation (dashboard KPIs, Move-In overdue, reservation expiry) resolves against the Node process's own local timezone, not an explicit `Asia/Riyadh`. **Partially addressed by Automation & Scheduled Jobs** (`docs/AUTOMATION-SCHEDULED-JOBS.md` §23): `Organization.timezone` (default `Asia/Riyadh`) now exists and is used by every date computation inside `src/lib/automation/`, but is deliberately NOT retrofitted to the dashboard/Move-In/Reservation/report code this row already describes - that remains open exactly as before. | Dashboard, Move-In, Reservation, report date-range logic (many files) | Set `TZ=Asia/Riyadh` on the production Node process (see `docs/PRODUCTION-DEPLOYMENT.md`) - a single, code-free deployment fix. A true per-organization timezone feature (for expanding beyond Saudi Arabia) is a separate, larger future project; `src/lib/automation/timezone.ts`'s helpers could be reused directly once that work starts. |
 | 4 | ~~No Content-Security-Policy header~~ **RESOLVED (Prompt 23 hardening pass).** `next.config.ts` now sets a real CSP (`default-src 'self'`, `object-src 'none'`, `base-uri 'self'`, `form-action 'self'`, `frame-ancestors 'self'`, `img-src`/`font-src`/`connect-src 'self'`), inventoried against this app's actual sources (no third-party script/stylesheet exists anywhere; `next/font/google` self-hosts at build time). **Residual, documented limitation**: `script-src`/`style-src` include `'unsafe-inline'` (Next.js App Router's RSC streaming uses inline `<script>` tags; Recharts sets inline `style=""` attributes) rather than a nonce-based strict policy - a nonce-based upgrade would require opting every page into fully dynamic rendering, judged out of scope for this pass. Live-verified: zero CSP console violations across internal/Tenant/Owner UIs, EN and AR. See `docs/PRODUCTION-SECURITY.md` §9. | `next.config.ts` | A future nonce-based strict CSP, if/when the static-optimization tradeoff becomes worth it. |

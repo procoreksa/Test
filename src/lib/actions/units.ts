@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
@@ -56,20 +57,43 @@ export async function createUnit(formData: FormData) {
   revalidatePath("/units");
 }
 
-export async function deleteUnit(unitId: string) {
+export async function deleteUnit(unitId: string): Promise<{ error?: string }> {
   const { organizationId } = await requirePermission("unit.delete");
-  await prisma.$transaction(async (tx) => {
-    const unit = await tx.unit.delete({ where: { id: unitId, organizationId } });
-    await auditAction(tx, {
-      action: "DELETE",
-      entityType: "Unit",
-      entityId: unit.id,
-      entityDisplayName: unit.unitNumber,
-      previousValues: unit,
+  const t = getDictionary(await getLocale());
+  try {
+    await prisma.$transaction(async (tx) => {
+      const unit = await tx.unit.delete({ where: { id: unitId, organizationId } });
+      await auditAction(tx, {
+        action: "DELETE",
+        entityType: "Unit",
+        entityId: unit.id,
+        entityDisplayName: unit.unitNumber,
+        previousValues: unit,
+      });
     });
-  });
+  } catch (error) {
+    // A unit with any related business record (contracts, reservations,
+    // viewings, maintenance, move-in/out, corporate allocations, ...) is
+    // protected by an onDelete: Restrict FK at the DB level (the single
+    // source of truth for "is this referenced" - never duplicated here
+    // table-by-table). Translate that constraint into a friendly, safe
+    // message instead of letting a raw Prisma error reach the user.
+    //
+    // This is RETURNED, not thrown: Next.js redacts the message of any
+    // error thrown from a Server Action that is invoked as a plain async
+    // call (rather than as a <form>'s own native `action`) once running in
+    // a genuine production build - the client only ever sees a generic
+    // "Minified React error #441" digest, never this friendly text. Real
+    // production build UAT (Prompt 24, real-user Finding 5) caught this;
+    // `next dev` never reproduces it. See docs/FINAL-UAT-GO-LIVE.md.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return { error: t.validation.unitHasHistory };
+    }
+    throw error;
+  }
   revalidatePath("/units");
   revalidatePath("/properties");
+  return {};
 }
 
 export async function listUnits() {

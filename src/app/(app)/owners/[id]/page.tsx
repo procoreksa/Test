@@ -9,6 +9,7 @@ import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLo
 import { AuditTimeline } from "@/components/audit-timeline";
 import { OwnerPortalAccountPanel } from "@/components/owner-portal-account-panel";
 import { DocumentsCard } from "@/components/documents-card";
+import { DeleteEntityButton } from "@/components/delete-entity-button";
 
 function assetLabel(
   locale: Awaited<ReturnType<typeof getLocale>>,
@@ -126,15 +127,9 @@ export default async function OwnerProfilePage({ params }: { params: Promise<{ i
                   </button>
                 </div>
               </form>
-              <form
-                className="mt-3"
-                action={async () => {
-                  "use server";
-                  await deleteOwner(owner.id);
-                }}
-              >
-                <button className="text-red-500 hover:underline text-xs">{t.owners.delete}</button>
-              </form>
+              <div className="mt-3">
+                <DeleteEntityButton id={owner.id} action={deleteOwner} label={t.owners.delete} />
+              </div>
             </details>
           )}
         </div>

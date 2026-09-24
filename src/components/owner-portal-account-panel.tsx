@@ -57,7 +57,7 @@ export function OwnerPortalAccountPanel({ ownerId, defaultEmail, account, perms,
   const [createState, createFormAction, createPending] = useActionState<RevealState, FormData>(async (_prev, formData) => {
     try {
       const result = await createOwnerPortalAccount(formData);
-      return { temporaryPassword: result.temporaryPassword };
+      return result.error ? { error: result.error } : { temporaryPassword: result.temporaryPassword };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
@@ -66,7 +66,7 @@ export function OwnerPortalAccountPanel({ ownerId, defaultEmail, account, perms,
   const [resetState, resetFormAction, resetPending] = useActionState<RevealState, FormData>(async (_prev, formData) => {
     try {
       const result = await resetOwnerPortalAccountPassword(formData);
-      return { temporaryPassword: result.temporaryPassword };
+      return result.error ? { error: result.error } : { temporaryPassword: result.temporaryPassword };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }

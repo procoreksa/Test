@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
@@ -43,19 +44,37 @@ export async function createRenter(formData: FormData) {
   revalidatePath("/renters");
 }
 
-export async function deleteRenter(renterId: string) {
+export async function deleteRenter(renterId: string): Promise<{ error?: string }> {
   const { organizationId } = await requirePermission("renter.delete");
-  await prisma.$transaction(async (tx) => {
-    const renter = await tx.renter.delete({ where: { id: renterId, organizationId } });
-    await auditAction(tx, {
-      action: "DELETE",
-      entityType: "Renter",
-      entityId: renter.id,
-      entityDisplayName: renter.fullName,
-      previousValues: renter,
+  const t = getDictionary(await getLocale());
+  try {
+    await prisma.$transaction(async (tx) => {
+      const renter = await tx.renter.delete({ where: { id: renterId, organizationId } });
+      await auditAction(tx, {
+        action: "DELETE",
+        entityType: "Renter",
+        entityId: renter.id,
+        entityDisplayName: renter.fullName,
+        previousValues: renter,
+      });
     });
-  });
+  } catch (error) {
+    // Same reasoning as deleteUnit(): a renter with any related contract or
+    // other business record is protected by an onDelete: Restrict FK - the
+    // single source of truth for "is this referenced" - never duplicated
+    // here table-by-table. Translate it into a friendly, safe message.
+    //
+    // Returned, not thrown - see the comment in deleteUnit() (units.ts):
+    // a thrown Server Action error's message is redacted by Next.js in a
+    // genuine production build once the action is invoked as a plain async
+    // call rather than a <form>'s own native `action`.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return { error: t.validation.renterHasHistory };
+    }
+    throw error;
+  }
   revalidatePath("/renters");
+  return {};
 }
 
 export async function listRenters() {

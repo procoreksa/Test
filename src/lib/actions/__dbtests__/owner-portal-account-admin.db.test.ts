@@ -42,7 +42,7 @@ describe("createOwnerPortalAccount", () => {
   it("creates an INVITED account and returns a one-time temporary password that actually authenticates once the account is later activated", async () => {
     const owner = await createTestOwner(orgA.organization.id, "Invited Admin Owner");
     const { createOwnerPortalAccount, activateOwnerPortalAccount } = await import("@/lib/actions/owner-portal-account");
-    const { accountId, temporaryPassword } = await createOwnerPortalAccount(fd({ ownerId: owner.id, email: "invited-owner@example.com" }));
+    const { accountId, temporaryPassword } = (await createOwnerPortalAccount(fd({ ownerId: owner.id, email: "invited-owner@example.com" }))) as Required<Awaited<ReturnType<typeof createOwnerPortalAccount>>>;
 
     const created = await prisma.ownerPortalAccount.findUniqueOrThrow({ where: { id: accountId } });
     expect(created.status).toBe("INVITED");
@@ -63,7 +63,11 @@ describe("createOwnerPortalAccount", () => {
     const owner = await createTestOwner(orgA.organization.id, "Second Account Owner");
     const { createOwnerPortalAccount } = await import("@/lib/actions/owner-portal-account");
     await createOwnerPortalAccount(fd({ ownerId: owner.id, email: `dup-${Date.now()}@example.com` }));
-    await expect(createOwnerPortalAccount(fd({ ownerId: owner.id, email: `dup2-${Date.now()}@example.com` }))).rejects.toThrow();
+    // Returned as {error}, not thrown - a thrown Server Action error's
+    // message is redacted by Next.js in a genuine production build (see
+    // the comment in deleteUnit(), src/lib/actions/units.ts).
+    const result = await createOwnerPortalAccount(fd({ ownerId: owner.id, email: `dup2-${Date.now()}@example.com` }));
+    expect(result.error).toBeTruthy();
   });
 
   it("rejects a duplicate email within the same organization", async () => {
@@ -72,7 +76,8 @@ describe("createOwnerPortalAccount", () => {
     const sharedEmail = `shared-${Date.now()}@example.com`;
     await createOwnerPortalAccount(fd({ ownerId: owner2.id, email: sharedEmail }));
     const owner3 = await createTestOwner(orgA.organization.id, "Dup Email Owner 2");
-    await expect(createOwnerPortalAccount(fd({ ownerId: owner3.id, email: sharedEmail }))).rejects.toThrow();
+    const result = await createOwnerPortalAccount(fd({ ownerId: owner3.id, email: sharedEmail }));
+    expect(result.error).toBeTruthy();
   });
 });
 
@@ -80,7 +85,7 @@ describe("Account status transitions", () => {
   it("only allows the transitions ACCOUNT_TRANSITIONS actually permits", async () => {
     const owner = await createTestOwner(orgA.organization.id, "Transitions Owner");
     const { createOwnerPortalAccount, activateOwnerPortalAccount, suspendOwnerPortalAccount, disableOwnerPortalAccount } = await import("@/lib/actions/owner-portal-account");
-    const { accountId } = await createOwnerPortalAccount(fd({ ownerId: owner.id, email: `transitions-${Date.now()}@example.com` }));
+    const { accountId } = (await createOwnerPortalAccount(fd({ ownerId: owner.id, email: `transitions-${Date.now()}@example.com` }))) as Required<Awaited<ReturnType<typeof createOwnerPortalAccount>>>;
 
     // INVITED -> ACTIVE is valid.
     await activateOwnerPortalAccount(fd({ accountId }));
@@ -108,7 +113,7 @@ describe("Account status transitions", () => {
     const owner = await createTestOwner(orgA.organization.id, "Suspend Login Owner");
     const { createOwnerPortalAccount, activateOwnerPortalAccount, suspendOwnerPortalAccount } = await import("@/lib/actions/owner-portal-account");
     const email = `suspend-login-${Date.now()}@example.com`;
-    const { accountId, temporaryPassword } = await createOwnerPortalAccount(fd({ ownerId: owner.id, email }));
+    const { accountId, temporaryPassword } = (await createOwnerPortalAccount(fd({ ownerId: owner.id, email }))) as Required<Awaited<ReturnType<typeof createOwnerPortalAccount>>>;
     await activateOwnerPortalAccount(fd({ accountId }));
     expect(await verifyOwnerCredentials(email, temporaryPassword)).not.toBeNull();
 
@@ -122,10 +127,10 @@ describe("resetOwnerPortalAccountPassword", () => {
     const owner = await createTestOwner(orgA.organization.id, "Reset Password Owner");
     const { createOwnerPortalAccount, activateOwnerPortalAccount, resetOwnerPortalAccountPassword } = await import("@/lib/actions/owner-portal-account");
     const email = `reset-${Date.now()}@example.com`;
-    const { accountId, temporaryPassword: oldPassword } = await createOwnerPortalAccount(fd({ ownerId: owner.id, email }));
+    const { accountId, temporaryPassword: oldPassword } = (await createOwnerPortalAccount(fd({ ownerId: owner.id, email }))) as Required<Awaited<ReturnType<typeof createOwnerPortalAccount>>>;
     await activateOwnerPortalAccount(fd({ accountId }));
 
-    const { temporaryPassword: newPassword } = await resetOwnerPortalAccountPassword(fd({ accountId }));
+    const { temporaryPassword: newPassword } = (await resetOwnerPortalAccountPassword(fd({ accountId }))) as Required<Awaited<ReturnType<typeof resetOwnerPortalAccountPassword>>>;
     expect(newPassword).not.toBe(oldPassword);
     expect(await verifyOwnerCredentials(email, oldPassword)).toBeNull();
     expect((await verifyOwnerCredentials(email, newPassword))?.id).toBe(accountId);
@@ -150,14 +155,16 @@ describe("Cross-organization isolation: Org B staff cannot administer Org A's ow
     mockAuth.mockResolvedValue(orgA.session);
     const owner = await createTestOwner(orgA.organization.id, "Cross Org Action Owner");
     const { createOwnerPortalAccount } = await import("@/lib/actions/owner-portal-account");
-    const { accountId } = await createOwnerPortalAccount(fd({ ownerId: owner.id, email: `crossorgaction-${Date.now()}@example.com` }));
+    const { accountId } = (await createOwnerPortalAccount(fd({ ownerId: owner.id, email: `crossorgaction-${Date.now()}@example.com` }))) as Required<Awaited<ReturnType<typeof createOwnerPortalAccount>>>;
 
     mockAuth.mockResolvedValue(orgB.session);
     const { activateOwnerPortalAccount, suspendOwnerPortalAccount, disableOwnerPortalAccount, resetOwnerPortalAccountPassword } = await import("@/lib/actions/owner-portal-account");
     await expect(activateOwnerPortalAccount(fd({ accountId }))).rejects.toThrow();
     await expect(suspendOwnerPortalAccount(fd({ accountId }))).rejects.toThrow();
     await expect(disableOwnerPortalAccount(fd({ accountId }))).rejects.toThrow();
-    await expect(resetOwnerPortalAccountPassword(fd({ accountId }))).rejects.toThrow();
+    // Returned as {error}, not thrown - see the comment above.
+    const resetResult = await resetOwnerPortalAccountPassword(fd({ accountId }));
+    expect(resetResult.error).toBeTruthy();
 
     const stillInvited = await prisma.ownerPortalAccount.findUniqueOrThrow({ where: { id: accountId } });
     expect(stillInvited.status).toBe("INVITED");

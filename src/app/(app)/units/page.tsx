@@ -11,6 +11,7 @@ import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, currencyFormatter, shortDateFormatter, pickLocalized } from "@/lib/i18n";
 import { unitLocationLabel } from "@/lib/unit-location";
 import { CascadingLocationPicker } from "@/components/cascading-location-picker";
+import { DeleteEntityButton } from "@/components/delete-entity-button";
 
 const statusTone: Record<string, string> = {
   VACANT: "bg-slate-100 text-slate-600",
@@ -159,17 +160,7 @@ export default async function UnitsPage() {
                       {t.viewing.unitViewingsLink} ({viewingCounts.get(u.id) ?? 0})
                     </Link>
                   )}
-                  {canDelete && (
-                    <form
-                      className="inline"
-                      action={async () => {
-                        "use server";
-                        await deleteUnit(u.id);
-                      }}
-                    >
-                      <button className="text-red-500 hover:underline text-xs">{t.units.delete}</button>
-                    </form>
-                  )}
+                  {canDelete && <DeleteEntityButton id={u.id} action={deleteUnit} label={t.units.delete} />}
                 </td>
               </tr>
             ))}

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { getLocale, getDictionary } from "@/lib/i18n";
 import { LanguageSwitcher } from "@/components/language-switcher";
 import { ownerLoginAction } from "@/lib/actions/owner-portal/auth-actions";
@@ -42,6 +43,11 @@ export default async function OwnerPortalLoginPage({
             {t.ownerPortal.loginSubmit}
           </button>
         </form>
+        <p className="text-center mt-6">
+          <Link href="/" className="text-xs text-brand-gold-dark hover:underline">
+            ← {t.portalSelector.staffTitle} / {t.portalSelector.tenantTitle}
+          </Link>
+        </p>
       </div>
     </div>
   );

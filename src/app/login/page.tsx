@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { signIn } from "@/lib/auth";
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
@@ -61,7 +62,6 @@ export default async function LoginPage({
               name="email"
               type="email"
               required
-              defaultValue="admin@demo-realestate.sa"
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-gold"
               placeholder="you@company.com"
             />
@@ -72,7 +72,6 @@ export default async function LoginPage({
               name="password"
               type="password"
               required
-              defaultValue="Passw0rd!"
               className="w-full rounded-lg border border-slate-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-brand-gold"
               placeholder="••••••••"
             />
@@ -89,6 +88,11 @@ export default async function LoginPage({
           {t.login.seedHint.split("npm run db:seed")[0]}
           <code>npm run db:seed</code>
           {t.login.seedHint.split("npm run db:seed")[1]}
+        </p>
+        <p className="text-center mt-3">
+          <Link href="/" className="text-xs text-brand-gold-dark hover:underline">
+            ← {t.portalSelector.tenantTitle} / {t.portalSelector.ownerTitle}
+          </Link>
         </p>
       </div>
     </div>

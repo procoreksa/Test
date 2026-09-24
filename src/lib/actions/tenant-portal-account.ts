@@ -53,8 +53,9 @@ const createSchema = z.object({
 });
 
 export interface CreateTenantAccountResult {
-  accountId: string;
-  temporaryPassword: string;
+  error?: string;
+  accountId?: string;
+  temporaryPassword?: string;
 }
 
 /**
@@ -79,15 +80,19 @@ export async function createTenantPortalAccount(formData: FormData): Promise<Cre
     phone: formData.get("phone") || undefined,
   });
 
+  // Returned, not thrown - see the comment in deleteUnit() (units.ts): a
+  // thrown Server Action error's message is redacted by Next.js in a
+  // genuine production build once the action is invoked as a plain async
+  // call rather than a <form>'s own native `action`.
   const renter = await prisma.renter.findFirst({ where: { id: parsed.renterId, organizationId } });
-  if (!renter) throw new Error(t.tenantPortal.renterNotFound);
+  if (!renter) return { error: t.tenantPortal.renterNotFound };
 
   const existing = await prisma.tenantPortalAccount.findUnique({ where: { renterId: parsed.renterId } });
-  if (existing) throw new Error(t.tenantPortal.accountAlreadyExists);
+  if (existing) return { error: t.tenantPortal.accountAlreadyExists };
 
   const emailNormalized = parsed.email.toLowerCase().trim();
   const dup = await prisma.tenantPortalAccount.findUnique({ where: { organizationId_emailNormalized: { organizationId, emailNormalized } } });
-  if (dup) throw new Error(t.tenantPortal.emailAlreadyInUse);
+  if (dup) return { error: t.tenantPortal.emailAlreadyInUse };
 
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await bcrypt.hash(temporaryPassword, 10);
@@ -176,7 +181,8 @@ export async function disableTenantPortalAccount(formData: FormData) {
 }
 
 export interface ResetPasswordResult {
-  temporaryPassword: string;
+  error?: string;
+  temporaryPassword?: string;
 }
 
 /** Step 5/55 - never displays or returns the OLD credential, only issues a brand-new one; the account must change it again on next login. */
@@ -186,7 +192,8 @@ export async function resetTenantPortalAccountPassword(formData: FormData): Prom
   const t = getDictionary(await getLocale());
 
   const account = await prisma.tenantPortalAccount.findFirst({ where: { id: accountId, organizationId } });
-  if (!account) throw new Error(t.tenantPortal.accountNotFound);
+  // Returned, not thrown - see the comment in deleteUnit() (units.ts).
+  if (!account) return { error: t.tenantPortal.accountNotFound };
 
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await bcrypt.hash(temporaryPassword, 10);

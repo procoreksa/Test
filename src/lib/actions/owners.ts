@@ -130,7 +130,7 @@ export async function reactivateOwner(ownerId: string) {
  * this refuses instead (the owner should be deactivated, not deleted, once
  * it has any history).
  */
-export async function deleteOwner(ownerId: string) {
+export async function deleteOwner(ownerId: string): Promise<{ error?: string }> {
   const { organizationId } = await requirePermissionAudited("owner.update", "Owner", ownerId);
   const t = getDictionary(await getLocale());
 
@@ -139,7 +139,11 @@ export async function deleteOwner(ownerId: string) {
     prisma.ownerLedgerEntry.count({ where: { organizationId, ownerId } }),
   ]);
   if (ownershipCount > 0 || ledgerCount > 0) {
-    throw new Error(t.validation.ownerHasHistory);
+    // Returned, not thrown - see the comment in deleteUnit() (units.ts):
+    // a thrown Server Action error's message is redacted by Next.js in a
+    // genuine production build once the action is invoked as a plain async
+    // call rather than a <form>'s own native `action`.
+    return { error: t.validation.ownerHasHistory };
   }
 
   await prisma.$transaction(async (tx) => {
@@ -154,6 +158,7 @@ export async function deleteOwner(ownerId: string) {
     });
   });
   revalidatePath("/owners");
+  return {};
 }
 
 export async function listOwners() {

@@ -127,6 +127,12 @@ export type Permission =
   | "ownerPortalAccount.suspend"
   | "ownerPortalAccount.disable"
   | "ownerPortalAccount.resetPassword"
+  | "staffUser.view"
+  | "staffUser.create"
+  | "staffUser.updateRole"
+  | "staffUser.activate"
+  | "staffUser.deactivate"
+  | "staffUser.resetPassword"
   | "corporateHousing.view"
   | "corporateAccount.create"
   | "corporateAccount.update"
@@ -296,6 +302,12 @@ const ALL_PERMISSIONS: readonly Permission[] = [
   "ownerPortalAccount.suspend",
   "ownerPortalAccount.disable",
   "ownerPortalAccount.resetPassword",
+  "staffUser.view",
+  "staffUser.create",
+  "staffUser.updateRole",
+  "staffUser.activate",
+  "staffUser.deactivate",
+  "staffUser.resetPassword",
   "corporateHousing.view",
   "corporateAccount.create",
   "corporateAccount.update",

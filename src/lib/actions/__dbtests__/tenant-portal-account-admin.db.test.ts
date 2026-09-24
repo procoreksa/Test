@@ -40,7 +40,7 @@ beforeEach(() => {
 describe("createTenantPortalAccount", () => {
   it("creates an INVITED account and returns a one-time temporary password that actually authenticates once the account is later activated", async () => {
     const { createTenantPortalAccount, activateTenantPortalAccount } = await import("@/lib/actions/tenant-portal-account");
-    const { accountId, temporaryPassword } = await createTenantPortalAccount(fd({ renterId: orgA.renter.id, email: "invited-tenant@example.com" }));
+    const { accountId, temporaryPassword } = (await createTenantPortalAccount(fd({ renterId: orgA.renter.id, email: "invited-tenant@example.com" }))) as Required<Awaited<ReturnType<typeof createTenantPortalAccount>>>;
 
     const created = await prisma.tenantPortalAccount.findUniqueOrThrow({ where: { id: accountId } });
     expect(created.status).toBe("INVITED");
@@ -61,7 +61,11 @@ describe("createTenantPortalAccount", () => {
     const { createTenantPortalAccount } = await import("@/lib/actions/tenant-portal-account");
     const renter = await prisma.renter.create({ data: { organizationId: orgA.organization.id, fullName: "Second Account Renter" } });
     await createTenantPortalAccount(fd({ renterId: renter.id, email: `dup-${Date.now()}@example.com` }));
-    await expect(createTenantPortalAccount(fd({ renterId: renter.id, email: `dup2-${Date.now()}@example.com` }))).rejects.toThrow();
+    // Returned as {error}, not thrown - a thrown Server Action error's
+    // message is redacted by Next.js in a genuine production build (see
+    // the comment in deleteUnit(), src/lib/actions/units.ts).
+    const result = await createTenantPortalAccount(fd({ renterId: renter.id, email: `dup2-${Date.now()}@example.com` }));
+    expect(result.error).toBeTruthy();
   });
 
   it("rejects a duplicate email within the same organization", async () => {
@@ -70,7 +74,8 @@ describe("createTenantPortalAccount", () => {
     const sharedEmail = `shared-${Date.now()}@example.com`;
     await createTenantPortalAccount(fd({ renterId: renter2.id, email: sharedEmail }));
     const renter3 = await prisma.renter.create({ data: { organizationId: orgA.organization.id, fullName: "Dup Email Renter 2" } });
-    await expect(createTenantPortalAccount(fd({ renterId: renter3.id, email: sharedEmail }))).rejects.toThrow();
+    const result = await createTenantPortalAccount(fd({ renterId: renter3.id, email: sharedEmail }));
+    expect(result.error).toBeTruthy();
   });
 });
 
@@ -78,7 +83,7 @@ describe("Account status transitions", () => {
   it("only allows the transitions ACCOUNT_TRANSITIONS actually permits", async () => {
     const { createTenantPortalAccount, activateTenantPortalAccount, suspendTenantPortalAccount, disableTenantPortalAccount } = await import("@/lib/actions/tenant-portal-account");
     const renter = await prisma.renter.create({ data: { organizationId: orgA.organization.id, fullName: "Transitions Renter" } });
-    const { accountId } = await createTenantPortalAccount(fd({ renterId: renter.id, email: `transitions-${Date.now()}@example.com` }));
+    const { accountId } = (await createTenantPortalAccount(fd({ renterId: renter.id, email: `transitions-${Date.now()}@example.com` }))) as Required<Awaited<ReturnType<typeof createTenantPortalAccount>>>;
 
     // INVITED -> ACTIVE is valid.
     await activateTenantPortalAccount(fd({ accountId }));
@@ -106,7 +111,7 @@ describe("Account status transitions", () => {
     const { createTenantPortalAccount, activateTenantPortalAccount, suspendTenantPortalAccount } = await import("@/lib/actions/tenant-portal-account");
     const renter = await prisma.renter.create({ data: { organizationId: orgA.organization.id, fullName: "Suspend Login Renter" } });
     const email = `suspend-login-${Date.now()}@example.com`;
-    const { accountId, temporaryPassword } = await createTenantPortalAccount(fd({ renterId: renter.id, email }));
+    const { accountId, temporaryPassword } = (await createTenantPortalAccount(fd({ renterId: renter.id, email }))) as Required<Awaited<ReturnType<typeof createTenantPortalAccount>>>;
     await activateTenantPortalAccount(fd({ accountId }));
     expect(await verifyTenantCredentials(email, temporaryPassword)).not.toBeNull();
 
@@ -120,10 +125,10 @@ describe("resetTenantPortalAccountPassword", () => {
     const { createTenantPortalAccount, activateTenantPortalAccount, resetTenantPortalAccountPassword } = await import("@/lib/actions/tenant-portal-account");
     const renter = await prisma.renter.create({ data: { organizationId: orgA.organization.id, fullName: "Reset Password Renter" } });
     const email = `reset-${Date.now()}@example.com`;
-    const { accountId, temporaryPassword: oldPassword } = await createTenantPortalAccount(fd({ renterId: renter.id, email }));
+    const { accountId, temporaryPassword: oldPassword } = (await createTenantPortalAccount(fd({ renterId: renter.id, email }))) as Required<Awaited<ReturnType<typeof createTenantPortalAccount>>>;
     await activateTenantPortalAccount(fd({ accountId }));
 
-    const { temporaryPassword: newPassword } = await resetTenantPortalAccountPassword(fd({ accountId }));
+    const { temporaryPassword: newPassword } = (await resetTenantPortalAccountPassword(fd({ accountId }))) as Required<Awaited<ReturnType<typeof resetTenantPortalAccountPassword>>>;
     expect(newPassword).not.toBe(oldPassword);
     expect(await verifyTenantCredentials(email, oldPassword)).toBeNull();
     expect((await verifyTenantCredentials(email, newPassword))?.id).toBe(accountId);
@@ -148,14 +153,16 @@ describe("Cross-organization isolation: Org B staff cannot administer Org A's te
     mockAuth.mockResolvedValue(orgA.session);
     const { createTenantPortalAccount } = await import("@/lib/actions/tenant-portal-account");
     const renter = await prisma.renter.create({ data: { organizationId: orgA.organization.id, fullName: "Cross Org Action Renter" } });
-    const { accountId } = await createTenantPortalAccount(fd({ renterId: renter.id, email: `crossorgaction-${Date.now()}@example.com` }));
+    const { accountId } = (await createTenantPortalAccount(fd({ renterId: renter.id, email: `crossorgaction-${Date.now()}@example.com` }))) as Required<Awaited<ReturnType<typeof createTenantPortalAccount>>>;
 
     mockAuth.mockResolvedValue(orgB.session);
     const { activateTenantPortalAccount, suspendTenantPortalAccount, disableTenantPortalAccount, resetTenantPortalAccountPassword } = await import("@/lib/actions/tenant-portal-account");
     await expect(activateTenantPortalAccount(fd({ accountId }))).rejects.toThrow();
     await expect(suspendTenantPortalAccount(fd({ accountId }))).rejects.toThrow();
     await expect(disableTenantPortalAccount(fd({ accountId }))).rejects.toThrow();
-    await expect(resetTenantPortalAccountPassword(fd({ accountId }))).rejects.toThrow();
+    // Returned as {error}, not thrown - see the comment above.
+    const resetResult = await resetTenantPortalAccountPassword(fd({ accountId }));
+    expect(resetResult.error).toBeTruthy();
 
     const stillInvited = await prisma.tenantPortalAccount.findUniqueOrThrow({ where: { id: accountId } });
     expect(stillInvited.status).toBe("INVITED");

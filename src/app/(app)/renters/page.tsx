@@ -6,6 +6,7 @@ import { getCorporateAccountLinksForRenters } from "@/lib/actions/corporate-acco
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
+import { DeleteEntityButton } from "@/components/delete-entity-button";
 
 export default async function RentersPage() {
   const [renters, locale, role] = await Promise.all([listRenters(), getLocale(), getCurrentUserRole()]);
@@ -115,16 +116,7 @@ export default async function RentersPage() {
                   )}
                 </td>
                 <td className="px-5 py-3 text-left">
-                  {canDelete && (
-                    <form
-                      action={async () => {
-                        "use server";
-                        await deleteRenter(r.id);
-                      }}
-                    >
-                      <button className="text-red-500 hover:underline text-xs">{t.renters.delete}</button>
-                    </form>
-                  )}
+                  {canDelete && <DeleteEntityButton id={r.id} action={deleteRenter} label={t.renters.delete} />}
                 </td>
               </tr>
             ))}

@@ -57,7 +57,7 @@ export function TenantPortalAccountPanel({ renterId, defaultEmail, account, perm
   const [createState, createFormAction, createPending] = useActionState<RevealState, FormData>(async (_prev, formData) => {
     try {
       const result = await createTenantPortalAccount(formData);
-      return { temporaryPassword: result.temporaryPassword };
+      return result.error ? { error: result.error } : { temporaryPassword: result.temporaryPassword };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
@@ -66,7 +66,7 @@ export function TenantPortalAccountPanel({ renterId, defaultEmail, account, perm
   const [resetState, resetFormAction, resetPending] = useActionState<RevealState, FormData>(async (_prev, formData) => {
     try {
       const result = await resetTenantPortalAccountPassword(formData);
-      return { temporaryPassword: result.temporaryPassword };
+      return result.error ? { error: result.error } : { temporaryPassword: result.temporaryPassword };
     } catch (err) {
       return { error: err instanceof Error ? err.message : String(err) };
     }
