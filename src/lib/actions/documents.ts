@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission, requireSession } from "@/lib/session";
 import { getLocale, getDictionary } from "@/lib/i18n";
+import { logWarn } from "@/lib/logging";
 import { auditCreate, auditUpdate, auditAction } from "@/lib/audit";
 import { nextCounterValue, formatDocumentNumber } from "@/lib/numbering";
 import { sanitizeFileName } from "@/lib/documents/filename";
@@ -79,11 +80,57 @@ function isUniqueConstraintError(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002";
 }
 
+/**
+ * Reads a FormData field as a raw, un-normalized string (empty string if
+ * absent/not a string) - used only to detect whether normalization changed
+ * a user-supplied value, for diagnostic logging. Never used for the actual
+ * validated value itself (that always comes from the parsed zod schema).
+ */
+function rawStringField(formData: FormData, field: string): string {
+  const value = formData.get(field);
+  return typeof value === "string" ? value : "";
+}
+
+/**
+ * Diagnostic-only logging for the one failure mode this module's
+ * organization-scoped entity-existence check can hit: "no such id in this
+ * organization." Fired at every call site that resolves a security-context
+ * entity id (create/change-context/link) so a future recurrence can be
+ * root-caused from logs alone, without weakening the user-facing message
+ * (still the same generic "not found" - see each call site) or ever
+ * revealing whether the id exists in a *different* organization. Logs only
+ * the normalized (post-trim) entity id, the entity type, the authenticated
+ * organizationId, and whether normalization actually changed the
+ * user-supplied value - never the raw value itself, never any other form
+ * field, never a file/PII.
+ */
+function logDocumentEntityValidationFailure(params: {
+  stage: string;
+  organizationId: string;
+  entityType: DocumentEntityType;
+  entityId: string;
+  rawEntityId: string;
+}): void {
+  logWarn("document.entity_validation_failed", {
+    stage: params.stage,
+    organizationId: params.organizationId,
+    entityType: params.entityType,
+    entityId: params.entityId,
+    entityIdWasNormalized: params.rawEntityId !== params.entityId,
+  });
+}
+
 const createDocumentSchema = z.object({
   title: z.string().min(1),
   category: documentCategoryEnum,
   securityContextEntityType: documentEntityTypeEnum,
-  securityContextEntityId: z.string().min(1),
+  // .trim() before .min(1): a whitespace-only value is correctly treated as
+  // empty, and incidental leading/trailing whitespace (most plausibly from
+  // manual copy/paste into the entity-id field) never causes an otherwise-
+  // valid, same-organization id to fail the exact-match existence lookup
+  // below. Organization scoping itself is untouched - only the id's own
+  // text is normalized before it reaches that lookup.
+  securityContextEntityId: z.string().trim().min(1),
   visibility: documentVisibilityEnum.default("INTERNAL_ONLY"),
 });
 
@@ -107,6 +154,7 @@ export async function createDocumentWithFile(formData: FormData, deps: DocumentA
   const { user } = await requireSession();
   const t = getDictionary(await getLocale());
 
+  const rawEntityId = rawStringField(formData, "securityContextEntityId");
   const parsed = createDocumentSchema.parse({
     title: formData.get("title"),
     category: formData.get("category"),
@@ -116,7 +164,16 @@ export async function createDocumentWithFile(formData: FormData, deps: DocumentA
   });
 
   const entityExists = await entityExistsInOrganization(prisma, organizationId, parsed.securityContextEntityType, parsed.securityContextEntityId);
-  if (!entityExists) throw new Error(t.validation.documentEntityNotFound);
+  if (!entityExists) {
+    logDocumentEntityValidationFailure({
+      stage: "document.create",
+      organizationId,
+      entityType: parsed.securityContextEntityType,
+      entityId: parsed.securityContextEntityId,
+      rawEntityId,
+    });
+    throw new Error(t.validation.documentEntityNotFound);
+  }
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) throw new Error(t.validation.documentFileRequired);
@@ -313,7 +370,7 @@ export async function changeDocumentVisibility(formData: FormData): Promise<void
 const changeSecurityContextSchema = z.object({
   documentId: z.string().min(1),
   securityContextEntityType: documentEntityTypeEnum,
-  securityContextEntityId: z.string().min(1),
+  securityContextEntityId: z.string().trim().min(1),
 });
 
 /**
@@ -331,6 +388,7 @@ export async function changeDocumentSecurityContext(formData: FormData): Promise
   const t = getDictionary(await getLocale());
   const { user } = await requireSession();
 
+  const rawEntityId = rawStringField(formData, "securityContextEntityId");
   const parsed = changeSecurityContextSchema.parse({
     documentId: formData.get("documentId"),
     securityContextEntityType: formData.get("securityContextEntityType"),
@@ -338,7 +396,16 @@ export async function changeDocumentSecurityContext(formData: FormData): Promise
   });
 
   const entityExists = await entityExistsInOrganization(prisma, organizationId, parsed.securityContextEntityType, parsed.securityContextEntityId);
-  if (!entityExists) throw new Error(t.validation.documentEntityNotFound);
+  if (!entityExists) {
+    logDocumentEntityValidationFailure({
+      stage: "document.changeSecurityContext",
+      organizationId,
+      entityType: parsed.securityContextEntityType,
+      entityId: parsed.securityContextEntityId,
+      rawEntityId,
+    });
+    throw new Error(t.validation.documentEntityNotFound);
+  }
 
   await prisma.$transaction(async (tx) => {
     const document = await tx.document.findFirst({ where: { id: parsed.documentId, organizationId } });
@@ -407,7 +474,7 @@ export async function restoreDocument(formData: FormData): Promise<void> {
 const linkSchema = z.object({
   documentId: z.string().min(1),
   entityType: documentEntityTypeEnum,
-  entityId: z.string().min(1),
+  entityId: z.string().trim().min(1),
 });
 
 /**
@@ -423,6 +490,7 @@ export async function addDocumentLink(formData: FormData): Promise<void> {
   const { user } = await requireSession();
   const t = getDictionary(await getLocale());
 
+  const rawEntityId = rawStringField(formData, "entityId");
   const parsed = linkSchema.parse({
     documentId: formData.get("documentId"),
     entityType: formData.get("entityType"),
@@ -430,7 +498,16 @@ export async function addDocumentLink(formData: FormData): Promise<void> {
   });
 
   const entityExists = await entityExistsInOrganization(prisma, organizationId, parsed.entityType, parsed.entityId);
-  if (!entityExists) throw new Error(t.validation.documentEntityNotFound);
+  if (!entityExists) {
+    logDocumentEntityValidationFailure({
+      stage: "document.addLink",
+      organizationId,
+      entityType: parsed.entityType,
+      entityId: parsed.entityId,
+      rawEntityId,
+    });
+    throw new Error(t.validation.documentEntityNotFound);
+  }
 
   await prisma.$transaction(async (tx) => {
     const document = await tx.document.findFirst({ where: { id: parsed.documentId, organizationId } });

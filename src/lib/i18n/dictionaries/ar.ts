@@ -2201,6 +2201,7 @@ export const ar: Dictionary = {
     fieldEntityType: "نوع السجل",
     fieldEntityId: "معرّف السجل",
     fieldEntityIdHint: "المعرّف الداخلي للسجل الذي ينتمي إليه هذا المستند",
+    fieldEntityLockedHint: "سيتم إرفاق هذا المستند بالسجل الموضح أعلاه - تم تحديده مسبقًا ولا يمكن تعديله هنا.",
     fieldFile: "الملف",
     fileHint: "PDF أو JPEG أو PNG أو WEBP - بحد أقصى 15 ميجابايت",
     createButton: "رفع",

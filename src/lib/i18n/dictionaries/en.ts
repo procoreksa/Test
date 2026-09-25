@@ -2201,6 +2201,7 @@ export const en: Dictionary = {
     fieldEntityType: "Record Type",
     fieldEntityId: "Record ID",
     fieldEntityIdHint: "The internal ID of the record this document belongs to",
+    fieldEntityLockedHint: "This document will be attached to the record shown above - it was preselected and cannot be edited here.",
     fieldFile: "File",
     fileHint: "PDF, JPEG, PNG, or WEBP - up to 15MB",
     createButton: "Upload",

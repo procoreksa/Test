@@ -1927,6 +1927,7 @@ export interface Dictionary {
     fieldEntityType: string;
     fieldEntityId: string;
     fieldEntityIdHint: string;
+    fieldEntityLockedHint: string;
     fieldFile: string;
     fileHint: string;
     createButton: string;

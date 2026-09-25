@@ -10,6 +10,20 @@ export default async function NewDocumentPage({
   const [locale, params] = await Promise.all([getLocale(), searchParams]);
   const t = getDictionary(locale);
 
+  // A trusted, application-generated preselection (e.g. the "Upload
+  // Document" link on a Contract/Unit/Renter page's DocumentsCard, which
+  // always passes its own already-organization-scoped record id) is
+  // rendered as a locked reference rather than an editable field, so the
+  // id never has to be manually re-typed/copy-pasted - the exact class of
+  // human error a production incident traced this failure to. This is a
+  // UX convenience only: createDocumentWithFile() still independently
+  // re-validates entity existence and organization scope server-side no
+  // matter how this value arrived (never trust the query string).
+  const trimmedEntityId = params.entityId?.trim();
+  const preselectedEntityType =
+    params.entityType && params.entityType in t.documentEntityTypeLabel ? (params.entityType as DocumentEntityType) : null;
+  const hasPreselectedEntity = Boolean(preselectedEntityType && trimmedEntityId);
+
   async function submit(formData: FormData) {
     "use server";
     const { redirect } = await import("next/navigation");
@@ -60,28 +74,36 @@ export default async function NewDocumentPage({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {hasPreselectedEntity && preselectedEntityType && trimmedEntityId ? (
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">{t.documents.fieldEntityType}</label>
-            <select
-              name="securityContextEntityType"
-              required
-              defaultValue={params.entityType ?? "CONTRACT"}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2"
-            >
-              {(Object.keys(t.documentEntityTypeLabel) as DocumentEntityType[]).map((v) => (
-                <option key={v} value={v}>
-                  {t.documentEntityTypeLabel[v]}
-                </option>
-              ))}
-            </select>
+            <p className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 text-sm">
+              {t.documentEntityTypeLabel[preselectedEntityType]}
+              <span className="text-slate-400 font-mono text-xs ms-2">({trimmedEntityId})</span>
+            </p>
+            <p className="text-xs text-slate-400 mt-1">{t.documents.fieldEntityLockedHint}</p>
+            <input type="hidden" name="securityContextEntityType" value={preselectedEntityType} />
+            <input type="hidden" name="securityContextEntityId" value={trimmedEntityId} />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">{t.documents.fieldEntityId}</label>
-            <input name="securityContextEntityId" required defaultValue={params.entityId} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-            <p className="text-xs text-slate-400 mt-1">{t.documents.fieldEntityIdHint}</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t.documents.fieldEntityType}</label>
+              <select name="securityContextEntityType" required defaultValue="CONTRACT" className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                {(Object.keys(t.documentEntityTypeLabel) as DocumentEntityType[]).map((v) => (
+                  <option key={v} value={v}>
+                    {t.documentEntityTypeLabel[v]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">{t.documents.fieldEntityId}</label>
+              <input name="securityContextEntityId" required className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              <p className="text-xs text-slate-400 mt-1">{t.documents.fieldEntityIdHint}</p>
+            </div>
           </div>
-        </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">{t.documents.fieldFile}</label>

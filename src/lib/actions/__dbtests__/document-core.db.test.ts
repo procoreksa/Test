@@ -86,6 +86,26 @@ describe("createDocumentWithFile", () => {
     expect(storage.debugObjectCount()).toBe(0);
   });
 
+  it("accepts a same-organization Contract id with incidental leading/trailing whitespace, and persists the normalized (trimmed) id, not the padded raw value", async () => {
+    const { createDocumentWithFile } = await import("@/lib/actions/documents");
+    const { contract } = await createTestContract(orgA);
+    const storage = newMockStorageProvider();
+    const paddedId = `  ${contract.id}\n`;
+
+    const { documentId } = await createDocumentWithFile(
+      documentFormData(
+        { title: "Whitespace-padded id", category: "CONTRACT", securityContextEntityType: "CONTRACT", securityContextEntityId: paddedId },
+        pdfFile()
+      ),
+      { storageProvider: storage }
+    );
+
+    const document = await prisma.document.findUniqueOrThrow({ where: { id: documentId } });
+    expect(document.securityContextEntityId).toBe(contract.id); // normalized, never the padded raw value
+    expect(document.securityContextEntityId).not.toBe(paddedId);
+    expect(storage.debugObjectCount()).toBe(1);
+  });
+
   it("rejects an invalid file (bad signature) - creates nothing, writes nothing to storage", async () => {
     const { createDocumentWithFile } = await import("@/lib/actions/documents");
     const { contract } = await createTestContract(orgA);
@@ -203,6 +223,67 @@ describe("Document links (Step 72)", () => {
 
     const links = await prisma.documentLink.findMany({ where: { documentId } });
     expect(links).toHaveLength(1);
+  });
+
+  it("normalizes a whitespace-padded entityId before the existence check and persists the trimmed value on DocumentLink", async () => {
+    const { createDocumentWithFile, addDocumentLink } = await import("@/lib/actions/documents");
+    const { contract, unit } = await createTestContract(orgA);
+    const storage = newMockStorageProvider();
+    const { documentId } = await createDocumentWithFile(
+      documentFormData({ title: "Linked doc (padded)", category: "GENERAL", securityContextEntityType: "CONTRACT", securityContextEntityId: contract.id }, pdfFile()),
+      { storageProvider: storage }
+    );
+
+    const fd = new FormData();
+    fd.set("documentId", documentId);
+    fd.set("entityType", "UNIT");
+    fd.set("entityId", `\t${unit.id}  `);
+    await addDocumentLink(fd);
+
+    const link = await prisma.documentLink.findFirstOrThrow({ where: { documentId, entityType: "UNIT" } });
+    expect(link.entityId).toBe(unit.id);
+  });
+});
+
+describe("changeDocumentSecurityContext", () => {
+  it("normalizes a whitespace-padded entity id before the existence check and persists the trimmed value on Document", async () => {
+    const { createDocumentWithFile, changeDocumentSecurityContext } = await import("@/lib/actions/documents");
+    const { contract, unit } = await createTestContract(orgA);
+    const storage = newMockStorageProvider();
+    const { documentId } = await createDocumentWithFile(
+      documentFormData({ title: "Re-contextable doc", category: "GENERAL", securityContextEntityType: "CONTRACT", securityContextEntityId: contract.id }, pdfFile()),
+      { storageProvider: storage }
+    );
+
+    const fd = new FormData();
+    fd.set("documentId", documentId);
+    fd.set("securityContextEntityType", "UNIT");
+    fd.set("securityContextEntityId", `  ${unit.id}\n`);
+    await changeDocumentSecurityContext(fd);
+
+    const document = await prisma.document.findUniqueOrThrow({ where: { id: documentId } });
+    expect(document.securityContextEntityType).toBe("UNIT");
+    expect(document.securityContextEntityId).toBe(unit.id);
+  });
+
+  it("still rejects a cross-organization entity id after normalization - organization scoping is untouched", async () => {
+    const { createDocumentWithFile, changeDocumentSecurityContext } = await import("@/lib/actions/documents");
+    const { contract } = await createTestContract(orgA);
+    const { contract: contractB } = await createTestContract(orgB);
+    const storage = newMockStorageProvider();
+    const { documentId } = await createDocumentWithFile(
+      documentFormData({ title: "Re-context cross-org attempt", category: "GENERAL", securityContextEntityType: "CONTRACT", securityContextEntityId: contract.id }, pdfFile()),
+      { storageProvider: storage }
+    );
+
+    const fd = new FormData();
+    fd.set("documentId", documentId);
+    fd.set("securityContextEntityType", "CONTRACT");
+    fd.set("securityContextEntityId", `  ${contractB.id}  `);
+    await expect(changeDocumentSecurityContext(fd)).rejects.toThrow();
+
+    const document = await prisma.document.findUniqueOrThrow({ where: { id: documentId } });
+    expect(document.securityContextEntityId).toBe(contract.id); // unchanged
   });
 });
 
