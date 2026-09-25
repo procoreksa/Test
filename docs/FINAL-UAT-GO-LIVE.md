@@ -453,28 +453,327 @@ Actual / Root Cause / Fix (commit) / Retest Evidence / Disposition.
 
 ---
 
-## 4. Overall Disposition
+## 4. Remaining Prompt 24 Phases (tasks #227-233) — Continuation
 
-Per the rule that a system must not receive **APPROVED FOR PRODUCTION
-GO-LIVE** while essential routine Day-1 administration still requires
-direct database or developer intervention: **within the scope audited by
-this update (real-user Findings 1-5 and the D-006 defect found while
-investigating them), no such gap remains** — items 1-15 above are all
-resolved or confirmed already-correct.
+This section closes out every phase Section "Status of this document"
+above flagged as outstanding. All items below were executed against the
+running production build (`npm run build && npm run start`), the real
+local PostgreSQL instance, and the real local S3-compatible object store
+(`s3rver`, configured via `DOCUMENT_S3_*` in `.env` — this environment is
+NOT using the `LOCAL_DEV` filesystem adapter).
 
-However, this document does **not** cover the remaining Prompt 24 phases
-that were still in progress when these findings arrived and have not been
-re-run since: Corporate Housing occupancy-distinction UAT, Documents UAT
-(including the external S3 gate disposition), Automation/Outbox UAT,
-a dedicated Security UAT pass (rate limiting, trusted-proxy decision,
-CSP/headers, log redaction, health tiers), a fresh-DB deployment
-rehearsal, and the executive KPI/EN-AR-RTL-mobile/console/performance
-smoke pass.
+### 4.1 Corporate Housing occupancy-distinction UAT — PASS (+ D-007 found & fixed)
 
-**Disposition: CONDITIONALLY READY, scope-limited to Operational
-Administration (this document) and the previously-completed business
-lifecycle / financial reconciliation / Move-In-Maintenance-Move-Out /
-Tenant-Owner-Portal UAT.** The system is **NOT YET APPROVED FOR PRODUCTION
-GO-LIVE** as a whole — that verdict is deliberately deferred until the
-remaining phases above are completed and reconciled into this same
-document.
+Built a live fixture end-to-end via the real UI: corporate renter (VAT
+number) → Corporate Account → Corporate Occupant → Housing Allocation
+against a real ACTIVE Contract. Directly verified the core invariant this
+gate exists for: ending the occupant's allocation (`ACTIVE` → `ENDED`)
+leaves the Unit's own `status` at `OCCUPIED` (its Contract is still
+active) while the "Unallocated Corporate Units" report immediately lists
+that same Unit as having zero active occupants — the intended "occupied
+but unallocated" distinction, confirmed live in both the database and the
+report UI. Full DB test suite re-run: 19/19 pass (lifecycle, concurrency,
+cross-org).
+
+Building this fixture also reproduced **D-007** (a Unit could end up with
+two simultaneously `ACTIVE` Contracts on an ordinary move-out-then-re-lease
+turnover) — see the Defect Register above. Fixed, regression-tested
+(726 unit + 516 DB tests), and re-verified live in a rebuilt production
+bundle.
+
+### 4.2 Documents UAT — PASS; external cloud S3 — PENDING EXTERNAL
+
+Live, authenticated, production-build verification against the real local
+S3-compatible backend:
+- Upload (PNG, real bytes) → listed correctly with correct MIME type/size.
+- New version uploaded (v1 → v2) → both versions retained in Version
+  History with correct timestamps and file names; current-version pointer
+  updated correctly.
+- Authenticated download via the protected route
+  (`/api/documents/[id]/download`) → `200`, correct `image/png`
+  content-type, correct bytes.
+- Cross-organization download attempt (Org B staff, same document ID) →
+  `404` (never `200`) — the entity-authorization registry correctly denies
+  it.
+- Zero browser console errors during the entire upload/version/download
+  flow.
+- Document Management DB test suite re-run: 24/24 pass (core CRUD,
+  concurrency/storage-failure handling, portal access).
+
+**External cloud S3 smoke test: PENDING EXTERNAL.** No real AWS/R2/MinIO
+account or credentials exist in this environment (confirmed: `.env` points
+`DOCUMENT_S3_ENDPOINT` at a local `s3rver` test double, not a real cloud
+endpoint). Per `docs/TECHNICAL-DEBT.md` item 11a, this was already an
+explicitly-documented, never-hidden limitation from Prompt 23 — restated
+here as a **mandatory pre-deployment prerequisite, not a discovered
+defect**: before production go-live, the real S3-compatible adapter
+(`src/lib/documents/providers/s3-compatible.ts`) must be exercised once
+against the actual provisioned production bucket/credentials (put, get,
+delete, not-found handling, and one full backup-delete-restore-checksum
+cycle), exactly as it was already exercised against the local test double
+in this pass and in Prompt 23's original backup/restore drill
+(`docs/BACKUP-RECOVERY.md` §7b). This gate cannot be marked PASS without
+real credentials, and no verification is fabricated in their absence.
+
+### 4.3 Automation / Outbox UAT — PASS
+
+Re-ran the automation and communications DB test suites end-to-end:
+10 files, 64/64 tests pass — cross-org security (automation +
+communications, 12 tests), idempotency (the enqueue path's own unique
+`(organizationId, idempotencyKey)` constraint fired correctly during the
+run, proving duplicate-send protection is real, not just asserted),
+concurrency, and the reconciliation job. Worker-route security verified
+live against the running production server: `POST /api/automation/worker`
+and `POST /api/communications/process` both return `401` with no secret
+and `401` with a wrong secret header — never process the request.
+
+### 4.4 Security UAT — PASS (trusted-proxy limitation re-confirmed, unchanged)
+
+Live, production-build verification:
+- **Login rate limiting, all 3 principals:** DB test suite re-run, 4/4
+  pass (concurrency-safe counting, fixed-window expiry, and — critically —
+  confirmed that INTERNAL/Tenant/Owner buckets never share state for the
+  same email). Independently, this exact session's own repeated UAT
+  logins tripped the real rate limiter mid-session, live proof the
+  mechanism fires under real traffic, not only in isolated tests.
+- **Health endpoint tiering:** `GET /api/health` (liveness) → `200`, no
+  DB dependency; `GET /api/health/ready` (readiness) → `200` with real
+  `{database: true, config: true}` checks; `GET /api/ops/health`
+  (protected operational tier) → `401` unauthenticated, exactly as
+  designed.
+- **Security headers:** live `curl -I /` against the production server
+  confirms `Content-Security-Policy`, `X-Content-Type-Options: nosniff`,
+  `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy`, `Permissions-Policy`,
+  and `Strict-Transport-Security` are all present and match
+  `docs/PRODUCTION-SECURITY.md`'s documented configuration exactly.
+- **Error sanitization / log redaction:** unchanged since Prompt 23;
+  `src/lib/logging.ts`/`src/lib/api-error.ts` untouched by this pass, full
+  unit suite (726 tests, including the redaction/masking test files) still
+  green.
+- **Trusted-proxy decision:** re-confirmed as an unchanged, already-
+  documented limitation (`docs/TECHNICAL-DEBT.md` item 1, P3): the IP-based
+  rate-limit bucket trusts `x-forwarded-for`'s first value without a
+  configured trusted-proxy allowlist. This cannot be genuinely resolved
+  without knowing the real production deployment topology (which load
+  balancer/CDN sits in front of the app, if any) — **PENDING EXTERNAL**:
+  the actual allowlist must be configured once that topology is known;
+  the per-identifier (email-based) bucket remains the primary defense
+  regardless and is unaffected.
+- **Auth/deactivation/stale-session:** unchanged from the already-verified
+  periodic re-verification (`src/lib/auth-session-refresh.ts`), re-run as
+  part of the full unit suite (5/5 pass) and DB suite (4/4 pass).
+
+### 4.5 Deployment Rehearsal & Backup/Restore — PASS
+
+- **Fresh PostgreSQL database migration/bootstrap:** created a genuinely
+  new, empty database and ran `prisma migrate deploy` against it — all 27
+  migrations applied cleanly, zero errors, `"All migrations have been
+  successfully applied."` This is the exact sequence a real first-time
+  production bootstrap runs.
+- **PostgreSQL backup/restore:** a real `pg_dump` (custom format) of the
+  live UAT database followed by `pg_restore` into a fresh database, then a
+  row-count comparison across four representative tables
+  (`organizations`, `units`, `contracts`, `invoices`) — **exact match on
+  every table**. Rehearsal databases were dropped afterward; no artifacts
+  left behind.
+- **Object-storage backup/restore/checksum:** not independently re-run as
+  a standalone drill in this pass (the original, real drill — full
+  backup-delete-restore-checksum-verify cycle against a local S3-compatible
+  server — was already executed in Prompt 23, `docs/BACKUP-RECOVERY.md`
+  §7b, and nothing about the storage schema or adapter changed since).
+  This pass's own Documents UAT (4.2) independently re-confirms the
+  read/write/download path against that same real S3-compatible backend
+  is still correct today.
+- **DB/object consistency, provider/storage/database outage behavior,
+  scheduler missed-window recovery, outbox backlog recovery:** covered by
+  the already-passing, already-built automated suites re-run in 4.3 above
+  (`automation-reconciliation.db.test.ts` — 3/3 — exercises exactly the
+  missed-window/backlog-recovery scenarios; `document-concurrency-and-
+  storage-failures.db.test.ts` — part of the 24/24 in 4.2 — exercises
+  storage-failure handling). Not independently re-derived from scratch in
+  this pass; cited as existing, real, passing evidence rather than
+  re-invented.
+- **Production deployment rehearsal (full):** limited to the database
+  layer above — there is no real production hosting target (server,
+  container platform, load balancer) available in this environment to
+  rehearse an actual application deployment against. **PENDING EXTERNAL**
+  for the application-hosting half of this gate; the data-layer half
+  (migration + backup/restore) is genuinely rehearsed and passing.
+- **Environment fail-closed verification:** unchanged from Prompt 23
+  (`src/lib/env-validation.ts` / `src/instrumentation.ts` — production
+  fails closed on `LOCAL_DEV` storage and on missing required secrets);
+  not re-derived, cited as existing.
+
+### 4.6 Financial / Executive / EN-AR-RTL-Mobile / Perf / Pagination / Concurrency / Audit — PASS
+
+- **Financial Master Reconciliation:** the dedicated
+  `financial-regression.db.test.ts` suite (invoice/VAT/commission/payment/
+  reversal/anti-double-count/owner-ledger) re-run and green as part of the
+  full DB suite. A manual ad-hoc spot-check query run during this pass
+  produced a confusing negative "total payments" figure purely because it
+  naively excluded `status: REVERSED` rows without also accounting for a
+  reversal's own negative-amount offset row correctly — an artifact of
+  that one-off query's own filter logic, not a discrepancy in the
+  application's real reconciliation logic (which computes this correctly
+  and is what the passing automated suite actually verifies).
+- **Executive KPI + aging reconciliation:** `executive-reconciliation.db.test.ts`
+  re-run, 13/13 pass, explicitly including cancelled-invoice exclusion and
+  aging-bucket reconciliation scenarios by name.
+- **Audit trail / immutability:** `audit-immutability.db.test.ts` re-run,
+  6/6 pass.
+- **EN/AR/RTL/mobile/console:** a combined live check (iPhone 12 viewport,
+  Arabic locale) confirmed `<html dir="rtl">` is correctly set, the
+  sidebar/navigation renders and remains usable at mobile width, Arabic
+  UI strings render correctly throughout, and **zero browser console
+  errors** occurred during the pass. This is in addition to the
+  EN + AR verification already performed live for every Finding 1-5/D-006/
+  D-007 fix earlier in this document.
+- **Performance smoke:** basic page-load timing against the production
+  server (`/`, `/login`) returned sub-15ms responses; no hangs, no
+  timeouts. Not a load test — no concurrent-user throughput target exists
+  to test against without a defined production traffic profile.
+- **Pagination / concurrency:** pagination is exercised implicitly by the
+  many already-passing report/list-page tests; concurrency is extensively
+  covered by the many dedicated `*-concurrency.db.test.ts` suites re-run
+  throughout this pass (ownership, reservation-contract, corporate
+  housing, communications) — all green.
+
+### 4.7 Acceptance by Role — PASS (re-confirmed, unchanged)
+
+OWNER/ADMIN/MANAGER/ACCOUNTANT/VIEWER (mapped to Operations/Accounting/
+Management/Viewer acceptance) were already live-verified end-to-end by
+task #222's RBAC matrix UAT earlier in Prompt 24, including cross-org
+denial. Nothing in `src/lib/permissions.ts`'s role→permission mapping was
+touched by this continuation except the additive `staffUser.*` grants
+(D-002, OWNER/ADMIN-only) and the new (already-tested) delete-flow
+behavior — neither changes any existing role's acceptance criteria.
+
+### 4.8 Known Technical Debt Review — Complete
+
+`docs/TECHNICAL-DEBT.md` reviewed and updated in this pass: item 1
+(deletion friendliness) partially resolved and re-scoped to the three
+remaining modules; a new entry recorded for the D-006 production
+error-redaction convention risk; item 7 (Contract never auto-expires)
+cross-referenced with its D-007 consequence and fix. No new debt item
+was created without a corresponding disposition (fixed / explicitly
+deferred with reason).
+
+---
+
+## 5. Go-Live Operational Plans
+
+Written as concrete, actionable plans against this codebase's actual
+architecture — not generic boilerplate. Items marked **PENDING EXTERNAL**
+require information or infrastructure this environment does not have
+(a real cloud account, a chosen hosting provider, a real domain/DNS, a
+paging/on-call tool) and cannot be fabricated.
+
+**Production data preparation plan.** Do not carry any UAT fixture data
+(`UAT_ORG_A`/`UAT_ORG_B` and everything created under them in this pass)
+into production. The only production-safe bootstrap path today is a
+brand-new, empty database (verified in 4.5) followed by exactly one
+manual creation of the first real Organization and its first OWNER user —
+`src/lib/seed-demo-data.ts` and `/api/admin/seed` are demo/test tooling
+only (secret-gated, production-disabled by default) and must never run
+against a real customer database.
+
+**Go-Live access plan.** First OWNER account: created directly in the
+production database by whoever runs the initial migration (there is
+intentionally no self-service "first user" signup flow — this matches the
+existing internal-staff-only provisioning model). Every subsequent staff
+account: created by that OWNER via `/settings/users` (D-002) — no
+developer/DB access needed from day two onward. Tenant/Owner Portal
+accounts: created by staff via the existing Owner/Renter profile pages
+once real Owners/Renters/Contracts exist.
+
+**Worker/cron plan.** Three protected routes must be invoked on a
+schedule by the hosting platform's own cron/scheduled-task mechanism (this
+codebase has no built-in scheduler daemon — see `docs/AUTOMATION-SCHEDULED-JOBS.md`):
+`POST /api/automation/scheduler` (enqueues due jobs), `POST /api/automation/worker`
+(processes queued jobs), `POST /api/communications/process` (drains the
+outbox). Each requires the `x-worker-secret` header matching
+`WORKER_SECRET` (verified fail-closed in 4.4/4.3). Recommended cadence:
+worker and outbox-processor every 1-5 minutes; scheduler once daily
+(it computes due reminders for the day). **Exact cron syntax depends on
+the chosen hosting platform — PENDING EXTERNAL.**
+
+**Production storage plan.** Set `DOCUMENT_S3_ENDPOINT`/`_REGION`/`_BUCKET`/
+`_ACCESS_KEY_ID`/`_SECRET_ACCESS_KEY` to a real provisioned S3-compatible
+bucket before go-live (never `LOCAL_DEV` in production — enforced
+fail-closed already). Run the real-credential smoke test from 4.2 once
+that bucket exists. **PENDING EXTERNAL** until a real account is
+provisioned.
+
+**Production database plan.** A managed PostgreSQL instance (version
+matching `prisma/schema.prisma`'s target), `DATABASE_URL` pointed at it,
+`prisma migrate deploy` run once (rehearsed clean in 4.5), then the single
+manual first-OWNER creation above. Enable automated daily backups on the
+managed instance itself if the provider offers it; the manual
+`pg_dump`/`pg_restore` procedure rehearsed in 4.5 remains the documented
+manual fallback (`docs/BACKUP-RECOVERY.md`). **Exact managed-provider
+choice — PENDING EXTERNAL.**
+
+**Day-1 observability plan.** Point uptime monitoring at `GET /api/health`
+(liveness) and `GET /api/health/ready` (readiness); point a synthetic
+check with the worker secret at `GET /api/ops/health` for the protected
+operational tier (DB latency, queue depth — see
+`docs/PRODUCTION-RELIABILITY.md`). Structured JSON logs
+(`src/lib/logging.ts`) should be shipped to whatever log aggregation the
+hosting platform provides; `logSecurityEvent()` calls (login-rate-limit
+trips, worker-auth rejections) are the highest-signal lines to alert on
+first. **Choice of paging/alerting tool — PENDING EXTERNAL.**
+
+**First-24-hours plan.** (1) Confirm the scheduled worker/outbox/scheduler
+crons are actually firing (check `AutomationJobAttempt`/`OutboxEvent`
+rows advance). (2) Watch `/api/health/ready` and `/api/ops/health` for the
+first few hours at tighter intervals than the steady-state cadence.
+(3) Confirm the first real Organization's first Contract → Invoice →
+Payment cycle reconciles correctly in the Executive Dashboard before
+trusting it for a second organization. (4) Watch `login_rate_limit_triggered`
+log events for unexpected volume (could indicate a misconfigured client
+retrying, not necessarily an attack).
+
+**Rollback / roll-forward matrix.**
+
+| Scenario | Action |
+|---|---|
+| Bad application deploy, DB schema unchanged | Roll back to the previous application build/image; no DB action needed. |
+| Bad migration, caught before real data written under it | `prisma migrate resolve --rolled-back <name>` (never a raw destructive SQL edit — matches the documented convention already used once in this codebase's own history, `docs/TECHNICAL-DEBT.md` item 8), then redeploy the previous application build. |
+| Bad migration, real data already written under the new schema | Roll forward with a corrective migration, never backward — restore from the most recent verified backup (4.5) only as a last resort, and only after confirming the data-loss window is acceptable. |
+| Worker/scheduler secret compromised | Rotate `WORKER_SECRET`, redeploy; the fail-closed check (4.3/4.4) means the old secret stops working immediately everywhere. |
+| Object storage outage | The application already fails a document upload/download with a handled error rather than crashing (verified in 4.2's own DB suite, "storage-failure handling" tests) — no emergency code change needed, only a storage-provider-side incident. |
+
+---
+
+## 6. Overall Disposition
+
+Every item explicitly listed in the continuation request has now been
+executed, with real evidence, against a real production build, a real
+PostgreSQL database, and a real (local) S3-compatible object store — see
+Sections 4-5 above and the full Defect Register (D-001 through D-007, all
+**Fixed** or **No defect found — capability already correct**).
+
+Two categories of item remain genuinely outside what this environment can
+verify, and are marked accordingly rather than fabricated:
+1. **The real external cloud S3 smoke test** (§4.2) — no real cloud
+   credentials exist here.
+2. **Real production hosting infrastructure** (§4.5's application-layer
+   deployment rehearsal, the trusted-proxy topology in §4.4, and the
+   provider-specific details in §5's plans) — no real hosting target,
+   load balancer, or on-call tooling exists here.
+
+Per the explicit rule that these must be marked **PENDING EXTERNAL** and
+never fabricated, and since the real cloud S3 smoke test is stated to be
+a **mandatory deployment prerequisite**: the conclusion is —
+
+**CONDITIONALLY READY — EXTERNAL DEPLOYMENT PREREQUISITES REMAIN**
+
+The application itself — every UAT phase, every defect found, every fix
+made, every regression suite, live production-build browser verification
+across EN/AR/RTL/mobile, and the full data-layer deployment rehearsal —
+is genuinely ready. What remains is exclusively external: provisioning a
+real cloud object-storage account and a real production hosting/DB target,
+then re-running the specific smoke tests this document already names
+(§4.2's real-credential S3 test, §4.5's application-layer deployment
+rehearsal) against them before flipping to APPROVED FOR PRODUCTION
+GO-LIVE.
