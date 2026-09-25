@@ -1,0 +1,84 @@
+name: Production Test Data Cleanup (ONE-TIME, manual)
+
+# ============================================================================
+# DO NOT RUN WITHOUT EXPLICIT PRODUCTION EXECUTION APPROVAL.
+# ============================================================================
+#
+# This is a ONE-TIME, narrowly-scoped workflow for exactly one approved
+# operation: removing CTR-2026-00001, CTR-2026-00002, CTR-2026-00003 and
+# their exclusively-owned Unit/Renter rows from production, while leaving
+# CTR-2026-00004 and everything else completely untouched. It is NOT a
+# reusable/generic cleanup tool - see docs/PRODUCTION-TEST-DATA-CLEANUP.md
+# for the full design rationale and approval record before ever running it.
+#
+# The SQL this workflow runs (scripts/production-test-data-cleanup-one-time.sql)
+# resolves every id live by contractNumber/organizationId/FK, asserts the
+# live dependency graph matches the approved baseline before touching
+# anything, runs every DELETE inside one explicit transaction, and asserts
+# postconditions (including that CTR-2026-00004, Counters, and AuditLog are
+# byte-for-byte unchanged) before COMMIT. A failed assertion anywhere aborts
+# and rolls back the entire operation - see the SQL file's own header for
+# full details.
+#
+# This workflow performs NO Prisma migration command, no db push, no seed,
+# no schema change, and touches nothing in _prisma_migrations.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository (exact invoking commit)
+        uses: actions/checkout@v4
+
+      - name: Verify NEON_DIRECT_URL secret is configured (fail closed)
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_DIRECT_URL:-}" ]; then
+            echo "::error::NEON_DIRECT_URL secret is not set. Refusing to run (fail-closed)."
+            exit 1
+          fi
+          echo "NEON_DIRECT_URL is configured (value itself is never printed)."
+
+      - name: Ensure psql is available
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+
+      - name: Verify production target is neondb (fail closed on mismatch)
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          # Only ever print the safe scalar values below - never the
+          # connection string itself.
+          DB_NAME=$(psql "$NEON_DIRECT_URL" -tA -c "SELECT current_database();")
+          DB_USER=$(psql "$NEON_DIRECT_URL" -tA -c "SELECT current_user;")
+          DB_SCHEMA=$(psql "$NEON_DIRECT_URL" -tA -c "SELECT current_schema();")
+
+          echo "database_name: $DB_NAME"
+          echo "database_user: $DB_USER"
+          echo "schema_name: $DB_SCHEMA"
+
+          if [ "$DB_NAME" != "neondb" ]; then
+            echo "::error::current_database() returned '$DB_NAME', expected 'neondb'. Refusing to run (fail-closed)."
+            exit 1
+          fi
+
+          echo "Target verified as neondb."
+
+      - name: Run the reviewed, approved cleanup SQL (single transaction)
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          psql "$NEON_DIRECT_URL" -v ON_ERROR_STOP=1 -f scripts/production-test-data-cleanup-one-time.sql
