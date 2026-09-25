@@ -1,0 +1,73 @@
+name: Production Contract Dependency Audit (read-only)
+
+# Temporary, manually-triggered workflow to prove exactly which live
+# records belong to CTR-2026-00001 through CTR-2026-00004, before any
+# cleanup SQL is ever designed. Every statement in
+# scripts/production-contract-dependency-audit-readonly.sql is a SELECT
+# (optionally using query-scoped WITH/CTE clauses, which create no
+# persistent database object), wrapped in an explicit
+# BEGIN TRANSACTION READ ONLY ... COMMIT block so Postgres itself rejects
+# any accidental mutation. This workflow performs no
+# INSERT/UPDATE/DELETE/TRUNCATE/DROP/ALTER/CREATE/GRANT/REVOKE, runs no
+# Prisma command, and never prints NEON_DIRECT_URL or any other secret.
+# Delete this workflow once the audit output has been collected.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify NEON_DIRECT_URL secret is configured (fail closed)
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${NEON_DIRECT_URL:-}" ]; then
+            echo "::error::NEON_DIRECT_URL secret is not set. Refusing to run (fail-closed)."
+            exit 1
+          fi
+          echo "NEON_DIRECT_URL is configured (value itself is never printed)."
+
+      - name: Ensure psql is available
+        run: |
+          set -euo pipefail
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y postgresql-client
+          fi
+          psql --version
+
+      - name: Verify production target is neondb (fail closed on mismatch)
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          # Only ever print the three safe scalar values below - never the
+          # connection string itself.
+          DB_NAME=$(psql "$NEON_DIRECT_URL" -tA -c "SELECT current_database();")
+          DB_USER=$(psql "$NEON_DIRECT_URL" -tA -c "SELECT current_user;")
+          DB_SCHEMA=$(psql "$NEON_DIRECT_URL" -tA -c "SELECT current_schema();")
+
+          echo "database_name: $DB_NAME"
+          echo "database_user: $DB_USER"
+          echo "schema_name: $DB_SCHEMA"
+
+          if [ "$DB_NAME" != "neondb" ]; then
+            echo "::error::current_database() returned '$DB_NAME', expected 'neondb'. Refusing to run the audit (fail-closed)."
+            exit 1
+          fi
+
+          echo "Target verified as neondb - proceeding to the read-only contract dependency audit."
+
+      - name: Run read-only contract dependency audit
+        env:
+          NEON_DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
+        run: |
+          set -euo pipefail
+          psql "$NEON_DIRECT_URL" -v ON_ERROR_STOP=1 -f scripts/production-contract-dependency-audit-readonly.sql
