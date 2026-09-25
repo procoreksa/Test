@@ -341,9 +341,12 @@ WHERE cm."businessEntityId" IN (SELECT id FROM target_contracts)
    OR cm."businessEntityId" IN (SELECT "renterId" FROM target_contracts);
 
 \echo '================================================================'
-\echo 'PHASE 9 - AUDIT LOG PRESERVATION ANALYSIS (already queried above;'
-\echo '          repeated here as its own labeled section per the task'
-\echo '          spec - identical query to Phase 8''s AuditLog check)'
+\echo 'PHASE 9 - AUDIT LOG PRESERVATION ANALYSIS'
+\echo '          (CORRECTED - a prior revision of this section only checked'
+\echo '          entityType IN (Contract, Unit, Renter) and was mislabeled'
+\echo '          as "identical to Phase 8''s AuditLog check", which actually'
+\echo '          also checks MoveOut/MoveIn/Invoice/Payment. This section now'
+\echo '          genuinely covers the same seven entity types as Phase 8.)'
 \echo '================================================================'
 WITH target_contracts AS (
   SELECT id, "contractNumber", "unitId", "renterId" FROM contracts
@@ -354,7 +357,22 @@ FROM audit_logs al
 WHERE (al."entityType" = 'Contract' AND al."entityId" IN (SELECT id FROM target_contracts))
    OR (al."entityType" = 'Unit' AND al."entityId" IN (SELECT "unitId" FROM target_contracts))
    OR (al."entityType" = 'Renter' AND al."entityId" IN (SELECT "renterId" FROM target_contracts))
+   OR (al."entityType" = 'MoveOut' AND al."entityId" IN (SELECT id FROM move_outs WHERE "contractId" IN (SELECT id FROM target_contracts)))
+   OR (al."entityType" = 'MoveIn' AND al."entityId" IN (SELECT id FROM move_ins WHERE "contractId" IN (SELECT id FROM target_contracts)))
+   OR (al."entityType" = 'Invoice' AND al."entityId" IN (SELECT id FROM invoices WHERE "contractId" IN (SELECT id FROM target_contracts)))
+   OR (al."entityType" = 'Payment' AND al."entityId" IN (
+         SELECT p.id FROM payments p JOIN invoices i ON i.id = p."invoiceId"
+         WHERE i."contractId" IN (SELECT id FROM target_contracts)))
 ORDER BY al."createdAt";
+
+\echo '--- Targeted identification: which Invoice does the action=ISSUE, entityType=Invoice AuditLog row reference? ---'
+\echo '    (No JSON metadata/previousValues/newValues selected - only the entityId and the invoice it resolves to.)'
+SELECT al.id AS audit_id, al.action, al."entityType", al."entityId" AS invoice_id, al."createdAt",
+       i."invoiceNumber", i."contractId", c."contractNumber"
+FROM audit_logs al
+LEFT JOIN invoices i ON i.id = al."entityId"
+LEFT JOIN contracts c ON c.id = i."contractId"
+WHERE al.action = 'ISSUE' AND al."entityType" = 'Invoice';
 
 \echo '--- Total AuditLog rows in production (for completeness - must equal 13 per prior inventory) ---'
 SELECT count(*) AS total_audit_logs FROM audit_logs;
