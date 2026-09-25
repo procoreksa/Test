@@ -4,6 +4,7 @@ import { listCompounds } from "@/lib/actions/compounds";
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
+import { DeleteEntityButton } from "@/components/delete-entity-button";
 
 export default async function BuildingsPage() {
   const [buildings, compounds, locale, role] = await Promise.all([
@@ -77,17 +78,7 @@ export default async function BuildingsPage() {
                   <Link href={`/buildings/${b.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
                     {t.ownership.title}
                   </Link>
-                  {canDelete && (
-                    <form
-                      className="inline"
-                      action={async () => {
-                        "use server";
-                        await deleteBuilding(b.id);
-                      }}
-                    >
-                      <button className="text-red-500 hover:underline text-xs">{t.buildings.delete}</button>
-                    </form>
-                  )}
+                  {canDelete && <DeleteEntityButton id={b.id} action={deleteBuilding} label={t.buildings.delete} />}
                 </td>
               </tr>
             ))}

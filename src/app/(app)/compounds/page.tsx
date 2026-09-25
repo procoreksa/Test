@@ -3,6 +3,7 @@ import { listCompounds, createCompound, deleteCompound } from "@/lib/actions/com
 import { getCurrentUserRole } from "@/lib/session";
 import { can } from "@/lib/permissions";
 import { getLocale, getDictionary, pickLocalized } from "@/lib/i18n";
+import { DeleteEntityButton } from "@/components/delete-entity-button";
 
 export default async function CompoundsPage() {
   const [compounds, locale, role] = await Promise.all([listCompounds(), getLocale(), getCurrentUserRole()]);
@@ -89,17 +90,7 @@ export default async function CompoundsPage() {
                   <Link href={`/compounds/${c.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
                     {t.ownership.title}
                   </Link>
-                  {canDelete && (
-                    <form
-                      className="inline"
-                      action={async () => {
-                        "use server";
-                        await deleteCompound(c.id);
-                      }}
-                    >
-                      <button className="text-red-500 hover:underline text-xs">{t.compounds.delete}</button>
-                    </form>
-                  )}
+                  {canDelete && <DeleteEntityButton id={c.id} action={deleteCompound} label={t.compounds.delete} />}
                 </td>
               </tr>
             ))}

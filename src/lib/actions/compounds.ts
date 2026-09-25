@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
@@ -54,19 +55,33 @@ export async function createCompound(formData: FormData) {
   revalidatePath("/compounds");
 }
 
-export async function deleteCompound(compoundId: string) {
+export async function deleteCompound(compoundId: string): Promise<{ error?: string }> {
   const { organizationId } = await requirePermission("property.delete");
-  await prisma.$transaction(async (tx) => {
-    const compound = await tx.compound.delete({ where: { id: compoundId, organizationId } });
-    await auditAction(tx, {
-      action: "DELETE",
-      entityType: "Compound",
-      entityId: compound.id,
-      entityDisplayName: compound.name,
-      previousValues: compound,
+  const t = getDictionary(await getLocale());
+  try {
+    await prisma.$transaction(async (tx) => {
+      const compound = await tx.compound.delete({ where: { id: compoundId, organizationId } });
+      await auditAction(tx, {
+        action: "DELETE",
+        entityType: "Compound",
+        entityId: compound.id,
+        entityDisplayName: compound.name,
+        previousValues: compound,
+      });
     });
-  });
+  } catch (error) {
+    // Same reasoning as deleteUnit(): a compound with any related
+    // ownership/ledger/business record is protected by an onDelete:
+    // Restrict FK (D-011) - never duplicated here table-by-table. Returned,
+    // not thrown, for the same production-build redaction reasons as
+    // deleteUnit() (see docs/FINAL-UAT-GO-LIVE.md, D-006/D-010).
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return { error: t.validation.compoundHasHistory };
+    }
+    throw error;
+  }
   revalidatePath("/compounds");
+  return {};
 }
 
 /** Compounds with live-computed building/floor/unit counts (the stored totalBuildings/totalUnits columns are informational only - see docs/PROPERTY-HIERARCHY.md). */

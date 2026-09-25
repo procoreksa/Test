@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/session";
@@ -39,20 +40,34 @@ export async function createBuilding(formData: FormData) {
   revalidatePath("/compounds");
 }
 
-export async function deleteBuilding(buildingId: string) {
+export async function deleteBuilding(buildingId: string): Promise<{ error?: string }> {
   const { organizationId } = await requirePermission("property.delete");
-  await prisma.$transaction(async (tx) => {
-    const building = await tx.building.delete({ where: { id: buildingId, organizationId } });
-    await auditAction(tx, {
-      action: "DELETE",
-      entityType: "Building",
-      entityId: building.id,
-      entityDisplayName: building.name,
-      previousValues: building,
+  const t = getDictionary(await getLocale());
+  try {
+    await prisma.$transaction(async (tx) => {
+      const building = await tx.building.delete({ where: { id: buildingId, organizationId } });
+      await auditAction(tx, {
+        action: "DELETE",
+        entityType: "Building",
+        entityId: building.id,
+        entityDisplayName: building.name,
+        previousValues: building,
+      });
     });
-  });
+  } catch (error) {
+    // Same reasoning as deleteUnit()/deleteCompound(): a building with any
+    // related ownership or other business record is protected by an
+    // onDelete: Restrict FK (D-011) - never duplicated here table-by-table.
+    // Returned, not thrown, for the same production-build redaction
+    // reasons (see docs/FINAL-UAT-GO-LIVE.md, D-006/D-010).
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+      return { error: t.validation.buildingHasHistory };
+    }
+    throw error;
+  }
   revalidatePath("/buildings");
   revalidatePath("/compounds");
+  return {};
 }
 
 export async function listBuildings() {

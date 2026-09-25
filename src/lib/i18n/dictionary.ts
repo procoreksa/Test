@@ -650,6 +650,8 @@ export interface Dictionary {
     ownerHasHistory: string;
     unitHasHistory: string;
     renterHasHistory: string;
+    compoundHasHistory: string;
+    buildingHasHistory: string;
     ownershipExceeds100: (total: string) => string;
     ownershipAssetRequired: string;
     ledgerAlreadyReversed: string;

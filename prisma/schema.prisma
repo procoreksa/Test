@@ -845,20 +845,20 @@ model PropertyOwnership {
   // Exactly one of these three should be set per record (enforced in the
   // service layer; a DB-level CHECK constraint requiring at least one is
   // added by the migration as defense in depth - see migration.sql).
+  //
+  // All three are Restrict, not Cascade (D-010 fixed unitId; D-011 fixes
+  // compoundId/buildingId the same way): an ownership assignment at any
+  // asset level carries ownership history that must be preserved even if
+  // the asset was never leased - deleting the Compound/Building/Unit must
+  // be blocked (the same friendly-message path as every other protected
+  // relation in deleteCompound()/deleteBuilding()/deleteUnit()) rather
+  // than silently destroying the ownership record.
   compoundId String?
-  compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Cascade)
+  compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Restrict)
   buildingId String?
-  building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  // Restrict, not Cascade (D-010): a Unit with an ownership assignment
-  // carries ownership history that must be preserved even if the Unit was
-  // never leased - deleting the Unit must be blocked (same
-  // friendly-message path as every other protected relation in
-  // deleteUnit(), src/lib/actions/units.ts) rather than silently
-  // destroying the ownership record. Compound/Building's own Cascade above
-  // are a separate, pre-existing concern out of D-010's scope (Unit
-  // deletion only) - see docs/TECHNICAL-DEBT.md.
-  unitId String?
-  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  building   Building? @relation(fields: [buildingId], references: [id], onDelete: Restrict)
+  unitId     String?
+  unit       Unit?     @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   // 0.00-100.00. The sum of ACTIVE ownershipPercentage values for the exact
   // same asset (same compoundId/buildingId/unitId triple) must never exceed
@@ -931,8 +931,13 @@ model OwnerLedgerEntry {
 
   entryDate DateTime @default(now())
 
+  // Restrict, not the SetNull default (D-010 fixed unitId; D-011 fixes
+  // compoundId the same way): a ledger entry tagging a Compound/Unit is a
+  // financial record referencing that asset for reporting/audit purposes -
+  // silently detaching it on deletion would let a financial record survive
+  // with its asset traceability quietly erased.
   compoundId String?
-  compound   Compound? @relation(fields: [compoundId], references: [id])
+  compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Restrict)
   // Restrict, not the SetNull default (D-010): a ledger entry tagging a
   // Unit is a financial record referencing that Unit for reporting/audit
   // purposes - silently detaching it on Unit deletion would let a

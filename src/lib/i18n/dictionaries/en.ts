@@ -647,6 +647,8 @@ export const en: Dictionary = {
     ownerHasHistory: "This owner has ownership or ledger history and cannot be deleted — deactivate it instead",
     unitHasHistory: "This unit has related contracts or other business records and cannot be deleted — archive it instead",
     renterHasHistory: "This renter has related contracts or other business records and cannot be deleted — deactivate it instead",
+    compoundHasHistory: "This compound has related ownership, ledger, or other business records and cannot be deleted",
+    buildingHasHistory: "This building has related ownership or other business records and cannot be deleted",
     ownershipExceeds100: (total) => `Active ownership for this asset would total ${total}%, which exceeds 100%`,
     ownershipAssetRequired: "Choose a compound, building, or unit for this ownership record",
     ledgerAlreadyReversed: "This ledger entry has already been reversed",
