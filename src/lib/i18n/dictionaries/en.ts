@@ -24,6 +24,16 @@ export const en: Dictionary = {
     ACCOUNTANT: "Accountant",
     VIEWER: "Viewer",
   },
+  accessDenied: {
+    title: "Access Denied",
+    body: "You do not have permission to access this page.",
+    backToDashboard: "Back to Dashboard",
+  },
+  appError: {
+    title: "Something Went Wrong",
+    body: "An unexpected error occurred. Please try again, or return to the dashboard.",
+    backToDashboard: "Back to Dashboard",
+  },
   nav: {
     dashboard: "Dashboard",
     properties: "Properties",

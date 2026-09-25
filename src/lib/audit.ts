@@ -289,11 +289,12 @@ export async function auditAction(tx: Tx, params: AuditActionParams): Promise<vo
 
 /**
  * Records a denied mutation attempt. Called from within the `catch` of a
- * server action after requirePermission() throws AuthorizationError - never
- * for ordinary read denials, to avoid audit noise (see Step 16 of the
- * brief). Swallows its own errors (a session that vanished mid-request is
- * not itself worth crashing the request over) since this always runs
- * best-effort, after the real authorization decision has already been made.
+ * server action after requirePermission() denies the request (redirects to
+ * /access-denied) - never for ordinary read denials, to avoid audit noise
+ * (see Step 16 of the brief). Swallows its own errors (a session that
+ * vanished mid-request is not itself worth crashing the request over)
+ * since this always runs best-effort, after the real authorization
+ * decision has already been made.
  */
 export async function auditPermissionDenied(params: {
   permission: string;

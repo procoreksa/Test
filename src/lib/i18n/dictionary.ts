@@ -29,6 +29,16 @@ export interface Dictionary {
     ACCOUNTANT: string;
     VIEWER: string;
   };
+  accessDenied: {
+    title: string;
+    body: string;
+    backToDashboard: string;
+  };
+  appError: {
+    title: string;
+    body: string;
+    backToDashboard: string;
+  };
   nav: {
     dashboard: string;
     properties: string;

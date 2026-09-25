@@ -1,6 +1,6 @@
 import type { UserRole } from "@prisma/client";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { getLocale, getDictionary } from "@/lib/i18n";
 import { can, type Permission } from "@/lib/permissions";
 
 export async function requireSession() {
@@ -17,10 +17,10 @@ export async function requireOrgId(): Promise<string> {
 }
 
 /**
- * Thrown by requirePermission() when the authenticated user's role does not
- * grant the requested permission. A distinct class (rather than a bare
- * Error) so callers/tests can identify an authorization failure
- * specifically, e.g. `error instanceof AuthorizationError`.
+ * A distinct Error class so callers/tests can identify an authorization
+ * failure specifically. requirePermission() itself redirects rather than
+ * throwing this (see below) - kept for call sites doing their own inline
+ * permission check outside requirePermission().
  */
 export class AuthorizationError extends Error {
   constructor(message: string) {
@@ -37,21 +37,29 @@ export async function getCurrentUserRole(): Promise<UserRole> {
 
 /**
  * The single gate every mutating (and every sensitive-read) server action
- * must pass through: verifies authentication, reads the role from the
- * signed session (never from client input), and throws a bilingual
- * AuthorizationError if that role doesn't grant `permission`. Returns the
+ * or page must pass through: verifies authentication, reads the role from
+ * the signed session (never from client input), and redirects to
+ * /access-denied if that role doesn't grant `permission`. Returns the
  * organizationId/role together so call sites don't need a second
  * requireOrgId() call, though requireOrgId() remains available on its own
  * for the handful of paths (e.g. locale switching) that aren't
  * permission-gated at all.
+ *
+ * Redirects rather than throwing AuthorizationError: Next.js redacts a
+ * thrown error's message once it crosses the server/client boundary in a
+ * production build, so by the time an `error.tsx` boundary could inspect
+ * it, an AuthorizationError is indistinguishable from any other unexpected
+ * error - which is exactly the distinction a safe access-denied page
+ * depends on. redirect() is Next's own routing primitive, never subject to
+ * that redaction, and works identically whether requirePermission() is
+ * called from a Server Component's render or from inside a Server Action.
  */
 export async function requirePermission(permission: Permission): Promise<{ organizationId: string; role: UserRole }> {
   const session = await requireSession();
   const role = session.user.role as UserRole;
 
   if (!can(permission, role)) {
-    const t = getDictionary(await getLocale());
-    throw new AuthorizationError(t.validation.notAuthorized);
+    redirect("/access-denied");
   }
 
   return { organizationId: session.user.organizationId, role };

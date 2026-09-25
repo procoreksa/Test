@@ -24,6 +24,16 @@ export const ar: Dictionary = {
     ACCOUNTANT: "محاسب",
     VIEWER: "مشاهد",
   },
+  accessDenied: {
+    title: "غير مصرح بالدخول",
+    body: "ليس لديك صلاحية للوصول إلى هذه الصفحة.",
+    backToDashboard: "العودة إلى لوحة التحكم",
+  },
+  appError: {
+    title: "حدث خطأ ما",
+    body: "حدث خطأ غير متوقع. يرجى المحاولة مرة أخرى، أو العودة إلى لوحة التحكم.",
+    backToDashboard: "العودة إلى لوحة التحكم",
+  },
   nav: {
     dashboard: "لوحة التحكم",
     properties: "العقارات",
