@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listRenters, createRenter, deleteRenter } from "@/lib/actions/renters";
+import { getContractLinksForRenters } from "@/lib/actions/contracts";
 import { getMoveInStatusForRenters } from "@/lib/actions/move-ins";
 import { getMoveOutStatusForRenters } from "@/lib/actions/move-outs";
 import { getCorporateAccountLinksForRenters } from "@/lib/actions/corporate-accounts";
@@ -16,6 +17,10 @@ export default async function RentersPage() {
   const canViewMoveIns = can("moveIn.view", role);
   const canViewMoveOuts = can("moveOut.view", role);
   const canViewCorporateHousing = can("corporateHousing.view", role);
+  const canViewTenantPortalAccount = can("tenantPortalAccount.view", role);
+  const contractByRenter: Awaited<ReturnType<typeof getContractLinksForRenters>> = canViewTenantPortalAccount
+    ? await getContractLinksForRenters(renters.map((r) => r.id))
+    : new Map();
   const moveInByRenter: Awaited<ReturnType<typeof getMoveInStatusForRenters>> = canViewMoveIns ? await getMoveInStatusForRenters(renters.map((r) => r.id)) : new Map();
   const moveOutByRenter: Awaited<ReturnType<typeof getMoveOutStatusForRenters>> = canViewMoveOuts ? await getMoveOutStatusForRenters(renters.map((r) => r.id)) : new Map();
   const corporateAccountByRenter: Awaited<ReturnType<typeof getCorporateAccountLinksForRenters>> = canViewCorporateHousing
@@ -111,6 +116,13 @@ export default async function RentersPage() {
                     <div className="mt-1">
                       <Link href={`/corporate-housing/accounts/${corporateAccountByRenter.get(r.id)!.accountId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
                         {t.corporateHousing.renterIntegrationTitle}: {corporateAccountByRenter.get(r.id)!.accountNumber}
+                      </Link>
+                    </div>
+                  )}
+                  {canViewTenantPortalAccount && contractByRenter.get(r.id) && (
+                    <div className="mt-1">
+                      <Link href={`/contracts/${contractByRenter.get(r.id)!.contractId}/edit`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
+                        {t.tenantPortal.sectionPortalAccess}
                       </Link>
                     </div>
                   )}

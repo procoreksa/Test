@@ -64,6 +64,7 @@ export interface Dictionary {
     operationsReports: string;
     operationsSettlements: string;
     settings: string;
+    usersAndPermissions: string;
     signOut: string;
     brandTagline: string;
     openMenu: string;

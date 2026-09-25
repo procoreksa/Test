@@ -59,6 +59,7 @@ export const en: Dictionary = {
     operationsReports: "Reports",
     operationsSettlements: "Security Deposit Settlements",
     settings: "Organization Settings",
+    usersAndPermissions: "Users & Permissions",
     signOut: "Sign out",
     brandTagline: "Property Management",
     openMenu: "Open menu",

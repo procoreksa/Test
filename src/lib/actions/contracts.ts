@@ -421,3 +421,30 @@ export async function listContracts() {
     orderBy: { createdAt: "desc" },
   });
 }
+
+/**
+ * One contract per renter (the most recently created, any status) - used
+ * only to link a Renter row to that renter's contract-edit page, where the
+ * Tenant Portal account panel actually lives (this codebase has no
+ * dedicated Renter detail page - docs/TECHNICAL-DEBT.md item 11b). Fixes a
+ * real discoverability gap found in real-user UAT: nothing on /renters
+ * previously pointed staff toward where a Renter's Tenant Portal account
+ * is actually created/managed. Mirrors getCorporateAccountLinksForRenters()'s
+ * exact Map<renterId, ...> pattern (src/lib/actions/corporate-accounts.ts).
+ */
+export async function getContractLinksForRenters(renterIds: string[]) {
+  const map = new Map<string, { contractId: string; contractNumber: string } | null>();
+  if (renterIds.length === 0) return map;
+  const { organizationId } = await requirePermission("contract.view");
+
+  const contracts = await prisma.contract.findMany({
+    where: { organizationId, renterId: { in: renterIds } },
+    select: { renterId: true, id: true, contractNumber: true },
+    orderBy: { createdAt: "desc" },
+    distinct: ["renterId"],
+  });
+  for (const c of contracts) {
+    map.set(c.renterId, { contractId: c.id, contractNumber: c.contractNumber });
+  }
+  return map;
+}

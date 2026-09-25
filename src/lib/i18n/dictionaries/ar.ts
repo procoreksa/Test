@@ -59,6 +59,7 @@ export const ar: Dictionary = {
     operationsReports: "التقارير",
     operationsSettlements: "تسويات مبلغ التأمين",
     settings: "إعدادات المنشأة",
+    usersAndPermissions: "المستخدمون والصلاحيات",
     signOut: "تسجيل الخروج",
     brandTagline: "Property Management",
     openMenu: "فتح القائمة",
