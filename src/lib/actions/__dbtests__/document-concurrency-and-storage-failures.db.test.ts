@@ -9,8 +9,9 @@
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
 import { resetDatabase, seedFullOrg, createTestContract, type SeededOrg } from "./db-test-helpers";
-import { pdfFile, documentFormData, newMockStorageProvider } from "./document-test-helpers";
+import { pdfFile, documentFormData, newMockStorageProvider, simulatedAccessDeniedError } from "./document-test-helpers";
 import { prisma } from "@/lib/prisma";
+import * as logging from "@/lib/logging";
 
 const mockAuth = vi.fn();
 vi.mock("@/lib/auth", () => ({ auth: () => mockAuth() }));
@@ -195,5 +196,121 @@ describe("Storage fails outright (Step 28/80)", () => {
     expect(after.currentVersionId).toBe(before.currentVersionId);
     expect(after.versions).toHaveLength(before.versions.length);
     expect(after.versions.some((v) => v.fileName === "v2-fails.pdf")).toBe(false);
+  });
+});
+
+describe("Storage PutObject failure diagnostics (production incident: raw R2/S3 AccessDenied reaching the browser)", () => {
+  it("createDocumentWithFile: an AccessDenied-shaped storage error is logged with sanitized metadata only, and the raw SDK message never reaches the caller", async () => {
+    const { createDocumentWithFile } = await import("@/lib/actions/documents");
+    const { contract } = await createTestContract(org);
+    const storage = newMockStorageProvider();
+    storage.simulateNextPutFailure(simulatedAccessDeniedError());
+    const logWarnSpy = vi.spyOn(logging, "logWarn");
+    const documentCountBefore = await prisma.document.count({ where: { organizationId: org.organization.id } });
+
+    let caught: unknown;
+    try {
+      await createDocumentWithFile(
+        documentFormData({ title: "AccessDenied simulation", category: "GENERAL", securityContextEntityType: "CONTRACT", securityContextEntityId: contract.id }, pdfFile()),
+        { storageProvider: storage }
+      );
+    } catch (err) {
+      caught = err;
+    }
+
+    // No Document/DocumentVersion row was created, and nothing was left in storage.
+    expect(await prisma.document.count({ where: { organizationId: org.organization.id } })).toBe(documentCountBefore);
+    expect(storage.debugObjectCount()).toBe(0);
+
+    // The caller only ever sees a generic, localized message - never the raw
+    // AWS SDK error text (which is literally "Access Denied" in this
+    // simulation, matching the production incident exactly).
+    expect(caught).toBeInstanceOf(Error);
+    const userFacingMessage = (caught as Error).message;
+    // The raw SDK .message text is "Access Denied" (a space-separated
+    // sentence) - distinct from the legitimate, intentionally-logged
+    // "AccessDenied" (no space) error CODE asserted below via errorName.
+    expect(userFacingMessage).not.toMatch(/access\s+denied/i);
+    expect(userFacingMessage.length).toBeGreaterThan(0);
+
+    // Exactly one diagnostic log call fired, with exactly the whitelisted
+    // safe fields - nothing else (no credentials, endpoint, bucket, file
+    // name/contents, or the raw error's own message).
+    const call = logWarnSpy.mock.calls.find(([event]) => event === "document.storage.putObject_failed");
+    expect(call).toBeDefined();
+    const [, context] = call!;
+    expect(context).toBeDefined();
+    expect(Object.keys(context!).sort()).toEqual(
+      ["entityType", "errorName", "extendedRequestId", "httpStatusCode", "organizationId", "requestId", "stage", "storageProviderKind"].sort()
+    );
+    expect(context).toMatchObject({
+      stage: "storage.putObject",
+      organizationId: org.organization.id,
+      entityType: "CONTRACT",
+      errorName: "AccessDenied",
+      httpStatusCode: 403,
+      requestId: "test-request-id-0001",
+      extendedRequestId: "test-extended-request-id-0001",
+    });
+    // storageProviderKind reflects whichever provider this test environment
+    // actually resolves (LOCAL_DEV or S3_COMPATIBLE, depending on .env.test)
+    // - present and a non-empty string is what matters here, not a specific
+    // literal value.
+    expect(typeof context!.storageProviderKind).toBe("string");
+    expect((context!.storageProviderKind as string).length).toBeGreaterThan(0);
+
+    // The logged context legitimately contains the sanitized error CODE
+    // "AccessDenied" (errorName, asserted above) - what must never appear is
+    // the raw SDK .message SENTENCE "Access Denied" (space-separated), which
+    // is exactly the free-text string that reached the browser in the
+    // original incident.
+    const serializedContext = JSON.stringify(context);
+    expect(serializedContext).not.toMatch(/access\s+denied/i);
+    expect(serializedContext.toLowerCase()).not.toContain("secret");
+    expect(serializedContext.toLowerCase()).not.toContain("accesskey");
+    expect(serializedContext.toLowerCase()).not.toContain("endpoint");
+
+    logWarnSpy.mockRestore();
+  });
+
+  it("addDocumentVersion: an AccessDenied-shaped storage error receives the same sanitized-logging + generic-message treatment", async () => {
+    const { createDocumentWithFile, addDocumentVersion } = await import("@/lib/actions/documents");
+    const { contract } = await createTestContract(org);
+    const storage = newMockStorageProvider();
+    const { documentId } = await createDocumentWithFile(
+      documentFormData({ title: "Version AccessDenied doc", category: "GENERAL", securityContextEntityType: "CONTRACT", securityContextEntityId: contract.id }, pdfFile("v1.pdf")),
+      { storageProvider: storage }
+    );
+    const before = await prisma.document.findUniqueOrThrow({ where: { id: documentId }, include: { versions: true } });
+
+    storage.simulateNextPutFailure(simulatedAccessDeniedError());
+    const logWarnSpy = vi.spyOn(logging, "logWarn");
+
+    let caught: unknown;
+    try {
+      await addDocumentVersion(documentFormData({ documentId }, pdfFile("v2-accessdenied.pdf")), { storageProvider: storage });
+    } catch (err) {
+      caught = err;
+    }
+
+    const after = await prisma.document.findUniqueOrThrow({ where: { id: documentId }, include: { versions: true } });
+    expect(after.currentVersionId).toBe(before.currentVersionId);
+    expect(after.versions).toHaveLength(before.versions.length);
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).not.toMatch(/access.?denied/i);
+
+    const call = logWarnSpy.mock.calls.find(([event]) => event === "document.storage.putObject_failed");
+    expect(call).toBeDefined();
+    const [, context] = call!;
+    expect(context).toMatchObject({
+      stage: "storage.putObject",
+      organizationId: org.organization.id,
+      entityType: "CONTRACT",
+      errorName: "AccessDenied",
+      httpStatusCode: 403,
+    });
+
+    logWarnSpy.mockRestore();
   });
 });

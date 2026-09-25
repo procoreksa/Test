@@ -751,6 +751,7 @@ export const ar: Dictionary = {
     documentFileSignatureMismatch: "محتوى هذا الملف لا يطابق نوعه المُعلن وتم رفضه",
     documentEntityNotFound: "تعذر العثور على السجل المحدد",
     documentNotFound: "المستند غير موجود",
+    documentStorageUnavailable: "تعذر حفظ المستند. يرجى المحاولة مرة أخرى أو التواصل مع الدعم.",
   },
   zatca: {
     notConfigured:

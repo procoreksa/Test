@@ -120,6 +120,68 @@ function logDocumentEntityValidationFailure(params: {
   });
 }
 
+/**
+ * Extracts only the safe, non-identifying pieces of a thrown storage-adapter
+ * error - the AWS SDK v3 error `name` (the S3/R2 error code, e.g.
+ * "AccessDenied") and its `$metadata` (HTTP status, request id, extended
+ * request id). Mirrors the same defensive property access
+ * s3-compatible.ts's own isNotFoundError() already uses. Deliberately never
+ * reads `.message` (provider-specific free text - the literal reason a raw
+ * "Access Denied" string was reaching the browser before this diagnostic
+ * existed) and never returns the error object itself.
+ */
+function extractStorageErrorMetadata(error: unknown): {
+  errorName: string | undefined;
+  httpStatusCode: number | undefined;
+  requestId: string | undefined;
+  extendedRequestId: string | undefined;
+} {
+  if (typeof error !== "object" || error === null) {
+    return { errorName: undefined, httpStatusCode: undefined, requestId: undefined, extendedRequestId: undefined };
+  }
+  const errorName = "name" in error ? String((error as { name: unknown }).name) : undefined;
+  const metadata =
+    "$metadata" in error && typeof (error as { $metadata?: unknown }).$metadata === "object"
+      ? (error as { $metadata?: { httpStatusCode?: number; requestId?: string; extendedRequestId?: string } }).$metadata
+      : undefined;
+  return {
+    errorName,
+    httpStatusCode: metadata?.httpStatusCode,
+    requestId: metadata?.requestId,
+    extendedRequestId: metadata?.extendedRequestId,
+  };
+}
+
+/**
+ * Diagnostic-only logging for a failed storage-adapter putObject() call
+ * (Step: production incident where an uncaught R2/S3 AccessDenied error's
+ * raw .message reached the browser verbatim, with zero server-side log
+ * trace). Logs only the entity type, the authenticated organizationId, the
+ * active storage provider kind, and the error's own name/HTTP-status/
+ * request-id metadata - never the error's message text, the storage key,
+ * the endpoint, the bucket, any credential, or the file itself. The caller
+ * always replaces the raw error with a generic, localized message before
+ * it can reach the user - see each call site.
+ */
+function logDocumentStoragePutObjectFailure(params: {
+  organizationId: string;
+  entityType: DocumentEntityType;
+  storageProviderKind: string;
+  error: unknown;
+}): void {
+  const meta = extractStorageErrorMetadata(params.error);
+  logWarn("document.storage.putObject_failed", {
+    stage: "storage.putObject",
+    storageProviderKind: params.storageProviderKind,
+    organizationId: params.organizationId,
+    entityType: params.entityType,
+    errorName: meta.errorName,
+    httpStatusCode: meta.httpStatusCode,
+    requestId: meta.requestId,
+    extendedRequestId: meta.extendedRequestId,
+  });
+}
+
 const createDocumentSchema = z.object({
   title: z.string().min(1),
   category: documentCategoryEnum,
@@ -193,7 +255,17 @@ export async function createDocumentWithFile(formData: FormData, deps: DocumentA
     fileExtension: extensionForMimeType(validation.mimeType),
   });
 
-  await storageProvider.putObject({ key: storageKey, body: buffer, contentType: validation.mimeType });
+  try {
+    await storageProvider.putObject({ key: storageKey, body: buffer, contentType: validation.mimeType });
+  } catch (error) {
+    logDocumentStoragePutObjectFailure({
+      organizationId,
+      entityType: parsed.securityContextEntityType,
+      storageProviderKind,
+      error,
+    });
+    throw new Error(t.validation.documentStorageUnavailable);
+  }
 
   try {
     const documentId = await prisma.$transaction(async (tx) => {
@@ -296,7 +368,17 @@ export async function addDocumentVersion(formData: FormData, deps: DocumentActio
     fileExtension: extensionForMimeType(validation.mimeType),
   });
 
-  await storageProvider.putObject({ key: storageKey, body: buffer, contentType: validation.mimeType });
+  try {
+    await storageProvider.putObject({ key: storageKey, body: buffer, contentType: validation.mimeType });
+  } catch (error) {
+    logDocumentStoragePutObjectFailure({
+      organizationId,
+      entityType: document.securityContextEntityType,
+      storageProviderKind,
+      error,
+    });
+    throw new Error(t.validation.documentStorageUnavailable);
+  }
 
   try {
     const versionId = await prisma.$transaction(async (tx) => {

@@ -751,6 +751,7 @@ export const en: Dictionary = {
     documentFileSignatureMismatch: "This file's content does not match its claimed type and was rejected",
     documentEntityNotFound: "The selected record could not be found",
     documentNotFound: "Document not found",
+    documentStorageUnavailable: "Unable to store the document. Please try again or contact support.",
   },
   zatca: {
     notConfigured:

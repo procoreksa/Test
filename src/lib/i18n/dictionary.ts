@@ -754,6 +754,7 @@ export interface Dictionary {
     documentFileSignatureMismatch: string;
     documentEntityNotFound: string;
     documentNotFound: string;
+    documentStorageUnavailable: string;
   };
   zatca: {
     notConfigured: string;

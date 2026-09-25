@@ -13,11 +13,20 @@ export class MockStorageProvider implements DocumentStorageProvider {
 
   private readonly objects = new Map<string, { body: Buffer; contentType: string }>();
   private failNextPut = false;
+  private nextPutFailureError: unknown = undefined;
   private failNextDelete = false;
 
-  /** Test hook: makes the next putObject() call reject, simulating a storage-write failure (Steps 28-29/78-80). */
-  simulateNextPutFailure(): void {
+  /**
+   * Test hook: makes the next putObject() call reject, simulating a
+   * storage-write failure (Steps 28-29/78-80). Accepts an optional custom
+   * error to throw instead of the default generic one - used to simulate a
+   * realistic AWS-SDK-shaped error (a `name` and `$metadata`) for tests
+   * that verify the diagnostic-logging/error-metadata-extraction path
+   * without ever needing a real S3/R2 connection.
+   */
+  simulateNextPutFailure(error?: unknown): void {
     this.failNextPut = true;
+    this.nextPutFailureError = error;
   }
 
   /** Test hook: makes the next deleteObject() call reject, simulating a failed compensating delete. */
@@ -28,7 +37,9 @@ export class MockStorageProvider implements DocumentStorageProvider {
   async putObject(params: { key: string; body: Buffer; contentType: string }): Promise<void> {
     if (this.failNextPut) {
       this.failNextPut = false;
-      throw new Error("Simulated storage write failure");
+      const error = this.nextPutFailureError ?? new Error("Simulated storage write failure");
+      this.nextPutFailureError = undefined;
+      throw error;
     }
     this.objects.set(params.key, { body: Buffer.from(params.body), contentType: params.contentType });
   }
