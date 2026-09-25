@@ -33,10 +33,19 @@ Object storage (Supabase Storage, or S3-compatible)
 
 ## 2. Application
 
-- **Build:** `npm run build` → `prisma generate && prisma migrate deploy && next build`
-  (already the repository's own `package.json` script - migrations run as
-  part of the build step, before the new code that expects the new schema
-  ever serves traffic).
+- **Build:** `npm run build` → `prisma generate && next build` (already the
+  repository's own `package.json` script). **Migrations are a separate,
+  explicit step** (`npm run migrate:deploy` → `prisma migrate deploy`),
+  run deliberately before the build, never as an implicit side effect of
+  it - a generic build command should never be able to mutate the
+  production database. The recommended production sequence is: verify a
+  fresh database backup exists → `npm run migrate:deploy` → `npx prisma
+  migrate status` (confirm no pending/failed migrations) → `npm run build`
+  (no DB mutation) → deploy/start the application → health/readiness
+  smoke tests. (Historical note: earlier revisions of this document
+  described `npm run build` as running `prisma migrate deploy` internally
+  - that was true of this repository's `package.json` at the time and has
+  since been deliberately separated for exactly the reason above.)
 - **Start:** `npm run start` → `next start -p ${PORT:-3000}` (already
   respects a platform-injected `PORT`, matching Render's own convention).
 - **Statelessness:** no session store on disk (NextAuth's JWT strategy
@@ -66,9 +75,10 @@ Object storage (Supabase Storage, or S3-compatible)
   for `DATABASE_URL`, and the direct connection string (port 5432) for
   `DIRECT_URL`. Locally, both point at the same single Postgres instance
   (already the case in `.env.example`).
-- **Migrations.** `prisma migrate deploy` (never `migrate dev` in
-  production - it can prompt interactively and is meant for local
-  development only) applies whatever migrations exist in
+- **Migrations.** `npm run migrate:deploy` → `prisma migrate deploy`
+  (never `migrate dev` in production - it can prompt interactively and is
+  meant for local development only), run as its own explicit deployment
+  step before `npm run build`, applies whatever migrations exist in
   `prisma/migrations/` that the target database hasn't seen yet. Every
   migration in this repository's history is additive-only (see each
   migration's own header comment) - a deliberate, maintained discipline,
@@ -276,41 +286,44 @@ Documented future needs, for whoever scopes that work:
 9. Set all five `DOCUMENT_S3_*` variables from steps 3-4.
 10. Install dependencies with the committed lockfile
     (`npm ci`, never a bare `npm install`, for a reproducible build).
-11. Deploy - the build step runs `prisma generate && prisma migrate deploy
-    && next build` automatically.
-12. **Before the migration step runs**, ensure a fresh, verified database
-    backup exists (§7) - the build script above runs the migration
-    automatically, so this backup must be current *before* triggering the
-    deploy, not after.
-13. `prisma migrate deploy` applies pending migrations (never `migrate
-    dev` in production).
-14. At server startup, `src/instrumentation.ts` runs
+11. **Before running any migration**, ensure a fresh, verified database
+    backup/restore point exists (§7) - this must be current *before* the
+    next step, not after.
+12. Run the explicit migration step: `npm run migrate:deploy` → `prisma
+    migrate deploy` (never `migrate dev` in production). This is a
+    separate, deliberate step - it is never an implicit side effect of
+    the build.
+13. Verify with `npx prisma migrate status` that no migrations are
+    pending and none are in a failed state before proceeding.
+14. Only then run the build: `npm run build` → `prisma generate && next
+    build` - this step performs no database mutation.
+15. At server startup, `src/instrumentation.ts` runs
     `assertValidProductionEnvironment()` - the process refuses to start at
     all if required production configuration is invalid (§6/Critical Rule
     3). A startup failure here means step 5-9 was incomplete; fix the
     missing/invalid variable and redeploy.
-15. App serves traffic once startup validation passes.
-16. Verify `GET /api/health` returns `{"status":"ok",...}`.
-17. Verify `GET /api/health/ready` returns `200` with both `checks.database`
+16. App serves traffic once startup validation passes.
+17. Verify `GET /api/health` returns `{"status":"ok",...}`.
+18. Verify `GET /api/health/ready` returns `200` with both `checks.database`
     and `checks.config` `true`.
-18. Register the worker/cron routes (§10a) with the hosting platform's
+19. Register the worker/cron routes (§10a) with the hosting platform's
     scheduled-task mechanism (Vercel Cron, Cloud Scheduler, or
     equivalent) - nothing in this codebase calls itself on a timer.
-19. Confirm each worker route's cadence matches §10a's recommendations.
-20. Smoke-test: internal staff login (`/login`).
-21. Smoke-test: Tenant Portal login (`/portal/login`) and Owner Portal
+20. Confirm each worker route's cadence matches §10a's recommendations.
+21. Smoke-test: internal staff login (`/login`).
+22. Smoke-test: Tenant Portal login (`/portal/login`) and Owner Portal
     login (`/owner-portal/login`), if either portal has real accounts yet.
-22. Smoke-test: one document upload + download round-trip through the
+23. Smoke-test: one document upload + download round-trip through the
     internal Document Center, confirming the S3-compatible adapter is
     genuinely working end-to-end against the real provisioned bucket.
-23. Smoke-test: trigger one business event that emits a
+24. Smoke-test: trigger one business event that emits a
     `CommunicationOutboxEvent` (e.g. issue an invoice), then manually
     invoke `/api/automation/outbox` and `/api/communications/process`
     once to confirm the outbox→message pipeline works end-to-end.
-24. Confirm monitoring/alerting coverage per whatever the operating team
+25. Confirm monitoring/alerting coverage per whatever the operating team
     has set up (§9) - this codebase does not include its own alerting.
-25. Announce the environment as live; keep the pre-migration backup
-    (step 12) retained independently of the regular rolling schedule for
+26. Announce the environment as live; keep the pre-migration backup
+    (step 11) retained independently of the regular rolling schedule for
     24-48 hours post-deploy (§7).
 
 ## 10a. Background workers & scheduled jobs

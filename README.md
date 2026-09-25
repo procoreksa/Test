@@ -151,9 +151,16 @@ npm run db:studio   # واجهة Prisma Studio لتصفح البيانات
    | `AUTH_SECRET` | قيمة عشوائية طويلة (نفّذ `openssl rand -base64 32` وحط الناتج) |
 
    **لا تضيف** `NEXTAUTH_URL` — Vercel بيظبطها تلقائيًا.
-5. اضغط **Deploy** وانتظر (أول مرة بتشمل تشغيل الـ migrations تلقائيًا لإن أمر البناء
-   `prisma generate && prisma migrate deploy && next build`).
-6. بعد ما ينجح الـ Deploy، هتاخد رابط زي `your-project.vercel.app`.
+5. **قبل** أول Deploy، شغّل الـ migrations بنفسك مرة واحدة (خطوة منفصلة عمدًا عن
+   البناء، عشان أمر البناء العادي (`npm run build`) متبقاش بتاعته تعديل قاعدة
+   البيانات تلقائيًا):
+   ```bash
+   DATABASE_URL="رابط الـ Direct من Neon" npx prisma migrate deploy
+   ```
+   ثم تأكد إن مفيش migrations معلّقة: `npx prisma migrate status`.
+6. اضغط **Deploy** وانتظر (أمر البناء دلوقتي `prisma generate && next build` بس -
+   مش بيلمس قاعدة البيانات).
+7. بعد ما ينجح الـ Deploy، هتاخد رابط زي `your-project.vercel.app`.
 
 ### 3) تعبئة بيانات تجريبية (مرة واحدة فقط)
 
@@ -163,9 +170,10 @@ npm run db:studio   # واجهة Prisma Studio لتصفح البيانات
 npm run db:seed
 ```
 
-⚠️ ملحوظة: أمر البناء بينفّذ `prisma migrate deploy` على كل Deploy جديد (آمن — بيطبّق بس
-الـ migrations الجديدة ولا يمسح بيانات)، لكن الـ Seed تنفّذه يدويًا مرة واحدة بس عشان متعملش
-بيانات تجريبية مكررة.
+⚠️ ملحوظة: أمر البناء (`npm run build`) بقى **مايشغّلش** الـ migrations تلقائيًا -
+لازم تشغّل `npx prisma migrate deploy` بنفسك (خطوة منفصلة، زي الشرح فوق) قبل أي Deploy
+فيه تعديل على الـ schema. الـ Seed برضه تنفّذه يدويًا مرة واحدة بس عشان متعملش بيانات
+تجريبية مكررة.
 
 ## بديل: النشر على Render.com (لو Vercel معملش معاك)
 
@@ -180,7 +188,11 @@ Serverless Functions:
    - **Start Command**: `npm run start`
 4. في **Environment Variables** ضيف نفس الثلاثة: `DATABASE_URL`، `DIRECT_URL`، `AUTH_SECRET`
    (بنفس القيم من Neon اللي شرحناها فوق).
-5. اضغط **Create Web Service**. هتاخد رابط زي `your-app.onrender.com`.
+5. **قبل** أول Deploy فيه تعديل على الـ schema، شغّل `npx prisma migrate deploy` بنفسك
+   من جهازك أو من مهمة منفصلة (Render's free tier مفيهاش Shell) - أمر البناء
+   (`npm run build`) بقى مايشغّلش الـ migrations تلقائيًا عمدًا، عشان تعديل قاعدة
+   البيانات لازم يبقى خطوة واعية ومنفصلة، مش جزء من أي بناء عادي.
+6. اضغط **Create Web Service**. هتاخد رابط زي `your-app.onrender.com`.
 
 الطبقة المجانية على Render بتنام بعد فترة عدم استخدام وتاخد ثواني تصحى تاني — طبيعي، مش
 عطل.
