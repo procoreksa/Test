@@ -1,10 +1,10 @@
-name: Prisma Production Reconciliation
+name: Prisma Production Status (read-only)
 
 on:
   workflow_dispatch:
 
 jobs:
-  reconcile:
+  status:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,12 +19,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Resolve renamed migration as applied
-        env:
-          DATABASE_URL: ${{ secrets.NEON_DIRECT_URL }}
-          DIRECT_URL: ${{ secrets.NEON_DIRECT_URL }}
-        run: npx prisma migrate resolve --applied 20261105090001_security_deposit_settlement
 
       - name: Verify Prisma migration status
         env:
