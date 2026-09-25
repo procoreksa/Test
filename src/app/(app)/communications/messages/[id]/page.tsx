@@ -113,7 +113,7 @@ export default async function CommunicationMessageDetailPage({ params }: { param
         <pre className="whitespace-pre-wrap text-sm text-slate-700 font-sans">{message.renderedBody}</pre>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide px-5 pt-5">{t.communications.sectionDeliveryHistory}</h2>
         <table className="w-full text-sm mt-3">
           <thead className="bg-slate-50 text-slate-500 text-right">

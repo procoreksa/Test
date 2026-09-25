@@ -198,7 +198,7 @@ export default async function DocumentDetailPage({
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <h2 className="font-semibold text-slate-800 p-5 pb-0">{t.documents.sectionVersionHistory}</h2>
         <table className="w-full text-sm mt-3">
           <thead className="bg-slate-50 text-slate-500 text-right">
@@ -267,7 +267,7 @@ export default async function DocumentDetailPage({
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <h2 className="font-semibold text-slate-800 p-5 pb-0">{t.documents.sectionAuditTrail}</h2>
         <table className="w-full text-sm mt-3">
           <thead className="bg-slate-50 text-slate-500 text-right">

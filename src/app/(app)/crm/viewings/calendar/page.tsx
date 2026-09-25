@@ -68,7 +68,7 @@ export default async function ViewingCalendarPage({
             .sort((a, b) => a.scheduledStart.getTime() - b.scheduledStart.getTime());
 
           return (
-            <div key={day.toISOString()} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div key={day.toISOString()} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
               {view === "week" && <div className="px-4 py-2 bg-slate-50 font-medium text-slate-700 text-sm">{dateFmt.format(day)}</div>}
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 text-slate-500 text-right">

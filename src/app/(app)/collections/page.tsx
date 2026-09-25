@@ -57,76 +57,115 @@ export default async function CollectionsPage({
         />
       </form>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 text-right">
-            <tr>
-              <th className="px-5 py-3 font-medium">{t.collections.colRenter}</th>
-              <th className="px-5 py-3 font-medium">{t.collections.colUnit}</th>
-              <th className="px-5 py-3 font-medium">{t.collections.colInstallment}</th>
-              <th className="px-5 py-3 font-medium">{t.collections.colDueDate}</th>
-              <th className="px-5 py-3 font-medium">{t.collections.colAmount}</th>
-              <th className="px-5 py-3 font-medium">{t.collections.colStatus}</th>
-              <th className="px-5 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filtered.map((s) => {
-              const invoices = Array.from(
-                new Map(s.invoiceLines.map((l) => [l.invoice.id, l.invoice])).values()
-              );
-              return (
-                <tr key={s.id}>
-                  <td className="px-5 py-3 font-medium text-slate-800">
-                    {pickLocalized(locale, s.contract.renter.fullNameAr, s.contract.renter.fullName)}
-                  </td>
-                  <td className="px-5 py-3 text-slate-500">
-                    {unitLocationLabel(locale, s.contract.unit)} /{" "}
-                    {s.contract.unit.unitNumber}
-                  </td>
-                  <td className="px-5 py-3 text-slate-500">#{s.installmentNo}</td>
-                  <td className="px-5 py-3 text-slate-500">{dateFmt.format(s.dueDate)}</td>
-                  <td className="px-5 py-3 font-medium">{sar.format(Number(s.amount))}</td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[s.status]}`}>
-                      {t.scheduleStatus[s.status]}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-left space-y-1">
-                    {invoices.map((inv) => (
-                      <Link
-                        key={inv.id}
-                        href={`/invoices/${inv.id}`}
-                        className="block text-brand-gold-dark hover:underline text-xs"
-                      >
-                        {t.collections.viewInvoice}
-                      </Link>
-                    ))}
-                    {canIssueInvoice && BILLABLE_STATUSES.has(s.status) && (
-                      <Link
-                        href={`/collections/${s.id}/issue`}
-                        className="block text-brand-gold-dark hover:underline text-xs font-medium"
-                      >
-                        {t.collections.issueInvoice}
-                      </Link>
-                    )}
-                    {invoices.length === 0 && !BILLABLE_STATUSES.has(s.status) && s.status !== "CANCELLED" && (
-                      <span className="text-xs text-slate-400">{t.collections.fullyInvoiced}</span>
-                    )}
-                  </td>
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-5 py-8 text-center text-slate-400">
+          {t.collections.empty}
+        </div>
+      ) : (
+        <>
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-right">
+                <tr>
+                  <th className="px-5 py-3 font-medium">{t.collections.colRenter}</th>
+                  <th className="px-5 py-3 font-medium">{t.collections.colUnit}</th>
+                  <th className="px-5 py-3 font-medium">{t.collections.colInstallment}</th>
+                  <th className="px-5 py-3 font-medium">{t.collections.colDueDate}</th>
+                  <th className="px-5 py-3 font-medium">{t.collections.colAmount}</th>
+                  <th className="px-5 py-3 font-medium">{t.collections.colStatus}</th>
+                  <th className="px-5 py-3 font-medium"></th>
                 </tr>
-              );
-            })}
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                  {t.collections.empty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((s) => (
+                  <tr key={s.id}>
+                    <td className="px-5 py-3 font-medium text-slate-800">
+                      {pickLocalized(locale, s.contract.renter.fullNameAr, s.contract.renter.fullName)}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">
+                      {unitLocationLabel(locale, s.contract.unit)} / {s.contract.unit.unitNumber}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">#{s.installmentNo}</td>
+                    <td className="px-5 py-3 text-slate-500">{dateFmt.format(s.dueDate)}</td>
+                    <td className="px-5 py-3 font-medium">{sar.format(Number(s.amount))}</td>
+                    <td className="px-5 py-3">
+                      <ScheduleStatusBadge schedule={s} t={t} />
+                    </td>
+                    <td className="px-5 py-3 text-left space-y-1">
+                      <ScheduleActions schedule={s} t={t} canIssueInvoice={canIssueInvoice} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="md:hidden space-y-3">
+            {filtered.map((s) => (
+              <div key={s.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="font-semibold text-slate-800 break-words">
+                    {pickLocalized(locale, s.contract.renter.fullNameAr, s.contract.renter.fullName)}
+                  </div>
+                  <ScheduleStatusBadge schedule={s} t={t} />
+                </div>
+                <div className="mt-1 text-sm text-slate-600 break-words">
+                  {unitLocationLabel(locale, s.contract.unit)} / {s.contract.unit.unitNumber}
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.collections.colInstallment}</dt>
+                    <dd className="text-slate-700">#{s.installmentNo}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.collections.colDueDate}</dt>
+                    <dd className="text-slate-700">{dateFmt.format(s.dueDate)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.collections.colAmount}</dt>
+                    <dd className="text-slate-700 font-medium">{sar.format(Number(s.amount))}</dd>
+                  </div>
+                </dl>
+                <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
+                  <ScheduleActions schedule={s} t={t} canIssueInvoice={canIssueInvoice} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+type ScheduleRow = Awaited<ReturnType<typeof listCollections>>[number];
+type Dict = ReturnType<typeof getDictionary>;
+
+function ScheduleStatusBadge({ schedule, t }: { schedule: ScheduleRow; t: Dict }) {
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[schedule.status]}`}>
+      {t.scheduleStatus[schedule.status]}
+    </span>
+  );
+}
+
+function ScheduleActions({ schedule, t, canIssueInvoice }: { schedule: ScheduleRow; t: Dict; canIssueInvoice: boolean }) {
+  const invoices = Array.from(new Map(schedule.invoiceLines.map((l) => [l.invoice.id, l.invoice])).values());
+  return (
+    <>
+      {invoices.map((inv) => (
+        <Link key={inv.id} href={`/invoices/${inv.id}`} className="block text-brand-gold-dark hover:underline text-xs">
+          {t.collections.viewInvoice}
+        </Link>
+      ))}
+      {canIssueInvoice && BILLABLE_STATUSES.has(schedule.status) && (
+        <Link href={`/collections/${schedule.id}/issue`} className="block text-brand-gold-dark hover:underline text-xs font-medium">
+          {t.collections.issueInvoice}
+        </Link>
+      )}
+      {invoices.length === 0 && !BILLABLE_STATUSES.has(schedule.status) && schedule.status !== "CANCELLED" && (
+        <span className="text-xs text-slate-400">{t.collections.fullyInvoiced}</span>
+      )}
+    </>
   );
 }

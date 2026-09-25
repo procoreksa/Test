@@ -90,7 +90,7 @@ export default async function CommunicationTemplateDetailPage({ params }: { para
 
       <div>
         <h2 className="text-lg font-semibold text-slate-900 mb-3">{t.communications.sectionVersionHistory}</h2>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-500 text-right">
               <tr>

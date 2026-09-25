@@ -69,80 +69,171 @@ export default async function RentersPage() {
         </details>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 text-right">
-            <tr>
-              <th className="px-5 py-3 font-medium">{t.renters.colName}</th>
-              <th className="px-5 py-3 font-medium">{t.renters.colIdType}</th>
-              <th className="px-5 py-3 font-medium">{t.renters.colIdNumber}</th>
-              <th className="px-5 py-3 font-medium">{t.renters.colVatNumber}</th>
-              <th className="px-5 py-3 font-medium">{t.renters.colContact}</th>
-              <th className="px-5 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+      {renters.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-5 py-8 text-center text-slate-400">
+          {t.renters.empty}
+        </div>
+      ) : (
+        <>
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-right">
+                <tr>
+                  <th className="px-5 py-3 font-medium">{t.renters.colName}</th>
+                  <th className="px-5 py-3 font-medium">{t.renters.colIdType}</th>
+                  <th className="px-5 py-3 font-medium">{t.renters.colIdNumber}</th>
+                  <th className="px-5 py-3 font-medium">{t.renters.colVatNumber}</th>
+                  <th className="px-5 py-3 font-medium">{t.renters.colContact}</th>
+                  <th className="px-5 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {renters.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-5 py-3 font-medium text-slate-800">{pickLocalized(locale, r.fullNameAr, r.fullName)}</td>
+                    <td className="px-5 py-3">{t.idType[r.idType]}</td>
+                    <td className="px-5 py-3 text-slate-500">{r.idNumber ?? t.common.none}</td>
+                    <td className="px-5 py-3">
+                      <VatBadge renter={r} t={t} />
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">
+                      <ContactCell
+                        renter={r}
+                        t={t}
+                        canViewMoveIns={canViewMoveIns}
+                        canViewMoveOuts={canViewMoveOuts}
+                        canViewCorporateHousing={canViewCorporateHousing}
+                        canViewTenantPortalAccount={canViewTenantPortalAccount}
+                        moveInByRenter={moveInByRenter}
+                        moveOutByRenter={moveOutByRenter}
+                        corporateAccountByRenter={corporateAccountByRenter}
+                        contractByRenter={contractByRenter}
+                      />
+                    </td>
+                    <td className="px-5 py-3 text-left">
+                      {canDelete && <DeleteEntityButton id={r.id} action={deleteRenter} label={t.renters.delete} />}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="md:hidden space-y-3">
             {renters.map((r) => (
-              <tr key={r.id}>
-                <td className="px-5 py-3 font-medium text-slate-800">{pickLocalized(locale, r.fullNameAr, r.fullName)}</td>
-                <td className="px-5 py-3">{t.idType[r.idType]}</td>
-                <td className="px-5 py-3 text-slate-500">{r.idNumber ?? t.common.none}</td>
-                <td className="px-5 py-3">
-                  {r.vatNumber ? (
-                    <span className="px-2 py-1 rounded-full bg-brand-gold-tint text-brand-gold-dark text-xs font-medium">
-                      {r.vatNumber}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400 text-xs">{t.renters.individualBadge}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-slate-500">
-                  {r.phone || r.email || t.common.none}
-                  {canViewMoveIns && moveInByRenter.get(r.id) && (
-                    <div className="mt-1">
-                      <Link href={`/operations/move-ins/${moveInByRenter.get(r.id)!.moveInId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                        {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveInByRenter.get(r.id)!.status]}
-                      </Link>
-                    </div>
-                  )}
-                  {canViewMoveOuts && moveOutByRenter.get(r.id) && (
-                    <div className="mt-1">
-                      <Link href={`/operations/move-outs/${moveOutByRenter.get(r.id)!.moveOutId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                        {t.moveOut.contractStatusLabel}: {t.moveOutStatus[moveOutByRenter.get(r.id)!.status]}
-                      </Link>
-                    </div>
-                  )}
-                  {canViewCorporateHousing && corporateAccountByRenter.get(r.id) && (
-                    <div className="mt-1">
-                      <Link href={`/corporate-housing/accounts/${corporateAccountByRenter.get(r.id)!.accountId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                        {t.corporateHousing.renterIntegrationTitle}: {corporateAccountByRenter.get(r.id)!.accountNumber}
-                      </Link>
-                    </div>
-                  )}
-                  {canViewTenantPortalAccount && contractByRenter.get(r.id) && (
-                    <div className="mt-1">
-                      <Link href={`/contracts/${contractByRenter.get(r.id)!.contractId}/edit`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                        {t.tenantPortal.sectionPortalAccess}
-                      </Link>
-                    </div>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-left">
-                  {canDelete && <DeleteEntityButton id={r.id} action={deleteRenter} label={t.renters.delete} />}
-                </td>
-              </tr>
+              <div key={r.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="font-semibold text-slate-800 break-words">{pickLocalized(locale, r.fullNameAr, r.fullName)}</div>
+                  <VatBadge renter={r} t={t} />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.renters.colIdType}</dt>
+                    <dd className="text-slate-700">{t.idType[r.idType]}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.renters.colIdNumber}</dt>
+                    <dd className="text-slate-700 break-words">{r.idNumber ?? t.common.none}</dd>
+                  </div>
+                </dl>
+                <div className="mt-2 text-sm text-slate-500">
+                  <ContactCell
+                    renter={r}
+                    t={t}
+                    canViewMoveIns={canViewMoveIns}
+                    canViewMoveOuts={canViewMoveOuts}
+                    canViewCorporateHousing={canViewCorporateHousing}
+                    canViewTenantPortalAccount={canViewTenantPortalAccount}
+                    moveInByRenter={moveInByRenter}
+                    moveOutByRenter={moveOutByRenter}
+                    corporateAccountByRenter={corporateAccountByRenter}
+                    contractByRenter={contractByRenter}
+                  />
+                </div>
+                {canDelete && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <DeleteEntityButton id={r.id} action={deleteRenter} label={t.renters.delete} />
+                  </div>
+                )}
+              </div>
             ))}
-            {renters.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-5 py-8 text-center text-slate-400">
-                  {t.renters.empty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+type RenterRow = Awaited<ReturnType<typeof listRenters>>[number];
+type Dict = ReturnType<typeof getDictionary>;
+
+function VatBadge({ renter, t }: { renter: RenterRow; t: Dict }) {
+  return renter.vatNumber ? (
+    <span className="px-2 py-1 rounded-full bg-brand-gold-tint text-brand-gold-dark text-xs font-medium">{renter.vatNumber}</span>
+  ) : (
+    <span className="text-slate-400 text-xs">{t.renters.individualBadge}</span>
+  );
+}
+
+function ContactCell({
+  renter,
+  t,
+  canViewMoveIns,
+  canViewMoveOuts,
+  canViewCorporateHousing,
+  canViewTenantPortalAccount,
+  moveInByRenter,
+  moveOutByRenter,
+  corporateAccountByRenter,
+  contractByRenter,
+}: {
+  renter: RenterRow;
+  t: Dict;
+  canViewMoveIns: boolean;
+  canViewMoveOuts: boolean;
+  canViewCorporateHousing: boolean;
+  canViewTenantPortalAccount: boolean;
+  moveInByRenter: Awaited<ReturnType<typeof getMoveInStatusForRenters>>;
+  moveOutByRenter: Awaited<ReturnType<typeof getMoveOutStatusForRenters>>;
+  corporateAccountByRenter: Awaited<ReturnType<typeof getCorporateAccountLinksForRenters>>;
+  contractByRenter: Awaited<ReturnType<typeof getContractLinksForRenters>>;
+}) {
+  const moveIn = moveInByRenter.get(renter.id);
+  const moveOut = moveOutByRenter.get(renter.id);
+  const corporateAccount = corporateAccountByRenter.get(renter.id);
+  const contract = contractByRenter.get(renter.id);
+  return (
+    <>
+      <div className="break-words">{renter.phone || renter.email || t.common.none}</div>
+      {canViewMoveIns && moveIn && (
+        <div className="mt-1">
+          <Link href={`/operations/move-ins/${moveIn.moveInId}`} className="text-xs text-brand-gold-dark hover:underline">
+            {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveIn.status]}
+          </Link>
+        </div>
+      )}
+      {canViewMoveOuts && moveOut && (
+        <div className="mt-1">
+          <Link href={`/operations/move-outs/${moveOut.moveOutId}`} className="text-xs text-brand-gold-dark hover:underline">
+            {t.moveOut.contractStatusLabel}: {t.moveOutStatus[moveOut.status]}
+          </Link>
+        </div>
+      )}
+      {canViewCorporateHousing && corporateAccount && (
+        <div className="mt-1">
+          <Link href={`/corporate-housing/accounts/${corporateAccount.accountId}`} className="text-xs text-brand-gold-dark hover:underline">
+            {t.corporateHousing.renterIntegrationTitle}: {corporateAccount.accountNumber}
+          </Link>
+        </div>
+      )}
+      {canViewTenantPortalAccount && contract && (
+        <div className="mt-1">
+          <Link href={`/contracts/${contract.contractId}/edit`} className="text-xs text-brand-gold-dark hover:underline">
+            {t.tenantPortal.sectionPortalAccess}
+          </Link>
+        </div>
+      )}
+    </>
   );
 }
 

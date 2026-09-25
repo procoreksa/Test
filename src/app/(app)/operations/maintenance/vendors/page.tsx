@@ -30,7 +30,7 @@ export default async function MaintenanceVendorsListPage({ searchParams }: { sea
         <input name="q" defaultValue={params.q} placeholder={t.maintenance.requestSearchPlaceholder} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
       </form>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>

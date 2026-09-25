@@ -13,7 +13,7 @@ export default async function MoveOutFindingsReportPage() {
         <PrintButton label={t.printButton} />
       </div>
       <p className="text-xs text-slate-400 no-print">{t.moveOut.findingsNoticeNotLiability}</p>
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>

@@ -93,88 +93,262 @@ export default async function UnitsPage() {
         </details>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 text-right">
-            <tr>
-              <th className="px-5 py-3 font-medium">{t.units.colUnit}</th>
-              <th className="px-5 py-3 font-medium">{t.units.colProperty}</th>
-              <th className="px-5 py-3 font-medium">{t.units.colType}</th>
-              <th className="px-5 py-3 font-medium">{t.units.colBaseRent}</th>
-              <th className="px-5 py-3 font-medium">{t.units.colStatus}</th>
-              <th className="px-5 py-3 font-medium">{t.units.colCurrentRenter}</th>
-              <th className="px-5 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+      {units.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 text-center text-slate-400">
+          {t.units.empty}
+        </div>
+      ) : (
+        <>
+          {/* Desktop/tablet: full table. Hidden below md - a 6+ column row
+              cannot be shrunk to fit a phone screen without becoming
+              unreadable, so mobile gets its own card layout below instead
+              of a squeezed version of this table. */}
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-right">
+                <tr>
+                  <th className="px-5 py-3 font-medium">{t.units.colUnit}</th>
+                  <th className="px-5 py-3 font-medium">{t.units.colProperty}</th>
+                  <th className="px-5 py-3 font-medium">{t.units.colType}</th>
+                  <th className="px-5 py-3 font-medium">{t.units.colBaseRent}</th>
+                  <th className="px-5 py-3 font-medium">{t.units.colStatus}</th>
+                  <th className="px-5 py-3 font-medium">{t.units.colCurrentRenter}</th>
+                  <th className="px-5 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {units.map((u) => (
+                  <tr key={u.id}>
+                    <td className="px-5 py-3 font-medium text-slate-800">{u.unitNumber}</td>
+                    <td className="px-5 py-3 text-slate-500">{unitLocationLabel(locale, u)}</td>
+                    <td className="px-5 py-3">{t.unitType[u.unitType]}</td>
+                    <td className="px-5 py-3">{sar.format(Number(u.baseRentAmount))}</td>
+                    <td className="px-5 py-3">
+                      <UnitStatusInfo
+                        unit={u}
+                        t={t}
+                        dateFmt={dateFmt}
+                        reservationsByUnit={reservationsByUnit}
+                        canViewCorporateHousing={canViewCorporateHousing}
+                        corporateAllocationByUnit={corporateAllocationByUnit}
+                      />
+                    </td>
+                    <td className="px-5 py-3 text-slate-500">
+                      <UnitRenterInfo
+                        unit={u}
+                        t={t}
+                        locale={locale}
+                        canViewMoveIns={canViewMoveIns}
+                        moveInByUnit={moveInByUnit}
+                        canViewMoveOuts={canViewMoveOuts}
+                        moveOutByUnit={moveOutByUnit}
+                      />
+                    </td>
+                    <td className="px-5 py-3 text-left space-x-2 rtl:space-x-reverse">
+                      <UnitRowActions
+                        unit={u}
+                        t={t}
+                        canViewViewings={canViewViewings}
+                        viewingCounts={viewingCounts}
+                        canDelete={canDelete}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile: one card per unit, most important information first
+              (unit number + status, then location/type/rent, then
+              renter/operational sub-status, then actions). Every value
+              wraps/truncates intentionally so the whole card always fits
+              the viewport - see docs/MOBILE-RESPONSIVE.md. */}
+          <div className="md:hidden space-y-3">
             {units.map((u) => (
-              <tr key={u.id}>
-                <td className="px-5 py-3 font-medium text-slate-800">{u.unitNumber}</td>
-                <td className="px-5 py-3 text-slate-500">{unitLocationLabel(locale, u)}</td>
-                <td className="px-5 py-3">{t.unitType[u.unitType]}</td>
-                <td className="px-5 py-3">{sar.format(Number(u.baseRentAmount))}</td>
-                <td className="px-5 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[u.status]}`}>
+              <div key={u.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{u.unitNumber}</p>
+                    <p className="text-xs text-slate-500 mt-0.5 break-words">{unitLocationLabel(locale, u)}</p>
+                  </div>
+                  <span className={`shrink-0 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${statusTone[u.status]}`}>
                     {t.unitStatus[u.status]}
                   </span>
-                  {u.status === "RESERVED" && reservationsByUnit.get(u.id) && (
-                    <p className="text-xs text-slate-400 mt-1 whitespace-nowrap">
-                      {reservationsByUnit.get(u.id)!.reservationNumber} · {t.reservation.unitHoldUntilLabel} {dateFmt.format(reservationsByUnit.get(u.id)!.holdUntil)}
-                    </p>
-                  )}
-                  {canViewCorporateHousing && corporateAllocationByUnit.get(u.id) && (
-                    <div className="mt-1">
-                      <Link href={`/corporate-housing/allocations/${corporateAllocationByUnit.get(u.id)!.allocationId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                        {t.corporateHousing.unitIntegrationTitle}: {corporateAllocationByUnit.get(u.id)!.allocationNumber}
-                      </Link>
-                    </div>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-slate-500">
-                  {u.contracts[0] ? pickLocalized(locale, u.contracts[0].renter.fullNameAr, u.contracts[0].renter.fullName) : t.common.none}
-                  {canViewMoveIns && u.status === "OCCUPIED" && (
-                    <div className="mt-1">
-                      {moveInByUnit.get(u.id) ? (
-                        <Link href={`/operations/move-ins/${moveInByUnit.get(u.id)!.moveInId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                          {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveInByUnit.get(u.id)!.status]}
-                        </Link>
-                      ) : (
-                        <span className="text-xs text-slate-400 whitespace-nowrap">{t.moveIn.noMoveInYet}</span>
-                      )}
-                    </div>
-                  )}
-                  {canViewMoveOuts && u.status === "OCCUPIED" && moveOutByUnit.get(u.id) && (
-                    <div className="mt-1">
-                      <Link href={`/operations/move-outs/${moveOutByUnit.get(u.id)!.moveOutId}`} className="text-xs text-brand-gold-dark hover:underline whitespace-nowrap">
-                        {t.moveOut.contractStatusLabel}: {t.moveOutStatus[moveOutByUnit.get(u.id)!.status]}
-                      </Link>
-                    </div>
-                  )}
-                </td>
-                <td className="px-5 py-3 text-left space-x-2 rtl:space-x-reverse">
-                  <Link href={`/units/${u.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
-                    {t.ownership.title}
-                  </Link>
-                  {canViewViewings && (
-                    <Link href={`/crm/viewings?unitId=${u.id}`} className="text-brand-gold-dark hover:underline text-xs font-medium">
-                      {t.viewing.unitViewingsLink} ({viewingCounts.get(u.id) ?? 0})
-                    </Link>
-                  )}
-                  {canDelete && <DeleteEntityButton id={u.id} action={deleteUnit} label={t.units.delete} />}
-                </td>
-              </tr>
+                </div>
+
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-400">{t.units.colType}</dt>
+                    <dd className="text-slate-700 truncate">{t.unitType[u.unitType]}</dd>
+                  </div>
+                  <div className="min-w-0">
+                    <dt className="text-xs text-slate-400">{t.units.colBaseRent}</dt>
+                    <dd className="text-slate-700 font-medium truncate">{sar.format(Number(u.baseRentAmount))}</dd>
+                  </div>
+                </dl>
+
+                <div className="mt-2 text-xs">
+                  <UnitStatusInfo
+                    unit={u}
+                    t={t}
+                    dateFmt={dateFmt}
+                    reservationsByUnit={reservationsByUnit}
+                    canViewCorporateHousing={canViewCorporateHousing}
+                    corporateAllocationByUnit={corporateAllocationByUnit}
+                    statusPillAlreadyShown
+                  />
+                </div>
+
+                <div className="mt-2 text-xs text-slate-500 break-words">
+                  <span className="text-slate-400">{t.units.colCurrentRenter}: </span>
+                  <UnitRenterInfo
+                    unit={u}
+                    t={t}
+                    locale={locale}
+                    canViewMoveIns={canViewMoveIns}
+                    moveInByUnit={moveInByUnit}
+                    canViewMoveOuts={canViewMoveOuts}
+                    moveOutByUnit={moveOutByUnit}
+                  />
+                </div>
+
+                <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <UnitRowActions
+                    unit={u}
+                    t={t}
+                    canViewViewings={canViewViewings}
+                    viewingCounts={viewingCounts}
+                    canDelete={canDelete}
+                  />
+                </div>
+              </div>
             ))}
-            {units.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                  {t.units.empty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+type UnitRow = Awaited<ReturnType<typeof listUnits>>[number];
+
+/** Status pill + reservation/corporate-housing sub-info - shared between
+ * the desktop table cell and the mobile card so the two presentations can
+ * never drift out of sync with each other. */
+function UnitStatusInfo({
+  unit,
+  t,
+  dateFmt,
+  reservationsByUnit,
+  canViewCorporateHousing,
+  corporateAllocationByUnit,
+  statusPillAlreadyShown,
+}: {
+  unit: UnitRow;
+  t: ReturnType<typeof getDictionary>;
+  dateFmt: Intl.DateTimeFormat;
+  reservationsByUnit: Awaited<ReturnType<typeof getActiveReservationsForUnits>>;
+  canViewCorporateHousing: boolean;
+  corporateAllocationByUnit: Awaited<ReturnType<typeof getCorporateAllocationStatusForUnits>>;
+  statusPillAlreadyShown?: boolean;
+}) {
+  const reservation = reservationsByUnit.get(unit.id);
+  const allocation = corporateAllocationByUnit.get(unit.id);
+  return (
+    <>
+      {!statusPillAlreadyShown && (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[unit.status]}`}>{t.unitStatus[unit.status]}</span>
+      )}
+      {unit.status === "RESERVED" && reservation && (
+        <p className="text-slate-400 mt-1 break-words">
+          {reservation.reservationNumber} · {t.reservation.unitHoldUntilLabel} {dateFmt.format(reservation.holdUntil)}
+        </p>
+      )}
+      {canViewCorporateHousing && allocation && (
+        <div className="mt-1">
+          <Link href={`/corporate-housing/allocations/${allocation.allocationId}`} className="text-brand-gold-dark hover:underline break-words">
+            {t.corporateHousing.unitIntegrationTitle}: {allocation.allocationNumber}
+          </Link>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Current renter name + move-in/move-out sub-status - shared between the
+ * desktop table cell and the mobile card. */
+function UnitRenterInfo({
+  unit,
+  t,
+  locale,
+  canViewMoveIns,
+  moveInByUnit,
+  canViewMoveOuts,
+  moveOutByUnit,
+}: {
+  unit: UnitRow;
+  t: ReturnType<typeof getDictionary>;
+  locale: Awaited<ReturnType<typeof getLocale>>;
+  canViewMoveIns: boolean;
+  moveInByUnit: Awaited<ReturnType<typeof getMoveInStatusForUnits>>;
+  canViewMoveOuts: boolean;
+  moveOutByUnit: Awaited<ReturnType<typeof getMoveOutStatusForUnits>>;
+}) {
+  const moveIn = moveInByUnit.get(unit.id);
+  const moveOut = moveOutByUnit.get(unit.id);
+  return (
+    <>
+      {unit.contracts[0] ? pickLocalized(locale, unit.contracts[0].renter.fullNameAr, unit.contracts[0].renter.fullName) : t.common.none}
+      {canViewMoveIns && unit.status === "OCCUPIED" && (
+        <div className="mt-1">
+          {moveIn ? (
+            <Link href={`/operations/move-ins/${moveIn.moveInId}`} className="text-brand-gold-dark hover:underline break-words">
+              {t.moveIn.contractStatusLabel}: {t.moveInStatus[moveIn.status]}
+            </Link>
+          ) : (
+            <span className="text-slate-400">{t.moveIn.noMoveInYet}</span>
+          )}
+        </div>
+      )}
+      {canViewMoveOuts && unit.status === "OCCUPIED" && moveOut && (
+        <div className="mt-1">
+          <Link href={`/operations/move-outs/${moveOut.moveOutId}`} className="text-brand-gold-dark hover:underline break-words">
+            {t.moveOut.contractStatusLabel}: {t.moveOutStatus[moveOut.status]}
+          </Link>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Row/card actions (ownership, viewings, delete) - shared between the
+ * desktop table cell and the mobile card. */
+function UnitRowActions({
+  unit,
+  t,
+  canViewViewings,
+  viewingCounts,
+  canDelete,
+}: {
+  unit: UnitRow;
+  t: ReturnType<typeof getDictionary>;
+  canViewViewings: boolean;
+  viewingCounts: Map<string, number>;
+  canDelete: boolean;
+}) {
+  return (
+    <>
+      <Link href={`/units/${unit.id}/ownership`} className="text-brand-gold-dark hover:underline text-xs font-medium">
+        {t.ownership.title}
+      </Link>
+      {canViewViewings && (
+        <Link href={`/crm/viewings?unitId=${unit.id}`} className="text-brand-gold-dark hover:underline text-xs font-medium">
+          {t.viewing.unitViewingsLink} ({viewingCounts.get(unit.id) ?? 0})
+        </Link>
+      )}
+      {canDelete && <DeleteEntityButton id={unit.id} action={deleteUnit} label={t.units.delete} />}
+    </>
   );
 }
 

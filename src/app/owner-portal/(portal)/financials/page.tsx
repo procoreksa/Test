@@ -41,7 +41,7 @@ export default async function OwnerPortalFinancialsPage() {
         </div>
       </div>
 
-      <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <h2 className="font-semibold text-slate-800 px-5 pt-4">{t.ownerPortal.recentLedgerEntriesTitle}</h2>
         <table className="w-full text-sm mt-2">
           <thead className="bg-slate-50 text-slate-500 text-right">

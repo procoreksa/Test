@@ -171,84 +171,151 @@ export default async function ContractsPage() {
       </details>
       )}
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 text-right">
-            <tr>
-              <th className="px-5 py-3 font-medium">{t.contracts.colContractNumber}</th>
-              <th className="px-5 py-3 font-medium">{t.contracts.colUnit}</th>
-              <th className="px-5 py-3 font-medium">{t.contracts.colRenter}</th>
-              <th className="px-5 py-3 font-medium">{t.contracts.colTerm}</th>
-              <th className="px-5 py-3 font-medium">{t.contracts.colInstallment}</th>
-              <th className="px-5 py-3 font-medium">{t.contracts.colStatus}</th>
-              <th className="px-5 py-3 font-medium"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
+      {contracts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm px-5 py-8 text-center text-slate-400">
+          {t.contracts.empty}
+        </div>
+      ) : (
+        <>
+          <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-500 text-right">
+                <tr>
+                  <th className="px-5 py-3 font-medium">{t.contracts.colContractNumber}</th>
+                  <th className="px-5 py-3 font-medium">{t.contracts.colUnit}</th>
+                  <th className="px-5 py-3 font-medium">{t.contracts.colRenter}</th>
+                  <th className="px-5 py-3 font-medium">{t.contracts.colTerm}</th>
+                  <th className="px-5 py-3 font-medium">{t.contracts.colInstallment}</th>
+                  <th className="px-5 py-3 font-medium">{t.contracts.colStatus}</th>
+                  <th className="px-5 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {contracts.map((c) => (
+                  <tr key={c.id}>
+                    <td className="px-5 py-3 font-medium text-slate-800">{c.contractNumber}</td>
+                    <td className="px-5 py-3 text-slate-500">
+                      {unitLocationLabel(locale, c.unit)} / {c.unit.unitNumber}
+                    </td>
+                    <td className="px-5 py-3">{pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}</td>
+                    <td className="px-5 py-3 text-slate-500 text-xs">
+                      {dateFmt.format(c.startDate)} - {dateFmt.format(c.endDate)}
+                    </td>
+                    <td className="px-5 py-3">
+                      <InstallmentInfo contract={c} t={t} sar={sar} />
+                    </td>
+                    <td className="px-5 py-3">
+                      <StatusBadge contract={c} t={t} />
+                    </td>
+                    <td className="px-5 py-3 text-left space-y-1">
+                      <ContractActions contract={c} t={t} canUpdate={canUpdate} canRenew={canRenew} canTerminate={canTerminate} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="md:hidden space-y-3">
             {contracts.map((c) => (
-              <tr key={c.id}>
-                <td className="px-5 py-3 font-medium text-slate-800">{c.contractNumber}</td>
-                <td className="px-5 py-3 text-slate-500">
+              <div key={c.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="font-semibold text-slate-800">{c.contractNumber}</div>
+                  <StatusBadge contract={c} t={t} />
+                </div>
+                <div className="mt-1 text-sm text-slate-600 break-words">
                   {unitLocationLabel(locale, c.unit)} / {c.unit.unitNumber}
-                </td>
-                <td className="px-5 py-3">{pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}</td>
-                <td className="px-5 py-3 text-slate-500 text-xs">
-                  {dateFmt.format(c.startDate)} - {dateFmt.format(c.endDate)}
-                </td>
-                <td className="px-5 py-3">
-                  {sar.format(Number(c.rentAmount))}{" "}
-                  <span className="text-slate-400 text-xs">/ {t.paymentFrequency[c.paymentFrequency]}</span>
-                  {(Number(c.commissionAmount ?? 0) > 0 || Number(c.cleaningAmount ?? 0) > 0) && (
-                    <span className="block text-brand-gold-dark text-[11px] font-medium">{t.contracts.extraFeesBadge}</span>
-                  )}
-                </td>
-                <td className="px-5 py-3">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[c.status]}`}>
-                    {t.contractStatus[c.status]}
-                  </span>
-                </td>
-                <td className="px-5 py-3 text-left space-y-1">
-                  {canUpdate && c.status !== "TERMINATED" && c.status !== "RENEWED" && (
-                    <Link href={`/contracts/${c.id}/edit`} className="block text-brand-gold-dark hover:underline text-xs font-medium">
-                      {t.contracts.edit}
-                    </Link>
-                  )}
-                  {c.status === "ACTIVE" && (
-                    <>
-                      {canRenew && (
-                        <Link
-                          href={`/contracts/${c.id}/renew`}
-                          className="block text-brand-gold-dark hover:underline text-xs font-medium"
-                        >
-                          {t.contracts.renew}
-                        </Link>
-                      )}
-                      {canTerminate && (
-                        <form
-                          action={async () => {
-                            "use server";
-                            await terminateContract(c.id);
-                          }}
-                        >
-                          <button className="text-red-500 hover:underline text-xs">{t.contracts.terminate}</button>
-                        </form>
-                      )}
-                    </>
-                  )}
-                </td>
-              </tr>
+                </div>
+                <div className="text-sm text-slate-600 break-words">{pickLocalized(locale, c.renter.fullNameAr, c.renter.fullName)}</div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.contracts.colTerm}</dt>
+                    <dd className="text-slate-700 text-xs">
+                      {dateFmt.format(c.startDate)} - {dateFmt.format(c.endDate)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-slate-400 text-xs">{t.contracts.colInstallment}</dt>
+                    <dd className="text-slate-700">
+                      <InstallmentInfo contract={c} t={t} sar={sar} />
+                    </dd>
+                  </div>
+                </dl>
+                <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-x-4 gap-y-1">
+                  <ContractActions contract={c} t={t} canUpdate={canUpdate} canRenew={canRenew} canTerminate={canTerminate} />
+                </div>
+              </div>
             ))}
-            {contracts.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-5 py-8 text-center text-slate-400">
-                  {t.contracts.empty}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+type ContractRow = Awaited<ReturnType<typeof listContracts>>[number];
+type Dict = ReturnType<typeof getDictionary>;
+
+function StatusBadge({ contract, t }: { contract: ContractRow; t: Dict }) {
+  return (
+    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusTone[contract.status]}`}>
+      {t.contractStatus[contract.status]}
+    </span>
+  );
+}
+
+function InstallmentInfo({ contract, t, sar }: { contract: ContractRow; t: Dict; sar: Intl.NumberFormat }) {
+  return (
+    <>
+      {sar.format(Number(contract.rentAmount))}{" "}
+      <span className="text-slate-400 text-xs">/ {t.paymentFrequency[contract.paymentFrequency]}</span>
+      {(Number(contract.commissionAmount ?? 0) > 0 || Number(contract.cleaningAmount ?? 0) > 0) && (
+        <span className="block text-brand-gold-dark text-[11px] font-medium">{t.contracts.extraFeesBadge}</span>
+      )}
+    </>
+  );
+}
+
+function ContractActions({
+  contract,
+  t,
+  canUpdate,
+  canRenew,
+  canTerminate,
+}: {
+  contract: ContractRow;
+  t: Dict;
+  canUpdate: boolean;
+  canRenew: boolean;
+  canTerminate: boolean;
+}) {
+  return (
+    <>
+      {canUpdate && contract.status !== "TERMINATED" && contract.status !== "RENEWED" && (
+        <Link href={`/contracts/${contract.id}/edit`} className="block text-brand-gold-dark hover:underline text-xs font-medium">
+          {t.contracts.edit}
+        </Link>
+      )}
+      {contract.status === "ACTIVE" && (
+        <>
+          {canRenew && (
+            <Link href={`/contracts/${contract.id}/renew`} className="block text-brand-gold-dark hover:underline text-xs font-medium">
+              {t.contracts.renew}
+            </Link>
+          )}
+          {canTerminate && (
+            <form
+              action={async () => {
+                "use server";
+                await terminateContract(contract.id);
+              }}
+            >
+              <button className="text-red-500 hover:underline text-xs">{t.contracts.terminate}</button>
+            </form>
+          )}
+        </>
+      )}
+    </>
   );
 }
 

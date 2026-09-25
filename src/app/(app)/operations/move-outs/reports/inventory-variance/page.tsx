@@ -13,7 +13,7 @@ export default async function InventoryVarianceReportPage() {
         <h1 className="text-2xl font-bold text-slate-900">{t.operations.reportInventoryVariance}</h1>
         <PrintButton label={t.printButton} />
       </div>
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>

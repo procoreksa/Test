@@ -46,3 +46,9 @@ next-env.d.ts
 
 # ad-hoc UAT/debug scripts (never part of the application, may contain non-production test credentials)
 /scratch-*
+
+# Playwright (e2e/mobile-responsive.spec.ts) - local artifacts only, never committed
+/test-results/
+/playwright-report/
+/playwright/.auth/
+/e2e/screenshots/

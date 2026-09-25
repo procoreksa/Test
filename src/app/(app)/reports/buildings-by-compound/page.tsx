@@ -14,7 +14,7 @@ export default async function BuildingsByCompoundReportPage() {
         <h1 className="text-2xl font-bold text-slate-900">{t.reports.buildingsByCompound.title}</h1>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>

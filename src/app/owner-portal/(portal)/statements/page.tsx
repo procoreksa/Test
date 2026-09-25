@@ -56,7 +56,7 @@ export default async function OwnerPortalStatementsPage({
         <SummaryCard label={t.ownerPortal.closingBalanceLabel} value={moneyFmt.format(Number(statement.closingBalance))} />
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 text-slate-500 text-right">
             <tr>
