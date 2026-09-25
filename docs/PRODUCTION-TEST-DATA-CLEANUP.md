@@ -1,5 +1,18 @@
 # Production Test/UAT Data Cleanup (one-time operation)
 
+## STATUS: COMPLETED AND VERIFIED
+
+This operation was executed against production on **2026-09-25** and
+completed successfully. The independent post-cleanup read-only audit
+confirmed the verified post-state recorded in §12 below. The GitHub Actions
+workflow that could trigger this operation
+(`.github/workflows/production-test-data-cleanup-one-time.yml`) has been
+**removed from the repository** so it can no longer be run again. The SQL
+script (`scripts/production-test-data-cleanup-one-time.sql`) is retained
+**only as historical/audit evidence** of exactly what was executed and is
+marked `DO NOT RUN AGAIN` at the top of that file - it must never be
+re-executed.
+
 **This is not a reusable cleanup tool.** It documents one specific, approved,
 one-time production data-removal operation for the Pro Core / GULF ADDRESS
 Real Estate Investment Company (`demo-org`) Neon production database. It
@@ -173,3 +186,49 @@ for CTR-2026-00004). Confirmed:
 
 No validation was ever pointed at production or at this repository's shared
 dev/test databases.
+
+## 12. Execution record (COMPLETED AND VERIFIED)
+
+- **Execution date:** 2026-09-25
+- **Execution outcome:** Completed successfully.
+- **Verification method:** Independent post-cleanup read-only production
+  audit (the same read-only workflows referenced in §9), run after execution
+  and confirmed to pass.
+
+Verified production post-state:
+
+| Item | Verified value |
+|---|---|
+| CTR-2026-00001 | Removed |
+| CTR-2026-00002 | Removed |
+| CTR-2026-00003 | Removed |
+| CTR-2026-00004 | Remains, status **ACTIVE** |
+| Unit 714 and its renter | Intact |
+| CTR-2026-00004 PaymentSchedules | 3 |
+| CTR-2026-00004 Invoices | 2 |
+| CTR-2026-00004 InvoiceLines | 2 |
+| CTR-2026-00004 Payments | 0 |
+| CTR-2026-00004 MoveOut | 1 |
+| CTR-2026-00004 MoveOut inspection items | 48 |
+| AuditLog row count | 13 (unchanged) |
+| Counter `contract` | 4 (unchanged) |
+| Counter `invoice` | 4 (unchanged) |
+| Counter `moveOut` | 1 (unchanged) |
+
+This matches the expected outcome described throughout this document exactly
+(§2-§6). No further action against production is planned or authorized under
+this document. Any future, different cleanup requires its own new baseline
+audit, its own new script, and its own new approval - never a re-run of the
+script referenced here.
+
+## 13. Post-completion workflow/script disposition
+
+- `.github/workflows/production-test-data-cleanup-one-time.yml` - **deleted**
+  from the repository; the mutation path can no longer be triggered from
+  GitHub Actions.
+- `scripts/production-test-data-cleanup-one-time.sql` - **retained**,
+  unmodified in substance, with a prominent header added marking it as
+  executed, verified, and `DO NOT RUN AGAIN`. Kept for audit/history only.
+- The read-only audit/status workflows (`production-data-inventory.yml`,
+  `production-contract-dependency-audit.yml`, `prisma-production-status.yml`)
+  are unaffected and remain available for future read-only verification.

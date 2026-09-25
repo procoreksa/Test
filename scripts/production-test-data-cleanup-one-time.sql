@@ -1,5 +1,23 @@
 -- ============================================================================
--- ONE-TIME PRODUCTION TEST/UAT DATA CLEANUP
+-- *** EXECUTED ON PRODUCTION - DO NOT RUN AGAIN ***
+-- ============================================================================
+--
+-- Execution date:              2026-09-25
+-- Execution outcome:           COMPLETED SUCCESSFULLY
+-- Post-execution verification: PASSED (independent read-only audit)
+--
+-- This script has already run against production exactly once and achieved
+-- its intended, fully-verified effect (CTR-2026-00001/00002/00003 removed;
+-- CTR-2026-00004 and everything reachable from it untouched; AuditLog and
+-- all Counter rows unchanged). It is retained here ONLY as historical/audit
+-- evidence of precisely what was executed - it is not a reusable tool and
+-- must never be run again. The GitHub Actions workflow that could trigger
+-- it (.github/workflows/production-test-data-cleanup-one-time.yml) has been
+-- removed for this reason. See docs/PRODUCTION-TEST-DATA-CLEANUP.md for the
+-- full verified post-state record.
+--
+-- ============================================================================
+-- ONE-TIME PRODUCTION TEST/UAT DATA CLEANUP (ORIGINAL HEADER, PRE-EXECUTION)
 -- ============================================================================
 --
 -- DO NOT RUN WITHOUT EXPLICIT PRODUCTION EXECUTION APPROVAL.
