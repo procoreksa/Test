@@ -849,8 +849,16 @@ model PropertyOwnership {
   compound   Compound? @relation(fields: [compoundId], references: [id], onDelete: Cascade)
   buildingId String?
   building   Building? @relation(fields: [buildingId], references: [id], onDelete: Cascade)
-  unitId     String?
-  unit       Unit?     @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  // Restrict, not Cascade (D-010): a Unit with an ownership assignment
+  // carries ownership history that must be preserved even if the Unit was
+  // never leased - deleting the Unit must be blocked (same
+  // friendly-message path as every other protected relation in
+  // deleteUnit(), src/lib/actions/units.ts) rather than silently
+  // destroying the ownership record. Compound/Building's own Cascade above
+  // are a separate, pre-existing concern out of D-010's scope (Unit
+  // deletion only) - see docs/TECHNICAL-DEBT.md.
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   // 0.00-100.00. The sum of ACTIVE ownershipPercentage values for the exact
   // same asset (same compoundId/buildingId/unitId triple) must never exceed
@@ -925,8 +933,14 @@ model OwnerLedgerEntry {
 
   compoundId String?
   compound   Compound? @relation(fields: [compoundId], references: [id])
-  unitId     String?
-  unit       Unit?     @relation(fields: [unitId], references: [id])
+  // Restrict, not the SetNull default (D-010): a ledger entry tagging a
+  // Unit is a financial record referencing that Unit for reporting/audit
+  // purposes - silently detaching it on Unit deletion would let a
+  // financial record survive with its unit traceability quietly erased.
+  // Same "must not silently destroy financial records" principle as
+  // deleteUnit()'s other protected relations.
+  unitId String?
+  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   // Reversal linkage: set on the REVERSAL entry (points back at what it
   // reverses) and on the original entry (points forward, so it can't be
