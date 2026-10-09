@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ProCore Media launch post (studio photo)</title>
+<!-- Source for public/social/procore-media-launch-post-studio.png (1080x1080). Render: chromium --headless --allow-file-access-from-files --window-size=1080,1080 --screenshot=out.png post-studio.html -->
+<style>
+  @font-face { font-family: Tajawal; font-weight: 500; src: url(fonts/Tajawal-Medium.ttf); }
+  @font-face { font-family: Tajawal; font-weight: 700; src: url(fonts/Tajawal-Bold.ttf); }
+  @font-face { font-family: Tajawal; font-weight: 800; src: url(fonts/Tajawal-ExtraBold.ttf); }
+
+  :root {
+    --navy: #0B0B1E;
+    --ink: #FFFFFF;
+    --muted: #C4C4DE;
+    --brand: linear-gradient(270deg, #14C8FF 0%, #2F6BFF 25%, #8B1FE8 50%, #F2349E 72%, #FF8A00 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1080px; background: var(--navy); }
+  /* Arabic is cursive: never letter-space or justify it. */
+  body { font-family: Tajawal, sans-serif; color: var(--ink); overflow: hidden; letter-spacing: 0; }
+
+  .post { position: relative; width: 1080px; height: 1080px; overflow: hidden; }
+
+  /* Studio photo, bottom-left, fading into the navy on the right and top */
+  .photo { position: absolute; left: 0; bottom: 0; width: 610px; height: 760px;
+           background: url(studio-photo.jpg) left bottom / cover no-repeat; }
+  .photo::after { content: ""; position: absolute; inset: 0;
+    background:
+      linear-gradient(to left, var(--navy) 0%, rgba(11,11,30,.9) 18%, rgba(11,11,30,0) 52%),
+      linear-gradient(to bottom, var(--navy) 0%, rgba(11,11,30,0) 26%),
+      linear-gradient(to top, rgba(11,11,30,.55) 0%, rgba(11,11,30,0) 20%); }
+  .glow { position: absolute; border-radius: 50%; filter: blur(120px); }
+  .g1 { width: 520px; height: 520px; background: #8B1FE8; top: -260px; right: -120px; opacity: .45; }
+  .g2 { width: 420px; height: 420px; background: #2F6BFF; top: -200px; left: -140px; opacity: .35; }
+
+  .logo { position: absolute; top: 46px; left: 52px; width: 400px; }
+
+  .col { position: absolute; top: 40px; bottom: 56px; right: 46px; width: 560px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; }
+
+  .banner { position: relative; width: 560px; height: 214px; }
+  .banner svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .banner h1 { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+               padding: 8px 0 0; align-items: center; text-align: center; transform: rotate(-4deg); color: #0B0B1E; font-weight: 800; }
+  .banner .l1 { font-size: 54px; line-height: 1.05; }
+  .banner .l2 { font-size: 58px; line-height: 1.2; }
+
+  .sub { font-weight: 800; font-size: 29px; margin-top: 16px; }
+  .rule { width: 110px; height: 5px; border-radius: 3px; background: var(--brand); margin-top: 18px; }
+
+  .services { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; width: 100%; margin-top: 30px; }
+  .svc { display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .svc .box { width: 84px; height: 84px; border-radius: 20px; display: grid; place-items: center;
+              background: rgba(255,255,255,.05); border: 2px solid; box-shadow: 0 0 22px -4px currentColor; }
+  .svc svg { width: 44px; height: 44px; }
+  .svc span { font-weight: 700; font-size: 18px; line-height: 1.3; margin-top: 12px; color: var(--ink); }
+
+  .lede { font-weight: 500; font-size: 25px; line-height: 1.6; color: var(--muted); margin-top: 26px; }
+  .lede b { color: var(--ink); font-weight: 700; }
+
+  .motto { font-weight: 800; font-size: 50px; line-height: 1.3; margin-top: 22px; }
+  .grad { background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: .1em; }
+
+  .cta { font-weight: 800; font-size: 28px; padding: 18px 34px 14px; border-radius: 999px; background: var(--brand); margin-top: 26px; }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 8px; background: var(--brand); }
+</style>
+</head>
+<body>
+<div class="post">
+  <div class="photo"></div>
+  <div class="glow g1"></div><div class="glow g2"></div>
+
+  <img class="logo" src="../../public/brand/procore-media-logo-dark.svg" alt="ProCore Media">
+
+  <div class="col">
+    <div class="banner">
+      <svg viewBox="0 0 520 236" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="brush" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#F2349E"/><stop offset=".55" stop-color="#FF5A3C"/><stop offset="1" stop-color="#FFA41A"/>
+          </linearGradient>
+        </defs>
+        <!-- rough brush-stroke banner -->
+        <path fill="url(#brush)" d="M24 92 L40 70 L30 58 L70 52 L96 36 L140 40 L190 26 L250 30 L300 18 L352 22 L404 12 L452 20 L498 14 L490 34 L512 46 L496 62 L506 84 L492 104 L508 124 L490 146 L500 166 L478 182 L486 200 L440 198 L396 212 L344 206 L290 220 L236 212 L180 224 L128 214 L82 222 L48 210 L58 192 L20 184 L36 164 L12 146 L30 126 L14 108 Z"/>
+        <path fill="#FFD23F" d="M470 6 l26 -4 -8 22 z M28 40 l-20 10 18 12 z M498 214 l20 6 -16 14 z"/>
+        <path fill="#14C8FF" d="M4 196 l22 -6 -6 20 z M508 70 l10 -14 4 18 z"/>
+      </svg>
+      <h1><span class="l1">إطلاق</span><span class="l2">وكالة بروكور ميديا</span></h1>
+    </div>
+
+    <div class="sub">نحوّل الأفكار الجريئة إلى تجارب رقمية مؤثرة</div>
+    <div class="rule"></div>
+
+    <div class="services">
+      <div class="svc" style="color:#14C8FF">
+        <div class="box"><svg viewBox="0 0 48 48" fill="none" stroke="#14C8FF" stroke-width="3" stroke-linecap="round"><rect x="12" y="12" width="24" height="24" rx="4"/><path d="M18 6v6M24 6v6M30 6v6M18 36v6M24 36v6M30 36v6M6 18h6M6 24h6M6 30h6M36 18h6M36 24h6M36 30h6"/><text x="24" y="29" text-anchor="middle" font-family="Tajawal" font-weight="800" font-size="13" fill="#14C8FF" stroke="none">AI</text></svg></div>
+        <span>المحتوى بالذكاء الاصطناعي</span>
+      </div>
+      <div class="svc" style="color:#C02BF0">
+        <div class="box"><svg viewBox="0 0 48 48"><rect x="5" y="13" width="28" height="22" rx="5" fill="#C02BF0"/><path d="M33 21l10-6v18l-10-6z" fill="#C02BF0"/><path d="M16 19l8 5-8 5z" fill="#fff"/></svg></div>
+        <span>إنتاج الفيديو السينمائي</span>
+      </div>
+      <div class="svc" style="color:#2F8BFF">
+        <div class="box"><svg viewBox="0 0 48 48" fill="#2F8BFF"><rect x="7" y="28" width="8" height="12" rx="2"/><rect x="20" y="20" width="8" height="20" rx="2"/><rect x="33" y="10" width="8" height="30" rx="2"/></svg></div>
+        <span>التسويق الرقمي</span>
+      </div>
+      <div class="svc" style="color:#FF9A1A">
+        <div class="box"><svg viewBox="0 0 48 48" fill="none" stroke="#FF9A1A" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M24 5l12 14-12 22-12-22z"/><path d="M24 5v18"/><circle cx="24" cy="25" r="3" fill="#FF9A1A"/><path d="M14 43h20"/></svg></div>
+        <span>بناء الهوية التجارية</span>
+      </div>
+      <div class="svc" style="color:#F2349E">
+        <div class="box"><svg viewBox="0 0 48 48" fill="none" stroke="#F2349E" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M8 10h32a3 3 0 0 1 3 3v18a3 3 0 0 1-3 3H22l-9 7v-7H8a3 3 0 0 1-3-3V13a3 3 0 0 1 3-3z"/><path d="M24 28s-7-4.4-7-9a3.6 3.6 0 0 1 7-1.2A3.6 3.6 0 0 1 31 19c0 4.6-7 9-7 9z" fill="#F2349E" stroke="none"/></svg></div>
+        <span>حلول السوشيال ميديا</span>
+      </div>
+    </div>
+
+    <p class="lede">نمزج بين <b>الإبداع</b> و<b>التكنولوجيا</b> و<b>التخطيط الاستراتيجي</b>، لنصنع قصصاً ملهمة، ونبني علامات تجارية قوية، ونُنتج محتوى يجذب الانتباه ويحقق النتائج.</p>
+
+    <div class="motto">حيث يلتقي الإبداع <span class="grad">بالابتكار</span></div>
+
+    <div class="cta">تواصل معنا الآن ←</div>
+  </div>
+  <div class="bar"></div>
+</div>
+</body>
+</html>
