@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ProCore Media">
+  <title>ProCore Media</title>
+  <defs>
+    <linearGradient id="istem" gradientUnits="userSpaceOnUse" x1="0" y1="27" x2="0" y2="486">
+      <stop offset="0" stop-color="#0047FF"/><stop offset=".35" stop-color="#1AA8FF"/>
+      <stop offset=".75" stop-color="#6A1FE0"/><stop offset="1" stop-color="#FF3D8E"/></linearGradient>
+    <linearGradient id="itop" gradientUnits="userSpaceOnUse" x1="111" y1="79" x2="401" y2="239">
+      <stop offset="0" stop-color="#FFC21A"/><stop offset="1" stop-color="#FF6A00"/></linearGradient>
+    <linearGradient id="ibot" gradientUnits="userSpaceOnUse" x1="401" y1="239" x2="111" y2="369">
+      <stop offset="0" stop-color="#FF4A3D"/><stop offset=".5" stop-color="#F0359F"/><stop offset="1" stop-color="#9B2BE8"/></linearGradient>
+    <filter id="ifold" filterUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#1A0A4A" flood-opacity=".35"/></filter>
+    <mask id="im" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><g stroke="#fff" stroke-width="104" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M111 79 L111 434"/><path d="M111 79 L401 239"/><path d="M401 239 L111 369"/></g></mask>
+  </defs>
+  <g mask="url(#im)">
+      <path d="M111 79 L401 239" stroke="url(#itop)" stroke-width="104" stroke-linecap="round" fill="none"/>
+      <path d="M111 79 L111 434" stroke="url(#istem)" stroke-width="104" stroke-linecap="round" fill="none" filter="url(#ifold)"/>
+      <path d="M401 239 L111 369" stroke="url(#ibot)" stroke-width="104" stroke-linecap="round" fill="none" filter="url(#ifold)"/>
+    </g>
+</svg>
