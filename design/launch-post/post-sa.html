@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ar-SA" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>ProCore Media launch post (Saudi dialect)</title>
+<!-- Source for public/social/procore-media-launch-post-sa.png (1080x1350). Render: chromium --headless --allow-file-access-from-files --window-size=1080,1350 --screenshot=out.png post-sa.html -->
+<style>
+  @font-face { font-family: Tajawal; font-weight: 500; src: url(fonts/Tajawal-Medium.ttf); }
+  @font-face { font-family: Tajawal; font-weight: 700; src: url(fonts/Tajawal-Bold.ttf); }
+  @font-face { font-family: Tajawal; font-weight: 800; src: url(fonts/Tajawal-ExtraBold.ttf); }
+  @font-face { font-family: Poppins; font-weight: 500; src: url(fonts/Poppins-Medium.ttf); }
+  @font-face { font-family: Poppins; font-weight: 700; src: url(fonts/Poppins-Bold.ttf); }
+
+  :root {
+    --navy: #0E0E24;
+    --ink: #FFFFFF;
+    --muted: #B9B9D6;
+    --brand: linear-gradient(270deg, #14C8FF 0%, #2F6BFF 25%, #8B1FE8 50%, #F2349E 72%, #FF8A00 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1080px; height: 1350px; background: var(--navy); }
+  /* Arabic is cursive: never letter-space it. Latin brand text falls back to Poppins. */
+  body { font-family: Tajawal, Poppins, sans-serif; color: var(--ink); overflow: hidden; letter-spacing: 0; }
+  .latin { font-family: Poppins, sans-serif; direction: ltr; }
+
+  .post { position: relative; width: 1080px; height: 1350px; padding: 84px 84px 72px; overflow: hidden;
+          display: flex; flex-direction: column; }
+
+  .glow { position: absolute; border-radius: 50%; filter: blur(110px); opacity: .55; }
+  .g1 { width: 620px; height: 620px; background: #2F6BFF; top: -220px; left: -180px; }
+  .g2 { width: 520px; height: 520px; background: #F2349E; bottom: 120px; right: -260px; opacity: .38; }
+  .g3 { width: 460px; height: 460px; background: #FF8A00; bottom: -260px; left: -120px; opacity: .42; }
+
+  .top { position: relative; display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 20px; direction: ltr; }
+  .brand img { width: 84px; height: 84px; }
+  .brand .name { font-weight: 700; font-size: 34px; line-height: 1; }
+  .brand .name span { color: #B583FF; }
+  .brand .tag { font-weight: 500; font-size: 15px; letter-spacing: 6px; color: var(--muted); margin-top: 8px; }
+  .pill { position: relative; font-weight: 700; font-size: 26px; padding: 14px 32px 10px;
+          border-radius: 999px; background: rgba(255,255,255,.06); }
+  .pill::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 2px;
+                  background: var(--brand); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+                  -webkit-mask-composite: xor; mask-composite: exclude; }
+
+  .hero { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 44px; }
+  .copy { flex: 1; }
+  .art { width: 520px; height: 678px; flex: none; margin-left: -64px; }
+  .art img { width: 100%; height: 100%; display: block;
+             -webkit-mask: linear-gradient(#000 82%, transparent); mask: linear-gradient(#000 82%, transparent); }
+  .eyebrow { font-weight: 700; font-size: 30px; color: var(--muted); }
+  h1 { font-weight: 800; font-size: 72px; line-height: 1.25; margin-top: 14px; }
+  .grad { background: var(--brand); -webkit-background-clip: text; background-clip: text; color: transparent;
+          padding-bottom: .12em; }
+  .lede { font-weight: 500; font-size: 29px; line-height: 1.6; color: var(--muted); margin-top: 24px; }
+  .lede b { color: var(--ink); font-weight: 700; }
+
+  .services { position: relative; display: flex; flex-wrap: wrap; gap: 16px; margin-top: 28px; }
+  .chip { font-weight: 700; font-size: 25px; padding: 16px 26px 12px; border-radius: 18px;
+          background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); display: flex; align-items: center; gap: 14px; }
+  .chip i { width: 14px; height: 14px; border-radius: 50%; flex: none; margin-top: -4px; }
+
+  .bottom { position: relative; margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; }
+  .motto { font-weight: 800; font-size: 44px; line-height: 1.35; }
+  .cta { font-weight: 800; font-size: 30px; padding: 22px 38px 18px; border-radius: 999px; background: var(--brand); white-space: nowrap; }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 10px; background: var(--brand); }
+</style>
+</head>
+<body>
+<div class="post">
+  <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
+
+  <div class="top">
+    <div class="brand latin">
+      <img src="../../public/brand/procore-media-icon.svg" alt="">
+      <div>
+        <div class="name">ProCore <span>Media</span></div>
+        <div class="tag">CREATIVE AGENCY</div>
+      </div>
+    </div>
+    <div class="pill">حيّاكم.. انطلقنا رسمياً 🚀</div>
+  </div>
+
+  <div class="hero">
+    <div class="copy">
+      <div class="eyebrow">عندك فكرة جريئة؟</div>
+      <h1>حنّا <span class="grad">نحوّلها</span> لتجربة رقمية تبهر!</h1>
+      <p class="lede">نجمع لك الإبداع والتقنية والاستراتيجية، ونسوي لك <b>محتوى يلفت الأنظار</b>، <b>وبراند ما يُنسى</b>، <b>ونتايج تفرق معك</b>.</p>
+    </div>
+    <div class="art"><img src="saudi-people.svg" alt=""></div>
+  </div>
+
+  <div class="services">
+    <div class="chip"><i style="background:#14C8FF"></i>محتوى بالذكاء الاصطناعي</div>
+    <div class="chip"><i style="background:#2F6BFF"></i>تصوير وإنتاج سينمائي</div>
+    <div class="chip"><i style="background:#8B1FE8"></i>تسويق رقمي</div>
+    <div class="chip"><i style="background:#F2349E"></i>هوية وبراندنق</div>
+    <div class="chip"><i style="background:#FF8A00"></i>إدارة السوشيال ميديا</div>
+  </div>
+
+  <div class="bottom">
+    <div class="motto">وين ما يلتقي الإبداع<br><span class="grad">بالابتكار.. تلقانا</span></div>
+    <div class="cta">كلّمنا الحين ←</div>
+  </div>
+  <div class="bar"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 600" width="460" height="600">
+  <!-- Flat illustration: man in thobe, shemagh and agal with a cinema camera; woman in abaya and hijab with a tablet. -->
+  <defs>
+    <linearGradient id="halo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2F6BFF"/><stop offset=".5" stop-color="#8B1FE8"/><stop offset="1" stop-color="#FF8A00"/>
+    </linearGradient>
+    <linearGradient id="screen" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#14C8FF"/><stop offset=".5" stop-color="#8B1FE8"/><stop offset="1" stop-color="#F2349E"/>
+    </linearGradient>
+    <linearGradient id="thobe" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E4E4EE"/><stop offset=".45" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCDCE8"/>
+    </linearGradient>
+    <linearGradient id="abaya" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#15152A"/><stop offset=".5" stop-color="#262642"/><stop offset="1" stop-color="#15152A"/>
+    </linearGradient>
+    <pattern id="shemagh" width="12" height="12" patternUnits="userSpaceOnUse">
+      <rect width="12" height="12" fill="#FFFFFF"/>
+      <path d="M0 6H12M6 0V12" stroke="#D1203A" stroke-width="2.6"/>
+      <rect x="4.6" y="4.6" width="2.8" height="2.8" fill="#9E1028"/>
+    </pattern>
+    <clipPath id="frame"><rect width="460" height="600" rx="0"/></clipPath>
+  </defs>
+
+  <g clip-path="url(#frame)">
+    <!-- Halo -->
+    <circle cx="232" cy="330" r="214" fill="url(#halo)" opacity=".9"/>
+    <circle cx="232" cy="330" r="214" fill="#0E0E24" opacity=".35"/>
+
+    <!-- ===== Man (back) ===== -->
+    <g>
+      <!-- thobe -->
+      <path d="M196 600 L204 420 Q210 360 258 346 L332 346 Q380 360 386 420 L394 600 Z" fill="url(#thobe)"/>
+      <path d="M295 352 L295 440" stroke="#CFCFDD" stroke-width="3"/>
+      <circle cx="295" cy="372" r="3" fill="#CFCFDD"/><circle cx="295" cy="396" r="3" fill="#CFCFDD"/>
+      <!-- neck + head -->
+      <rect x="276" y="296" width="38" height="58" rx="12" fill="#B07A52"/>
+      <ellipse cx="295" cy="258" rx="44" ry="52" fill="#B9825A"/>
+      <!-- beard -->
+      <path d="M253 270 Q255 322 295 330 Q335 322 337 270 Q330 300 295 304 Q260 300 253 270 Z" fill="#2B1D16"/>
+      <path d="M281 289 Q295 283 309 289 Q302 294 295 293 Q288 294 281 289 Z" fill="#2B1D16"/>
+      <path d="M285 298 Q295 304 305 298" stroke="#6B2F22" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="279" cy="262" r="4" fill="#24170F"/><circle cx="311" cy="262" r="4" fill="#24170F"/>
+      <path d="M271 250 Q279 246 287 250 M303 250 Q311 246 319 250" stroke="#24170F" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <!-- shemagh draped over head and shoulders -->
+      <path d="M244 256 Q240 186 295 182 Q350 186 346 256 L362 368 Q344 392 322 360 L336 272 Q330 234 295 230 Q260 234 254 272 L268 360 Q246 392 228 368 Z" fill="url(#shemagh)"/>
+      <path d="M244 256 Q240 186 295 182 Q350 186 346 256" fill="none" stroke="#B8B8C8" stroke-width="2" opacity=".6"/>
+      <!-- agal -->
+      <path d="M244 204 Q295 186 346 204" stroke="#141414" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M243 206 Q295 228 347 206" stroke="#141414" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <path d="M244 217 Q295 239 346 217" stroke="#141414" stroke-width="8" fill="none" stroke-linecap="round"/>
+      <!-- sleeves -->
+      <path d="M222 392 Q206 456 244 474" stroke="#E2E2EC" stroke-width="36" fill="none" stroke-linecap="round"/>
+      <path d="M368 392 Q384 456 346 474" stroke="#E2E2EC" stroke-width="36" fill="none" stroke-linecap="round"/>
+      <!-- cinema camera -->
+      <rect x="248" y="418" width="112" height="72" rx="12" fill="#1E1E36"/>
+      <rect x="264" y="404" width="40" height="18" rx="5" fill="#1E1E36"/>
+      <circle cx="304" cy="454" r="27" fill="#0B0B18" stroke="url(#screen)" stroke-width="6"/>
+      <circle cx="304" cy="454" r="11" fill="#2F6BFF" opacity=".75"/>
+      <circle cx="298" cy="448" r="4" fill="#FFFFFF" opacity=".8"/>
+      <circle cx="345" cy="430" r="4" fill="#FF3D5A"/>
+      <!-- hands -->
+      <circle cx="248" cy="474" r="16" fill="#B07A52"/>
+      <circle cx="356" cy="474" r="16" fill="#B07A52"/>
+    </g>
+
+    <!-- ===== Woman (front) ===== -->
+    <g>
+      <!-- abaya -->
+      <path d="M50 600 L62 440 Q70 382 118 366 L184 366 Q230 382 236 440 L248 600 Z" fill="url(#abaya)"/>
+      <path d="M149 404 L149 600" stroke="#8B1FE8" stroke-width="3" opacity=".7"/>
+      <!-- hijab -->
+      <path d="M92 282 Q88 204 149 198 Q210 204 206 282 Q210 340 228 386 Q149 408 70 386 Q88 340 92 282 Z" fill="#23233C"/>
+      <!-- face -->
+      <ellipse cx="149" cy="280" rx="35" ry="43" fill="#D29B73"/>
+      <path d="M112 266 Q149 216 186 266 Q186 236 149 226 Q112 236 112 266 Z" fill="#23233C"/>
+      <path d="M112 266 Q114 300 126 318 Q118 300 117 270 Z M186 266 Q184 300 172 318 Q180 300 181 270 Z" fill="#23233C"/>
+      <circle cx="136" cy="280" r="3.8" fill="#2A1A12"/><circle cx="162" cy="280" r="3.8" fill="#2A1A12"/>
+      <path d="M128 270 Q136 266 143 270 M155 270 Q162 266 170 270" stroke="#2A1A12" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+      <path d="M140 300 Q149 307 158 300" stroke="#9A4A3A" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="128" cy="294" r="6" fill="#E9837A" opacity=".35"/><circle cx="170" cy="294" r="6" fill="#E9837A" opacity=".35"/>
+      <!-- sleeves -->
+      <path d="M86 410 Q70 476 112 500" stroke="#1C1C34" stroke-width="34" fill="none" stroke-linecap="round"/>
+      <path d="M212 410 Q228 476 186 500" stroke="#1C1C34" stroke-width="34" fill="none" stroke-linecap="round"/>
+      <!-- tablet showing content -->
+      <g transform="rotate(-6 149 480)">
+        <rect x="98" y="428" width="102" height="128" rx="12" fill="#0B0B18"/>
+        <rect x="105" y="436" width="88" height="112" rx="7" fill="url(#screen)"/>
+        <path d="M140 474 L166 492 L140 510 Z" fill="#FFFFFF"/>
+        <rect x="113" y="526" width="56" height="6" rx="3" fill="#FFFFFF" opacity=".7"/>
+        <rect x="113" y="536" width="36" height="6" rx="3" fill="#FFFFFF" opacity=".45"/>
+      </g>
+      <!-- hands -->
+      <circle cx="106" cy="506" r="14" fill="#C88E66"/>
+      <circle cx="192" cy="500" r="14" fill="#C88E66"/>
+    </g>
+
+    <!-- floating badges -->
+    <g>
+      <circle cx="58" cy="168" r="28" fill="#F2349E"/>
+      <path d="M50 156 L70 168 L50 180 Z" fill="#fff"/>
+      <circle cx="404" cy="190" r="26" fill="#FF8A00"/>
+      <path d="M404 174 L408 186 L420 190 L408 194 L404 206 L400 194 L388 190 L400 186 Z" fill="#fff"/>
+      <circle cx="414" cy="330" r="22" fill="#14C8FF"/>
+      <path d="M403 338 L410 330 L416 334 L425 322" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+</svg>
