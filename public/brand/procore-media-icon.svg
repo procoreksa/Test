@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="ProCore Media">
   <title>ProCore Media</title>
   <defs>
-    <linearGradient id="istem" gradientUnits="userSpaceOnUse" x1="0" y1="27" x2="0" y2="486">
-      <stop offset="0" stop-color="#0047FF"/><stop offset=".35" stop-color="#1AA8FF"/>
-      <stop offset=".75" stop-color="#6A1FE0"/><stop offset="1" stop-color="#FF3D8E"/></linearGradient>
-    <linearGradient id="itop" gradientUnits="userSpaceOnUse" x1="111" y1="79" x2="401" y2="239">
-      <stop offset="0" stop-color="#FFC21A"/><stop offset="1" stop-color="#FF6A00"/></linearGradient>
-    <linearGradient id="ibot" gradientUnits="userSpaceOnUse" x1="401" y1="239" x2="111" y2="369">
-      <stop offset="0" stop-color="#FF4A3D"/><stop offset=".5" stop-color="#F0359F"/><stop offset="1" stop-color="#9B2BE8"/></linearGradient>
-    <filter id="ifold" filterUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">
-      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#1A0A4A" flood-opacity=".35"/></filter>
-    <mask id="im" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><g stroke="#fff" stroke-width="104" stroke-linecap="round" stroke-linejoin="round" fill="none">
-      <path d="M111 79 L111 434"/><path d="M111 79 L401 239"/><path d="M401 239 L111 369"/></g></mask>
+    <linearGradient id="iorange" gradientUnits="userSpaceOnUse" x1="120" y1="20" x2="460" y2="290"><stop offset="0.00" stop-color="#FFC61A"/><stop offset="0.50" stop-color="#FF8A00"/><stop offset="1.00" stop-color="#FF5E00"/></linearGradient>
+    <linearGradient id="ired" gradientUnits="userSpaceOnUse" x1="450" y1="290" x2="200" y2="395"><stop offset="0.00" stop-color="#FF3D2E"/><stop offset="0.50" stop-color="#F2349E"/><stop offset="1.00" stop-color="#A020F0"/></linearGradient>
+    <linearGradient id="iblue" gradientUnits="userSpaceOnUse" x1="0" y1="20" x2="0" y2="300"><stop offset="0.00" stop-color="#0038FF"/><stop offset="1.00" stop-color="#0A6CFF"/></linearGradient>
+    <linearGradient id="icyan" gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="185" y2="0"><stop offset="0.00" stop-color="#14ECFF"/><stop offset="1.00" stop-color="#1590FF"/></linearGradient>
+    <linearGradient id="ipurple" gradientUnits="userSpaceOnUse" x1="40" y1="470" x2="200" y2="320"><stop offset="0.00" stop-color="#3A1CD0"/><stop offset="1.00" stop-color="#8B1FE8"/></linearGradient>
+    <linearGradient id="ipink" gradientUnits="userSpaceOnUse" x1="44" y1="494" x2="220" y2="410"><stop offset="0.00" stop-color="#FF3FA8"/><stop offset="1.00" stop-color="#FF5277"/></linearGradient>
+    <filter id="ifold" filterUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><feDropShadow dx="2" dy="-1" stdDeviation="8" flood-color="#1A0A4A" flood-opacity=".38"/></filter>
+    <mask id="im" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><path fill="#fff" fill-rule="evenodd" d="M44 110 C44 50 90 18 140 22 L410 152 C478 186 478 284 420 315 L300 385 C270 400 240 405 197 405 L197 452 C197 476 178 494 154 494 L70 494 C55 494 44 483 44 468 Z M174 154 Q174 134 191.4 143.9 L345.6 232.1 Q363 242 345.2 251.2 L191.8 330.8 Q174 340 174 320 Z"/></mask>
   </defs>
   <g mask="url(#im)">
-      <path d="M111 79 L401 239" stroke="url(#itop)" stroke-width="104" stroke-linecap="round" fill="none"/>
-      <path d="M111 79 L111 434" stroke="url(#istem)" stroke-width="104" stroke-linecap="round" fill="none" filter="url(#ifold)"/>
-      <path d="M401 239 L111 369" stroke="url(#ibot)" stroke-width="104" stroke-linecap="round" fill="none" filter="url(#ifold)"/>
+      <path d="M0 0 L512 0 L512 512 L300 512 L174 140 Z" fill="url(#iorange)"/>
+      <path d="M174 340 L360 245 C385 262 425 292 512 338 L512 512 L174 512 Z" fill="url(#ired)" filter="url(#ifold)"/>
+      <path d="M0 0 L120 0 C165 15 178 80 174 134 L174 512 L0 512 Z" fill="url(#iblue)" filter="url(#ifold)"/>
+      <path d="M0 118 C100 148 186 212 178 268 C172 320 92 352 0 400 Z" fill="url(#icyan)"/>
+      <path d="M0 432 C70 382 140 350 176 300 L176 340 C200 370 208 430 215 512 L0 512 Z" fill="url(#ipurple)" filter="url(#ifold)"/>
+      <path d="M0 492 C60 442 140 410 262 402 L262 512 L0 512 Z" fill="url(#ipink)" filter="url(#ifold)"/>
     </g>
 </svg>

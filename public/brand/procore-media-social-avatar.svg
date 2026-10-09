@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080" role="img" aria-label="ProCore Media">
+  <title>ProCore Media</title>
+  <defs>
+    <linearGradient id="aorange" gradientUnits="userSpaceOnUse" x1="120" y1="20" x2="460" y2="290"><stop offset="0.00" stop-color="#FFC61A"/><stop offset="0.50" stop-color="#FF8A00"/><stop offset="1.00" stop-color="#FF5E00"/></linearGradient>
+    <linearGradient id="ared" gradientUnits="userSpaceOnUse" x1="450" y1="290" x2="200" y2="395"><stop offset="0.00" stop-color="#FF3D2E"/><stop offset="0.50" stop-color="#F2349E"/><stop offset="1.00" stop-color="#A020F0"/></linearGradient>
+    <linearGradient id="ablue" gradientUnits="userSpaceOnUse" x1="0" y1="20" x2="0" y2="300"><stop offset="0.00" stop-color="#0038FF"/><stop offset="1.00" stop-color="#0A6CFF"/></linearGradient>
+    <linearGradient id="acyan" gradientUnits="userSpaceOnUse" x1="44" y1="0" x2="185" y2="0"><stop offset="0.00" stop-color="#14ECFF"/><stop offset="1.00" stop-color="#1590FF"/></linearGradient>
+    <linearGradient id="apurple" gradientUnits="userSpaceOnUse" x1="40" y1="470" x2="200" y2="320"><stop offset="0.00" stop-color="#3A1CD0"/><stop offset="1.00" stop-color="#8B1FE8"/></linearGradient>
+    <linearGradient id="apink" gradientUnits="userSpaceOnUse" x1="44" y1="494" x2="220" y2="410"><stop offset="0.00" stop-color="#FF3FA8"/><stop offset="1.00" stop-color="#FF5277"/></linearGradient>
+    <filter id="afold" filterUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><feDropShadow dx="2" dy="-1" stdDeviation="8" flood-color="#1A0A4A" flood-opacity=".38"/></filter>
+    <mask id="am" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512"><path fill="#fff" fill-rule="evenodd" d="M44 110 C44 50 90 18 140 22 L410 152 C478 186 478 284 420 315 L300 385 C270 400 240 405 197 405 L197 452 C197 476 178 494 154 494 L70 494 C55 494 44 483 44 468 Z M174 154 Q174 134 191.4 143.9 L345.6 232.1 Q363 242 345.2 251.2 L191.8 330.8 Q174 340 174 320 Z"/></mask>
+  </defs>
+  <rect width="1080" height="1080" fill="#FFFFFF"/>
+  <g transform="translate(237.6 237.6) scale(1.1813)"><g mask="url(#am)">
+      <path d="M0 0 L512 0 L512 512 L300 512 L174 140 Z" fill="url(#aorange)"/>
+      <path d="M174 340 L360 245 C385 262 425 292 512 338 L512 512 L174 512 Z" fill="url(#ared)" filter="url(#afold)"/>
+      <path d="M0 0 L120 0 C165 15 178 80 174 134 L174 512 L0 512 Z" fill="url(#ablue)" filter="url(#afold)"/>
+      <path d="M0 118 C100 148 186 212 178 268 C172 320 92 352 0 400 Z" fill="url(#acyan)"/>
+      <path d="M0 432 C70 382 140 350 176 300 L176 340 C200 370 208 430 215 512 L0 512 Z" fill="url(#apurple)" filter="url(#afold)"/>
+      <path d="M0 492 C60 442 140 410 262 402 L262 512 L0 512 Z" fill="url(#apink)" filter="url(#afold)"/>
+    </g></g>
+</svg>
