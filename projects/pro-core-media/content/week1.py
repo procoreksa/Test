@@ -264,6 +264,14 @@ P = [
   "1080×1350"),
 ]
 
+# Production / scheduling status tracked per post (creative file, production, publishing, notes)
+STATUS = {
+    "PCM-W1-D1-P1": ("design/agency/out/posts-v2/D1-P1-launch.jpg", "Ready", "Draft in Metricool (IG 392974341, FB 392974471)", "Vivid v2 design"),
+    "PCM-W1-D1-P2": ("design/agency/out/posts-v2/D1-P2-01..05-*.jpg", "Ready", "Draft in Metricool (IG 392974682, FB 392974923)", "Carousel 5 slides"),
+    "PCM-W1-D1-P3": ("design/agency/out/posts-v2/D1-P3-launch-reel.mp4", "Ready", "Draft in Metricool (IG 392975000, FB 392975044)", "12s Reel, silent — add audio in-app if desired"),
+    "PCM-W1-D1-P4": ("design/agency/out/posts-v2/D1-P4-how-we-start.jpg", "Ready", "Draft in Metricool (IG 392975084, FB 392975122)", ""),
+}
+
 HEADERS = ["Content ID", "Day", "Post #", "Date", "Publishing Time", "Platform", "Objective", "Content Category",
            "Content Format", "Idea", "Text on Design", "Caption (Instagram)", "Caption (Facebook)", "Call to Action",
            "Hashtags", "Creative Direction", "AI Prompt", "Size", "Creative File", "Production Status",
@@ -278,10 +286,11 @@ def rows():
         needs = "⚠️" in fmt or "⚠️" in idea
         ig = f"{cap}\n\n👉 {cta}\n.\n{HT[htk]}"
         fb = f"{cap}\n\n👉 {cta}\n{WA}"
+        st = STATUS.get(cid)
         yield [cid, day, slot, d.isoformat(), SLOTS[slot], plat, obj, cat, fmt, idea, ondesign, ig, fb, cta,
-               HT[htk], direction, prompt, size, "", "Not started",
-               "Pending approval" + (" — needs offer/pricing approval" if needs else ""), "Not scheduled",
-               "", "", "", "", "", "", "", "", "", ""]
+               HT[htk], direction, prompt, size, st[0] if st else "", st[1] if st else "Not started",
+               "Pending approval" + (" — needs offer/pricing approval" if needs else ""),
+               st[2] if st else "Not scheduled", "", "", "", "", "", "", "", "", "", st[3] if st else ""]
 
 
 def main():

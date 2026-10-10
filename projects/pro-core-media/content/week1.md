@@ -12,7 +12,7 @@
 - **CTA:** تابعنا وأرسل لنا رسالة
 - **Creative Direction:** ProCore Media primary identity: deep black background, neon gradient accents (#14C8FF → #2F6BFF → #8B1FE8 → #F2349E → #FF8A00), Poppins/Tajawal typography, generous negative space, small colour P-mark logo bottom corner. Centered large colour P-mark with soft neon glow, wordmark below, Arabic tagline.
 - **AI Prompt:** `Ultra-clean launch poster, black background, glowing multicolour ribbon letter P with a play-button cut-out at centre, soft volumetric light, premium tech agency aesthetic, lots of negative space, 4:5 — NO text (text added in design).`
-- **الحالة:** Not started · Pending approval · Not scheduled
+- **الحالة:** Ready · Pending approval · Draft in Metricool (IG 392974341, FB 392974471)
 
 **Caption — Instagram:**
 
@@ -43,7 +43,7 @@
 - **CTA:** اكتب (خدمات) في الرسائل
 - **Creative Direction:** ProCore Media primary identity: deep black background, neon gradient accents (#14C8FF → #2F6BFF → #8B1FE8 → #F2349E → #FF8A00), Poppins/Tajawal typography, generous negative space, small colour P-mark logo bottom corner. One service per slide: big line icon in neon gradient, service name, 2-line benefit. Consistent grid.
 - **AI Prompt:** `Set of 4 minimal neon line icons on black (grid of squares, megaphone with target, play button with sparkle, pen nib with colour swatches), consistent stroke, gradient cyan-purple-orange — for carousel slides.`
-- **الحالة:** Not started · Pending approval · Not scheduled
+- **الحالة:** Ready · Pending approval · Draft in Metricool (IG 392974682, FB 392974923)
 
 **Caption — Instagram:**
 
@@ -82,7 +82,7 @@
 - **CTA:** تابع الحساب
 - **Creative Direction:** Motion graphics: ribbons fly in and assemble the P-mark, light sweep, wordmark reveal, tagline; 12s, music bed (licensed).
 - **AI Prompt:** `Cinematic 3D animation: multicolour silk ribbons (cyan, blue, purple, pink, orange) swirl in darkness and fold together into a letter P with a play-button hole, glossy light sweep, slow push-in, black background, 9:16.`
-- **الحالة:** Not started · Pending approval · Not scheduled
+- **الحالة:** Ready · Pending approval · Draft in Metricool (IG 392975000, FB 392975044)
 
 **Caption — Instagram:**
 
@@ -111,7 +111,7 @@
 - **CTA:** احجز استشارة عبر واتساب
 - **Creative Direction:** ProCore Media primary identity: deep black background, neon gradient accents (#14C8FF → #2F6BFF → #8B1FE8 → #F2349E → #FF8A00), Poppins/Tajawal typography, generous negative space, small colour P-mark logo bottom corner. Three numbered steps connected by a gradient line, icons: phone, plan document, rocket.
 - **AI Prompt:** `Minimal 3-step infographic background on black: three glowing nodes connected by a neon gradient line, subtle grid, 4:5, no text.`
-- **الحالة:** Not started · Pending approval · Not scheduled
+- **الحالة:** Ready · Pending approval · Draft in Metricool (IG 392975084, FB 392975122)
 
 **Caption — Instagram:**
 
