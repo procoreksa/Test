@@ -1,0 +1,4 @@
+file 'minute01/M01_MOTION_minute01_orion.mp4'
+file 'minute02/M02_MOTION_minute02_orion.mp4'
+file 'minute03/M03_MOTION_minute03_orion.mp4'
+file 'minute04/M04_MOTION_minute04_orion.mp4'
