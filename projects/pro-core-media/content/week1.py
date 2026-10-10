@@ -266,10 +266,10 @@ P = [
 
 # Production / scheduling status tracked per post (creative file, production, publishing, notes)
 STATUS = {
-    "PCM-W1-D1-P1": ("design/agency/out/posts-v2/D1-P1-launch.jpg", "Ready", "Draft in Metricool (IG 392974341, FB 392974471)", "Vivid v2 design"),
-    "PCM-W1-D1-P2": ("design/agency/out/posts-v2/D1-P2-01..05-*.jpg", "Ready", "Draft in Metricool (IG 392974682, FB 392974923)", "Carousel 5 slides"),
-    "PCM-W1-D1-P3": ("design/agency/out/posts-v2/D1-P3-launch-reel.mp4", "Ready", "Draft in Metricool (IG 392975000, FB 392975044)", "12s Reel, silent — add audio in-app if desired"),
-    "PCM-W1-D1-P4": ("design/agency/out/posts-v2/D1-P4-how-we-start.jpg", "Ready", "Draft in Metricool (IG 392975084, FB 392975122)", ""),
+    "PCM-W1-D1-P1": ("design/agency/out/posts-v3/D1-P1-launch.jpg", "Ready", "Scheduled 2026-10-11 09:00 (IG 392979440, FB 392979494)", "v3: AI photo + Saudi dialect; IG AI label on"),
+    "PCM-W1-D1-P2": ("design/agency/out/posts-v3/D1-P2-01..05-*.jpg", "Ready", "Scheduled 2026-10-11 13:30 (IG 392979514, FB 392979528)", "v3 carousel 5 slides; IG AI label on"),
+    "PCM-W1-D1-P3": ("design/agency/out/posts-v2/D1-P3-launch-reel.mp4", "Ready", "Scheduled 2026-10-11 17:30 (IG 392979544, FB 392979556)", "12s motion Reel, silent"),
+    "PCM-W1-D1-P4": ("design/agency/out/posts-v3/D1-P4-how-we-start.jpg", "Ready", "Scheduled 2026-10-11 21:00 (IG 392979577, FB 392979603)", "v3 + launch offer; IG AI label on"),
 }
 
 HEADERS = ["Content ID", "Day", "Post #", "Date", "Publishing Time", "Platform", "Objective", "Content Category",
@@ -289,7 +289,7 @@ def rows():
         st = STATUS.get(cid)
         yield [cid, day, slot, d.isoformat(), SLOTS[slot], plat, obj, cat, fmt, idea, ondesign, ig, fb, cta,
                HT[htk], direction, prompt, size, st[0] if st else "", st[1] if st else "Not started",
-               "Pending approval" + (" — needs offer/pricing approval" if needs else ""),
+               ("Approved 2026-10-11" if st else "Pending approval" + (" — needs offer/pricing approval" if needs else "")),
                st[2] if st else "Not scheduled", "", "", "", "", "", "", "", "", "", st[3] if st else ""]
 
 
