@@ -10,9 +10,9 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-START = date(2026, 10, 13)  # proposed launch day (Tuesday) — after approval
+START = date(2026, 10, 11)  # launch day (Sunday) — approved by user 2026-10-11
 SLOTS = {1: "09:00", 2: "13:30", 3: "17:30", 4: "21:00"}  # Asia/Riyadh, refine with Metricool data
-WA = "📩 راسلنا على واتساب: [رابط واتساب]"
+WA = "📩 واتساب: 0594943048 — https://wa.me/966594943048"
 
 HT_CORE = "#ProCoreMedia #تسويق_رقمي #السعودية #المنطقة_الشرقية"
 HT = {
@@ -188,8 +188,8 @@ P = [
   "Screen-recording style montage of our own design process (internal work), sped up, with step labels.",
   "Top-down shot of a designer's desk at night: sketchbook, tablet with design software, coffee, neon desk lamp, time-lapse feel, 9:16.",
   "1080×1920"),
- (5,4,"FB+IG","Lead Generation","Lead Generation","Image ⚠️",
-  "عرض: مراجعة مجانية لحسابك (يحتاج موافقة)",
+ (5,4,"FB+IG","Lead Generation","Lead Generation","Image",
+  "عرض: مراجعة مجانية لحسابك (معتمد)",
   "مراجعة مجانية لحسابك\n+ 3 توصيات عملية",
   "نقدم مراجعة مجانية لحسابات نشاطك على Instagram وFacebook مع 3 توصيات عملية تقدر تطبقها فورًا ✅ العرض لأول 10 منشآت.",
   "أرسل رابط حسابك على واتساب","brand",
@@ -238,8 +238,8 @@ P = [
   STYLE+" Steps: test → learn → scale.",
   "Coins turning into upward glowing arrows on a dark background, neon gradient, 4:5.",
   "1080×1350 ×4"),
- (7,2,"FB+IG","Promotional","Promotional Content","Image ⚠️",
-  "باقاتنا: Start · Growth · Pro (بعد اعتماد الأسعار)",
+ (7,2,"FB+IG","Promotional","Promotional Content","Image",
+  "باقاتنا: Start · Growth · Pro (تبدأ من 1,875 ر.س)",
   "باقات تناسب كل مرحلة\nStart · Growth · Pro",
   "سواء كنت تبدأ أو تبي تكبر بسرعة، عندنا باقة تناسبك 📦 اطلب تفاصيل الباقات وقارن بنفسك.",
   "اطلب الباقات","brand",
