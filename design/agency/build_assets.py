@@ -31,12 +31,25 @@ RIBBONS = [  # same ribbon layout, recoloured as metallic gold facets
 ]
 
 
-def mark_svg(p="g", mono=None):
+COLOR_RIBBONS = [  # the official colour mark (same as public/brand/procore-media-icon.svg)
+    ("a", "M0 0 L512 0 L512 512 L300 512 L174 140 Z", (120, 20, 460, 290, ["#FFC61A", "#FF8A00", "#FF5E00"]), False),
+    ("b", "M174 340 L360 245 C385 262 425 292 512 338 L512 512 L174 512 Z", (450, 290, 200, 395, ["#FF3D2E", "#F2349E", "#A020F0"]), True),
+    ("c", "M0 0 L120 0 C165 15 178 80 174 134 L174 512 L0 512 Z", (0, 20, 0, 300, ["#0038FF", "#0A6CFF"]), True),
+    ("d", "M0 118 C100 148 186 212 178 268 C172 320 92 352 0 400 Z", (44, 0, 185, 0, ["#14ECFF", "#1590FF"]), False),
+    ("e", "M0 432 C70 382 140 350 176 300 L176 340 C200 370 208 430 215 512 L0 512 Z", (40, 470, 200, 320, ["#3A1CD0", "#8B1FE8"]), True),
+    ("f", "M0 492 C60 442 140 410 262 402 L262 512 L0 512 Z", (44, 494, 220, 410, ["#FF3FA8", "#FF5277"]), True),
+]
+NEON = "linear-gradient(90deg, #14C8FF 0%, #2F6BFF 25%, #8B1FE8 50%, #F2349E 72%, #FF8A00 100%)"
+NEON_TEXT = f"background: {NEON}; -webkit-background-clip: text; background-clip: text; color: transparent;"
+
+
+def mark_svg(p="g", mono=None, ribbons=None):
+    ribbons = ribbons or RIBBONS
     """Return (defs, body) for the 512x512 mark."""
     if mono:
         return "", f'<path fill="{mono}" fill-rule="evenodd" d="{SHAPE}"/>'
     defs = []
-    for rid, _, (x1, y1, x2, y2, stops), _ in RIBBONS:
+    for rid, _, (x1, y1, x2, y2, stops), _ in ribbons:
         st = "".join(f'<stop offset="{i/(len(stops)-1):.2f}" stop-color="{c}"/>' for i, c in enumerate(stops))
         defs.append(f'<linearGradient id="{p}{rid}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">{st}</linearGradient>')
     defs.append(f'<filter id="{p}fold" filterUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">'
@@ -44,12 +57,12 @@ def mark_svg(p="g", mono=None):
     defs.append(f'<mask id="{p}m" maskUnits="userSpaceOnUse" x="0" y="0" width="512" height="512">'
                 f'<path fill="#fff" fill-rule="evenodd" d="{SHAPE}"/></mask>')
     layers = "".join(f'<path d="{d}" fill="url(#{p}{rid})"{f" filter=\"url(#{p}fold)\"" if sh else ""}/>'
-                     for rid, d, _, sh in RIBBONS)
+                     for rid, d, _, sh in ribbons)
     return "".join(defs), f'<g mask="url(#{p}m)">{layers}</g>'
 
 
-def standalone_mark(p, mono=None):
-    defs, body = mark_svg(p, mono)
+def standalone_mark(p, mono=None, ribbons=None):
+    defs, body = mark_svg(p, mono, ribbons)
     return f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs>{defs}</defs>{body}</svg>'
 
 
@@ -145,6 +158,35 @@ def main():
             f'<div style="width:900px;height:900px;border-radius:50%;border:6px solid {GOLD}55;display:grid;place-items:center">{icon}</div></div>'),
             1080, 1920)
 
+    # ---------- colour (primary) variants ----------
+    open(os.path.join(OUT, "procore-media-mark-color.svg"), "w").write(standalone_mark("c", ribbons=COLOR_RIBBONS))
+    cdefs, cbody = mark_svg("k", ribbons=COLOR_RIBBONS)
+    glow = "filter: drop-shadow(0 0 28px rgba(140,60,255,.55)) drop-shadow(0 0 60px rgba(255,120,40,.25));"
+    cmark = lambda size: f'<svg viewBox="0 0 512 512" width="{size}" height="{size}" style="{glow}"><defs>{cdefs}</defs>{cbody}</svg>'
+    cword = lambda size: (f'<div style="font:700 {size}px Poppins;letter-spacing:-1px;color:#fff;white-space:nowrap">ProCore '
+                          f'<span style="{NEON_TEXT}">Media</span></div>'
+                          f'<div style="font:500 {size*0.26:.0f}px Poppins;letter-spacing:{size*0.2:.0f}px;color:#fff;opacity:.85;margin-top:{size*0.16:.0f}px">CREATIVE AGENCY</div>')
+    render("profile-picture-color", page(1080, 1080,
+        f'<div style="width:1080px;height:1080px;display:grid;place-items:center;'
+        f'background: radial-gradient(circle at 50% 45%, #15122a 0%, {BLACK} 70%)">{cmark(600)}</div>'), 1080, 1080)
+    render("facebook-cover-color", page(1640, 624,
+        f'<div style="position:relative;width:1640px;height:624px;overflow:hidden;background:{BLACK}">'
+        f'<div style="position:absolute;width:700px;height:700px;border-radius:50%;filter:blur(140px);background:#2F6BFF;opacity:.35;left:120px;top:-260px"></div>'
+        f'<div style="position:absolute;width:640px;height:640px;border-radius:50%;filter:blur(140px);background:#F2349E;opacity:.28;right:100px;bottom:-320px"></div>'
+        f'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:60px">'
+        f'{cmark(260)}<div style="text-align:center">{cword(96)}'
+        f'<div dir="rtl" style="font:700 40px Tajawal;color:#fff;margin-top:26px">حيث يلتقي الإبداع <span style="{NEON_TEXT}">بالابتكار</span></div></div></div></div>'), 1640, 624)
+    for key, ar, en in HIGHLIGHTS:
+        icon = cmark(520) if ICONS[key] is None else (
+            f'<svg viewBox="0 0 48 48" width="480" height="480" fill="none" stroke="url(#ng)" stroke-width="2.4" '
+            f'stroke-linecap="round" stroke-linejoin="round" style="{glow}"><defs><linearGradient id="ng" x1="0" y1="0" x2="1" y2="1">'
+            f'<stop offset="0" stop-color="#14C8FF"/><stop offset=".5" stop-color="#8B1FE8"/><stop offset="1" stop-color="#FF8A00"/></linearGradient></defs>{ICONS[key]}</svg>')
+        render(f"highlight-color-{key}", page(1080, 1920,
+            f'<div style="width:1080px;height:1920px;display:grid;place-items:center;'
+            f'background: radial-gradient(circle at 50% 50%, #15122a 0%, {BLACK} 55%)">'
+            f'<div style="width:900px;height:900px;border-radius:50%;border:6px solid #8B1FE855;display:grid;place-items:center">{icon}</div></div>'),
+            1080, 1920)
+
     # 5) contact sheet for review
     from PIL import Image, ImageDraw, ImageFont
     sheet = Image.new("RGB", (1640, 1240), BLACK)
@@ -162,6 +204,19 @@ def main():
         sheet.paste(h, (x, 760), hm)
         ImageDraw.Draw(sheet).text((x + 85, 960), ar, font=f, fill=IVORY, anchor="ma")
     sheet.save(os.path.join(OUT, "_preview-sheet.png"))
+
+    sheet = Image.new("RGB", (1640, 1240), BLACK)
+    sheet.paste(Image.open(os.path.join(OUT, "facebook-cover-color.png")), (0, 0))
+    pp = Image.open(os.path.join(OUT, "profile-picture-color.png")).resize((400, 400))
+    sheet.paste(pp, (40, 680), m)
+    for i, (key, ar, en) in enumerate(HIGHLIGHTS):
+        h = Image.open(os.path.join(OUT, f"highlight-color-{key}.png")).crop((0, 420, 1080, 1500)).resize((170, 170))
+        hm = Image.new("L", (170, 170), 0)
+        ImageDraw.Draw(hm).ellipse((0, 0, 169, 169), fill=255)
+        x = 500 + i * 185
+        sheet.paste(h, (x, 760), hm)
+        ImageDraw.Draw(sheet).text((x + 85, 960), ar, font=f, fill=IVORY, anchor="ma")
+    sheet.save(os.path.join(OUT, "_preview-sheet-color.png"))
     print("done")
 
 

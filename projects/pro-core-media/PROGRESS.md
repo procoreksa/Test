@@ -48,6 +48,8 @@
 
 ## سجل القرارات والموافقات
 - 2026-10-10: المستخدم طلب إيقاف بحث أكتف بلس والتركيز على الوكالة.
+- 2026-10-10: **الهوية = نظامان:** الشعار الملوّن على الأسود هو الأساسي؛ النسخة الذهبية للعروض والقطاعات الفاخرة.
+- 2026-10-10: صفحة Facebook للوكالة: https://www.facebook.com/people/ProCore-Media/61594873667960/ — حساب Instagram: @procore.media.
 
 ## المخرجات المنجزة
 | الملف | الوصف | الحالة |
@@ -55,13 +57,16 @@
 | `projects/pro-core-media/01-brand-strategy.md` | الرؤية، الرسالة، التموضع، USP، الشخصية، النبرة، الجمهور، الخدمات المقترحة | بانتظار الاعتماد |
 | `projects/pro-core-media/02-page-setup-kit.md` | Bio، الوصف، الفئة، أسماء المستخدمين، الأزرار، رسالة الترحيب، الردود السريعة، Highlights، نصوص 3 منشورات مثبتة، قائمة التنفيذ | بانتظار الاعتماد |
 | `design/agency/out/ProCoreMedia-Brand-Guidelines-v1.pdf` | دليل الهوية (7 صفحات) | بانتظار الاعتماد |
-| `design/agency/out/profile-picture.png` | صورة البروفايل 1080×1080 | بانتظار الاعتماد |
+| `design/agency/out/profile-picture-color.png` | صورة البروفايل الأساسية (ملوّنة) 1080×1080 | بانتظار الاعتماد |
+| `design/agency/out/facebook-cover-color.png` | غلاف فيسبوك الأساسي (ملوّن) | بانتظار الاعتماد |
+| `design/agency/out/highlight-color-*.png` | 6 أغلفة Highlights ملوّنة | بانتظار الاعتماد |
+| `design/agency/out/profile-picture.png` | صورة البروفايل (ذهبية — للاستخدام الفاخر) | بانتظار الاعتماد |
 | `design/agency/out/facebook-cover.png` | غلاف فيسبوك 1640×624 | بانتظار الاعتماد |
 | `design/agency/out/highlight-*.png` | 6 أغلفة Highlights 1080×1920 | بانتظار الاعتماد |
 | `design/agency/out/procore-media-mark-*.svg/png` | الشعار الذهبي والنسخ الأحادية | بانتظار الاعتماد |
 | `design/agency/build_assets.py` | مولّد الأصول (لإعادة التصدير بعد أي تعديل) | — |
 
 ## أسئلة مفتوحة
-1. رابط صفحة Facebook الخاصة بـ Pro Core Media.
-2. حساب Instagram للوكالة هو @procore.media، بينما الحساب المربوط في Windsor هو "procore2026" → **حساب الوكالة غير مربوط حاليًا**. صفحة Facebook المربوطة "Pro Core" تحتاج تأكيد.
+1. ✅ تم استلام الروابط.
+2. **حسابا الوكالة غير مربوطين:** Windsor مربوط بصفحة Facebook ID 1119082337955134 (وليست صفحة الوكالة 61594873667960) وInstagram "procore2026" (وليس @procore.media). Metricool بلا شبكات.
 3. ملفات الهوية المتاحة (الشعار الأصلي، الخطوط، الألوان).
