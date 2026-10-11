@@ -32,7 +32,7 @@ body {{ background:#050817; }}
 .glow {{ position:absolute; border-radius:50%; filter:blur(90px); opacity:.55; }}
 .logo {{ position:absolute; top:34px; right:44px; width:250px; mix-blend-mode:screen; }}
 .logo.c {{ right:auto; left:50%; transform:translateX(-50%); }}
-.gt {{ background:{GRAD}; -webkit-background-clip:text; background-clip:text; color:transparent; }}
+.gt {{ background:{GRAD}; -webkit-background-clip:text; background-clip:text; color:transparent; padding:.22em 0 .12em; }}
 .bar {{ height:6px; border-radius:6px; background:{GRAD}; }}
 .foot {{ position:absolute; left:0; right:0; bottom:34px; text-align:center; }}
 .foot .s {{ font:700 30px Tajawal; color:#7FD6FF; direction:rtl; }}

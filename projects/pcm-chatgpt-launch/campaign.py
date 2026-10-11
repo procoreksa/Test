@@ -127,7 +127,7 @@ def caption(post, network):
     if contact:
         out += "\n\n" + (CONTACT_FB if network == "facebook" else CONTACT_IG)
     if network == "instagram":
-        out += "\n\n" + TAGS[tag]
+        out += "\n\n" + TAGS[tag] + " #ProCoreLaunch"
     return out
 
 
