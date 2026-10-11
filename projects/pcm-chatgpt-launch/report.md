@@ -1,0 +1,46 @@
+# تقرير الجدولة — PCM-CHATGPT-LAUNCH-2026-10
+
+- البراند: ProCore Media (Metricool blogId 7298571) — المنطقة الزمنية Asia/Riyadh
+- الفترة: 12–18 أكتوبر 2026 · 4 منشورات يوميًا (11:00 / 15:00 / 19:00 / 23:00) · إنستغرام + فيسبوك
+- التحقق: أُعيد استعلام Metricool (getScheduledPosts) بعد الجدولة. جميع المنشورات موجودة بحالة PENDING و draft=false.
+- الحملة الأخرى (09:00 / 13:30 / 17:30 / 21:00) لم تُعدّل ولم تُحذف.
+
+| # | التاريخ | الوقت | النوع | العنوان | IG ID | FB ID | تحقق | روابط Metricool |
+|---|---|---|---|---|---|---|---|---|
+| P01 | 2026-10-12 | 11:00 | Image | إطلاق رسمي | 393320344 | 393320510 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=7922724220992048605) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-1726647589054496298) |
+| P02 | 2026-10-12 | 15:00 | Carousel | خدماتنا الخمس | 393320550 | 393320661 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1663948245488126675) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=486953129798422067) |
+| P03 | 2026-10-12 | 19:00 | Reel | من فكرة إلى أثر | 393320694 | 393320725 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-1752964197024643047) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-5574915331175267280) |
+| P04 | 2026-10-12 | 23:00 | Image | مشروعك يبدأ برسالة | 393320748 | 393320780 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-6044057899819054784) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4514957458450302699) |
+| P05 | 2026-10-13 | 11:00 | Carousel | 5 أسئلة قبل ما تنشر | 393326392 | 393326886 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4500622867561401836) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=8571801216025575709) |
+| P06 | 2026-10-13 | 15:00 | Carousel | كيف ندير حساباتك | 393330453 | 393331186 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=2621666665497250920) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-4097930009698219519) |
+| P07 | 2026-10-13 | 19:00 | Carousel | منتج واحد بثلاث أجواء (نموذج تصوري) | 393331262 | 393331296 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=2140867809721535754) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-80055051003933611) |
+| P08 | 2026-10-13 | 23:00 | Image | تصويت: من وين يجون عملاؤك | 393331335 | 393331371 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-2642209839130524055) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=2494017881450038694) |
+| P09 | 2026-10-14 | 11:00 | Carousel | الهوية البصرية مو بس شعار | 393381257 | 393382988 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1091466076537900220) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-8202311267052601224) |
+| P10 | 2026-10-14 | 15:00 | Reel | مشاهد سينمائية بالذكاء الاصطناعي (نموذج تصوري) | 393383886 | 393384115 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4364281292066472414) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=5524913250206761598) |
+| P11 | 2026-10-14 | 19:00 | Carousel | 4 خرافات عن الذكاء الاصطناعي | 393510530 | 393510780 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1373081108412907918) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4346951976363379090) |
+| P12 | 2026-10-14 | 23:00 | Carousel | نموذج تصوري: مطعم مندي | 393510809 | 393510829 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=3055541239409495843) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-1203673443637313350) |
+| P13 | 2026-10-15 | 11:00 | Carousel | 5 بدايات لفيديوهاتك | 393538705 | 393538760 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-8792527782439598208) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4066493437715039985) |
+| P14 | 2026-10-15 | 15:00 | Carousel | رحلة العميل في الحملة | 393538826 | 393538858 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=5345526198318219672) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=851624426130656236) |
+| P15 | 2026-10-15 | 19:00 | Carousel | نموذج تصوري: مشروع سكني | 393539466 | 393539529 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-6197036780118589308) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-7451635015541043935) |
+| P16 | 2026-10-15 | 23:00 | Image | كمّل الجملة | 393539556 | 393539608 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1622382054453758321) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=506489175736533345) |
+| P17 | 2026-10-16 | 11:00 | Carousel | 5 عناصر للإعلان الفعّال | 393540846 | 393540876 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1308486155567252650) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=9040357569845809124) |
+| P18 | 2026-10-16 | 15:00 | Image | شغلنا في 3 خطوات | 393540916 | 393540952 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-8514466581126823262) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=5886615574556395324) |
+| P19 | 2026-10-16 | 19:00 | Reel | يوم في الاستوديو | 393541072 | 393541154 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=6677649386771597569) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=840103863610327424) |
+| P20 | 2026-10-16 | 23:00 | Carousel | محتوى ولا إعلانات؟ | 393541184 | 393541218 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=234722856698200624) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1270679059907953286) |
+| P21 | 2026-10-17 | 11:00 | Carousel | راجع حسابك بنفسك | 393541437 | 393541476 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=5349879616090492448) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-3404622588233102724) |
+| P22 | 2026-10-17 | 15:00 | Carousel | نموذج تصوري: إطلاق عطر عود | 393541501 | 393541518 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=6247801068335286664) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=8686269388609702542) |
+| P23 | 2026-10-17 | 19:00 | Reel | حكاية ProCore Media | 393541541 | 393541562 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-6121709178195587903) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=6686291587331804909) |
+| P24 | 2026-10-17 | 23:00 | Image | اختر النموذج الجاي | 393541586 | 393541603 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=1477935501288949105) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4993439098892405540) |
+| P25 | 2026-10-18 | 11:00 | Carousel | أسبوعنا الأول | 393541719 | 393541746 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=2225282486282699042) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-2922940942856535658) |
+| P26 | 2026-10-18 | 15:00 | Image | 3 أسباب تشتغل معنا | 393541775 | 393541840 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=8334485748659998685) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=-1924451931168551476) |
+| P27 | 2026-10-18 | 19:00 | Reel | مونتاج النماذج التصورية | 393541875 | 393541904 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=2087972926531585251) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=5941763302856674527) |
+| P28 | 2026-10-18 | 23:00 | Image | جاهز تبدأ؟ | 393541930 | 393541957 | ✅ | [IG](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=6318378450664964763) · [FB](https://app.metricool.com/planner/calendar?blogId=7298571&openWithPostUuid=4324323043175385217) |
+
+**الإجمالي المتحقق منه: 56/56 منشور مجدول فعليًا.**
+
+## ملاحظات
+- P19: أُضيفت شارة «مشاهد توضيحية بالذكاء الاصطناعي» وعُدّل النص حتى لا يُفهم أن المشاهد تصوير حقيقي.
+- P20: «سؤال يوصلنا كثير» صار «سؤال يحيّر أصحاب المشاريع» لتجنّب ادعاء غير موثّق.
+- لا أسعار ولا عرض «تدقيق مجاني» في هذه الحملة. الرقم 0594943048 يحتاج تأكيدك أنه رقم الوكالة.
+- P24 يَعِد بتنفيذ النموذج الأكثر تصويتًا الأسبوع الجاي، وهذا التزام لازم ننفّذه.
+- المقارنة بين الحملتين غير مثالية لأنهما على نفس الحسابات وفي نفس الأسبوع (تداخل جمهور).
