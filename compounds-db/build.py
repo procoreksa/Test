@@ -9,6 +9,7 @@ from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
 from data import khobar_records as kh
+from data import dammam_jubail_records as dj
 
 ROOT = pathlib.Path(__file__).parent
 OUT = ROOT / "output"
@@ -17,6 +18,12 @@ RC_BASE = "https://rightcompound.com/compounds/khobar/"
 PLATFORM_NUMBERS = {"+966563990906", "+966569179871", "00966569179871"}
 
 rc = {r["slug"]: r for r in json.load(open(ROOT / "raw" / "rightcompound_khobar.json"))}
+rcj = {r["slug"]: r for r in json.load(open(ROOT / "raw" / "rightcompound_jubail.json"))}
+PREFIX = {"Al Khobar": "KHB", "Dhahran (Greater Khobar)": "DHN", "Dammam": "DMM",
+          "Jubail Al Balad": "JBB", "Jubail Industrial City": "JBI"}
+ALL = ([(r, "Al Khobar", RC_BASE) for r in kh.RECORDS] + [(r, "Dammam", RC_BASE) for r in dj.DAMMAM]
+       + [(r, "Jubail Al Balad", "https://rightcompound.com/compounds/jubail/") for r in dj.JUBAIL])
+counters = {}
 
 
 def norm_phone(p):
@@ -82,16 +89,18 @@ def opportunities(r, s):
 
 
 records = []
-for i, r in enumerate(kh.RECORDS, 1):
-    base = rc.get(r.get("slug")) or {}
+for r, default_city, rc_base in ALL:
+    city = r.get("city", default_city)
+    counters[city] = counters.get(city, 0) + 1
+    base = (rcj if "jubail" in rc_base else rc).get(r.get("slug")) or {}
     addr = base.get("addr") if isinstance(base.get("addr"), dict) else {}
     lat, lng = (base.get("geo") or [None, None])[:2]
     contacts = [x for x in r.get("contacts", []) if norm_phone(x["value"]) not in PLATFORM_NUMBERS]
-    srcs = list(dict.fromkeys(([RC_BASE + r["slug"]] if r.get("slug") else []) + r.get("sources", [])
+    srcs = list(dict.fromkeys(([rc_base + r["slug"]] if r.get("slug") else []) + r.get("sources", [])
                               + [x["source"] for x in contacts]))
     rec = dict(
-        id=f"KHB-{i:03d}", name_en=r["name_en"], name_ar=r.get("name_ar", ""),
-        city=r.get("city", "Al Khobar"), district=r.get("district", ""),
+        id=f"{PREFIX[city]}-{counters[city]:03d}", name_en=r["name_en"], name_ar=r.get("name_ar", ""),
+        city=city, district=r.get("district", ""),
         address=(addr.get("streetAddress") or "").strip(),
         lat=lat, lng=lng,
         maps=f"https://www.google.com/maps?q={lat},{lng}" if lat and lng else "",
@@ -224,11 +233,10 @@ wb = Workbook()
 ws = wb.active
 ws.title = "Master Database"
 write_master(ws, records)
-for title, pred in (("Al Khobar", lambda r: True), ("Dammam", lambda r: False), ("Jubail", lambda r: False)):
+for title, pred in (("Al Khobar", lambda r: r["city"] in ("Al Khobar", "Dhahran (Greater Khobar)")),
+                    ("Dammam", lambda r: r["city"] == "Dammam"), ("Jubail", lambda r: r["city"].startswith("Jubail"))):
     s = wb.create_sheet(title)
     write_master(s, [r for r in records if pred(r)])
-    if title != "Al Khobar":
-        s.cell(row=2, column=2, value="Pending - Batch 2/3/4").font = Font(name="Arial", italic=True, color="888888")
 
 # Priority leads: sorted by score (values; sheet formulas recompute the Master copy)
 pl = wb.create_sheet("Priority Leads")

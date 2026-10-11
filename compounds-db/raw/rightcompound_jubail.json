@@ -1,0 +1,200 @@
+[
+ {
+  "slug": "al-jude-village",
+  "name": "AL JUDE VILLAGE",
+  "desc": "Al Judevillage welcomes you to the living accommodation. Come be our guest ,stay a week ,a month or a lifetime. You will soon discover that staying in Al Jude village is more than just an extraordinary family vacation experience. It is an opportunity of a lifetime. Our Motto, is to provide a value added service to all our customers. At Al Jude Village, we understand that there is a difference between a house and a home. We provide high quality residences close to work, school, shopping malls. Our properties offer swimming pools, playgrounds, recreational center, supermarket, restaurant, snack ",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "KSA",
+   "postalCode": "31951"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   26.977386544654795,
+   49.665842056274414
+  ],
+  "amen": "Gym Swimming Pool Reserved Parking Beauty Salon Restaurant Snack Bar Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Bowling Table Tennis Bus Transportation"
+ },
+ {
+  "slug": "garden-estate-compound-jubail",
+  "name": "GARDEN ESTATE COMPOUND JUBAIL",
+  "desc": "Garden Estate Compound built on American specifications, offering two types of apartments, flat 1 with one bedroom and flat 2 with two bedrooms. Both types are fully furnished with high quality American furniture. They can be rented on a monthly basis, 6 months basis or on a yearly basis upon the resident's request. Garden Estate Compound is located in Jubail Downtown, near the market and way from congestion on King Abdul Aziz st. The facilities provided in the compound are a swimming pool, recreational center including a big hall for events and billiard tables, basketball court, and playgroun",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "KSA",
+   "postalCode": "31951"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   27.008819985685154,
+   49.658546447753906
+  ],
+  "amen": "Swimming Pool Reserved Parking Basketball Court Recreational Room"
+ },
+ {
+  "slug": "index-residence",
+  "name": "INDEX Residence Compound Jubail",
+  "desc": "INDEX Residence Al Jubail is situated in a privileged location by the sea and o­ffers high level residential villas and apartments with a creative design, luxurious facilities and is surrounded by open, landscaped gardens. Well-appointed duplex residential villas with a modern design and direct access to the sea and gardens, o­ffering a unique housing experience in Jubail. Facilities Restaurant Coffee Shop Mini Market ( Opening soon) Nursery ( Opening soon) Gym 3 outdoor swimming pool 2 Tennis court Football court Multipurpose Hall Outdoor Children Playground Cinema Services High-level furnitu",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "AL LULU District, Road 101",
+   "postalCode": "31952"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   27.091639417545267,
+   49.58246827125549
+  ],
+  "amen": "Gym Swimming Pool Kindergarten Reserved Parking Baby Nursery Restaurant Snack Bar Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation Children Playground Pest Control Security 24/7 Laundry Service Barbecue"
+ },
+ {
+  "slug": "jubail-views-compound",
+  "name": "JUBAIL VIEWS COMPOUND",
+  "desc": "Jubail Views Compound is a modern residential secured gated community, in Jubail, Saudi Arabia . It is managed by Awan Real Estate Co. It is comfortably sized compound that has been designed to provide tenants with a high standard of accommodation for families to meet different accommodation needs. It is characterized by its wide roadways, spacious gardens, and beautiful landscaping to provide a pleasant environment. The compound offers 104 units ranging between Two bedroom apartments, three bedroom apartments, and three bedroom villas of two floors and private parking , thus meeting different",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "Jubail ",
+   "postalCode": "35517"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   26.96176551184217,
+   49.66088506622316
+  ],
+  "amen": "Gym Swimming Pool Kindergarten Reserved Parking Library Restaurant Snack Bar Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation Garbage Chute Children Playground Pest Control Security 24/7 Maintenance Out"
+ },
+ {
+  "slug": "karawan-jubail",
+  "name": "Karawan Village  Jubail",
+  "desc": "Karawan Residential Village has a unique concept, where made it became a new architectural masterpiece in Saudi Arabia. Due to the rapid development of living conditions in Saudi Arabia, it became necessary to provide environments that meet all people’s expectations in order to fulfill the high standard of living. Karawan Jubail it is a part of Majd Square project that launched as an iconic and largest mixed-use project in Jubail City, which will redefine the city's urban landscape in terms of the size of the project, the distinctive design and the strategic location. The project has been sele",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "Jubail , King Faisal Road ",
+   "postalCode": "35518"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   26.97823065136821,
+   49.650755647485866
+  ],
+  "amen": "Gym Swimming Pool Kindergarten Reserved Parking Baby Nursery Library Snack Bar Billiard Tables Basketball Court Wireless Internet Commercial Centre Recreational Room Business Centre Table Tennis Bus Transportation Children Playground Pest Control Security 24/7 Maintenance Barbecue Area Outdoor Child"
+ },
+ {
+  "slug": "mujan-village-al-jubail",
+  "name": "Murjan Village Al Jubail",
+  "desc": "Murjan Village is an exclusive residential compound with outstanding facilities set in a prime location. Perched above the pristine shores of the Arabian Gulf in the city of Al Jubail in the Eastern Province of Saudi Arabia. Murjan Village boasts three exquisite private beaches and offers residents an exceptional stay that combines leisure with utmost relaxation. The Murjan Village resort comprises 343 villas and apartments, each with its own balcony. The village is located in a quiet residential area with several small stores nearby. Three pristine private beaches are protected by a large flo",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "Fanateer Al Jubail ",
+   "postalCode": "35814"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   27.16477041244692,
+   49.55941173477174
+  ],
+  "amen": "Gym Swimming Pool Reserved Parking Library Restaurant Snack Bar Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Bowling Table Tennis Bus Transportation Cinema Garbage Chute Children Playground Pest Control Security 24/7 "
+ },
+ {
+  "slug": "nesma-palms-industrial-compound",
+  "name": "NESMA PALMS INDUSTRIAL COMPOUND",
+  "desc": "Nesma Holding Co. Ltd. is one of the trusted operators of Premier Bachelor and Family accommodation compounds in Saudi Arabia. In Jubail, located approximately 100 Km North of Dammam on the Arabian Gulf Coast, we have Nesma Palms Industrial Compound which is for labor only and not for families. The compound offers 36 furnished one-bedroom suites , 400 senior single rooms, 120 shared rooms, 140 rooms that can accommodate 328 junior personnel and 254 labor rooms that can accommodate 1352 labors. The rental fees can be on a daily basis, monthly, or yearly basis. The rents mentioned in the profile",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "KSA",
+   "postalCode": "31951"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   27.00132570488806,
+   49.653053283691406
+  ],
+  "amen": "Reserved Parking Restaurant Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Table Tennis"
+ },
+ {
+  "slug": "nesma-roots-compound",
+  "name": "NESMA ROOTS COMPOUND",
+  "desc": "Nesma Holding Co. Ltd. is one of the trusted operators of Premier Bachelor and Family accommodation compounds in Saudi Arabia. In Jubail, located approximately 100 Km North of Dammam on the Arabian Gulf Coast, we have Nesma Roots Compound. It is a family based compound consisting of 146 fully furnished apartments, offering both single and double bedrooms in order to meet different accommodation needs. Nesma Roots is uniquely equipped with a gym, basketball and vollyball courts, squash court, swimming pools,billiard tables, table tennis, saunas& jacuzzi, tennis courts, children’s playground and",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "KSA",
+   "postalCode": "31951"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   27.012949273856503,
+   49.657859802246094
+  ],
+  "amen": "Gym Swimming Pool Reserved Parking Baby Nursery Beauty Salon Restaurant Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation"
+ },
+ {
+  "slug": "nesma-village-jubail",
+  "name": "NESMA VILLAGE JUBAIL",
+  "desc": "Nesma Village Compound in Jubail is a western style family compound owned and operated by NESMA Holding Co. Ltd. It is located approximately 100 km North of Dammam on the Arabian Gulf coast, conveniently situated in the suburbs of Jubail town, easily accessible from Dammam highway and Jubail industrial city, SABIC facilities and the Royal Commission. It is a 62,000sqm compound consisting of 127 different sized independent villas with beautiful landscaping and garden around each villa. The villas are fully furnished with high quality modern furniture. The compound is self sufficient in its wate",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "KSA",
+   "postalCode": "31951"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   27.0144786013464,
+   49.65339660644531
+  ],
+  "amen": "Gym Swimming Pool Reserved Parking Library Beauty Salon Restaurant Snack Bar Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation"
+ },
+ {
+  "slug": "refan-compound",
+  "name": "REFAN COMPOUND",
+  "desc": "Refan Compound is a newly constructed modern residential secured gated community, in Jubail, Eastern Province of Saudi Arabia . The Compound has a strategic location in the heart of Jubail, opposite to the Naval Base, with easy access to all major roads and highways to and from Dammam / Jubail. It is comfortably sized compound that has been designed to provide tenants with a high standard of accommodation for families to meet different accommodation needs. The compound offers 217 units of 4 different types, ranging between One-bedroom apartments, two-bedroom apartments, three-bedroom apartment",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "Jubail ",
+   "postalCode": "34433"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   26.96161250835967,
+   49.67440339965822
+  ],
+  "amen": "Gym Swimming Pool Kindergarten Reserved Parking Baby Nursery Restaurant Billiard Tables Commercial Centre Bus Transportation Garbage Chute Children Playground Pest Control Security 24/7 Laundry Service Maintenance Barbecue Area Outdoor Children Playground Indoor Children Playground Mini Market Theat"
+ },
+ {
+  "slug": "saken-village-compound-jubail",
+  "name": "SAKEN VILLAGE COMPOUND JUBAIL",
+  "desc": "<p class=\"MsoNormal\" style=\"mso-margin-top-alt:auto;mso-margin-bottom-alt:auto; line-height:normal\"> Saken Village is a 92,101 sqm. private, luxurious, dynamic and secure compound in Jubail City, with an easy access to its urban network. Within Saken Village, houses and apartments are surrounded by wide roadways, lavish gardens, manicured landscaping, and vibrant yet relaxing recreational facilities. <p class=\"MsoNormal\" style=\"mso-margin-top-alt:auto;mso-margin-bottom-alt:auto; line-height:normal\"> Saken Village has been designed to provide families and bachelors with the highest standard of ",
+  "addr": {
+   "@type": "PostalAddress",
+   "addressCountry": "SA",
+   "addressLocality": "Jubail",
+   "streetAddress": "Jubail ",
+   "postalCode": "35517"
+  },
+  "tel": "+966 56 399 0906",
+  "geo": [
+   26.962530526137055,
+   49.6659919921875
+  ],
+  "amen": "Gym Swimming Pool Reserved Parking Baby Nursery Restaurant Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Bowling Children Playground Pest Control Security 24/7 Maintenance Outdoor Children Playground Cafeteria Barber S"
+ }
+]

@@ -1679,7 +1679,7 @@
   ]
  },
  {
-  "id": "KHB-029",
+  "id": "DHN-001",
   "name_en": "Marissa Elite Complex",
   "name_ar": "",
   "city": "Dhahran (Greater Khobar)",
@@ -1733,7 +1733,7 @@
   ]
  },
  {
-  "id": "KHB-030",
+  "id": "KHB-029",
   "name_en": "Le Ruya Residential Resort",
   "name_ar": "",
   "city": "Al Khobar",
@@ -1787,7 +1787,7 @@
   ]
  },
  {
-  "id": "KHB-031",
+  "id": "DHN-002",
   "name_en": "South Park Compound",
   "name_ar": "",
   "city": "Dhahran (Greater Khobar)",
@@ -1841,7 +1841,7 @@
   ]
  },
  {
-  "id": "KHB-032",
+  "id": "KHB-030",
   "name_en": "Loay Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -1895,7 +1895,7 @@
   ]
  },
  {
-  "id": "KHB-033",
+  "id": "KHB-031",
   "name_en": "Al Riyadh Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -1942,7 +1942,7 @@
   ]
  },
  {
-  "id": "KHB-034",
+  "id": "KHB-032",
   "name_en": "Al Safa Homes (Al Saeed Village 5)",
   "name_ar": "",
   "city": "Al Khobar",
@@ -1988,7 +1988,7 @@
   ]
  },
  {
-  "id": "KHB-035",
+  "id": "KHB-033",
   "name_en": "Al Sharq Homes (Al Saeed Village 3)",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2034,7 +2034,7 @@
   ]
  },
  {
-  "id": "KHB-036",
+  "id": "KHB-034",
   "name_en": "Al Yasmeen Homes (Al Saeed Village 4)",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2080,7 +2080,7 @@
   ]
  },
  {
-  "id": "KHB-037",
+  "id": "KHB-035",
   "name_en": "Saeed Residential Compound 1",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2126,7 +2126,7 @@
   ]
  },
  {
-  "id": "KHB-038",
+  "id": "KHB-036",
   "name_en": "Al Shablan Compounds",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2172,7 +2172,7 @@
   ]
  },
  {
-  "id": "KHB-039",
+  "id": "KHB-037",
   "name_en": "Opal Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2216,7 +2216,7 @@
   ]
  },
  {
-  "id": "KHB-040",
+  "id": "KHB-038",
   "name_en": "Cedar Village Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2260,7 +2260,7 @@
   ]
  },
  {
-  "id": "KHB-041",
+  "id": "KHB-039",
   "name_en": "Karawan Village",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2276,36 +2276,110 @@
   "units": 69,
   "unit_types": "",
   "facilities": "Gym Swimming Pool Reserved Parking Baby Nursery Library Billiard Tables Squash Court Basketball Court Volleyball Court Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation Children Playground Pest Control Security 24/7 Maint",
-  "website": "",
-  "owner": "",
+  "website": "https://beta.karawan.com/",
+  "owner": "Karawan Villages (Al Majdouie Holding)",
   "developer": "",
   "manager": "Arsal Facility Management",
   "mgmt": "Third-Party Property Management",
   "mgmt_src": "https://rightcompound.com/compounds/khobar/karawan-compound",
-  "contacts": [],
+  "contacts": [
+   {
+    "kind": "Unified number (operator)",
+    "value": "920004996",
+    "source": "https://beta.karawan.com/villa.php?village=jubail",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Email (operator)",
+    "value": "info@karawan.com",
+    "source": "https://beta.karawan.com/villa.php?village=jubail",
+    "verification": "Verified",
+    "note": ""
+   }
+  ],
   "social": {},
   "sources": [
    "https://rightcompound.com/compounds/khobar/karawan-compound",
-   "https://www.expat.com/en/forum/middle-east/saudi-arabia/khobar/778968-list-of-some-compounds-in-al-khobar-ksa.html"
+   "https://www.expat.com/en/forum/middle-east/saudi-arabia/khobar/778968-list-of-some-compounds-in-al-khobar-ksa.html",
+   "https://beta.karawan.com/villa.php?village=jubail"
   ],
-  "notes": "",
+  "notes": "Karawan Villages site lists Karawan Alkhobar and Karawan Aljubail; RightCompound names Arsal Facility Management as manager.",
   "slug": "karawan-compound",
   "last_checked": "2026-10-11",
   "s_size": 10,
   "s_fit": 8,
-  "s_need": 20,
-  "s_contact": 0,
+  "s_need": 12,
+  "s_contact": 15,
   "s_party": 10,
   "s_collab": 5,
-  "total": 53,
+  "total": 60,
   "opps": [
    "Marketing & leasing",
-   "Social media management",
-   "Content & photography"
+   "Social media management"
   ]
  },
  {
-  "id": "KHB-042",
+  "id": "KHB-040",
+  "name_en": "The One Compound",
+  "name_ar": "ذا ون كومباوند",
+  "city": "Al Khobar",
+  "district": "",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "maps": "",
+  "type": "Villa Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "",
+  "website": "https://theonecompound.com/",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [
+   {
+    "kind": "Mobile",
+    "value": "+966555381910",
+    "source": "https://theonecompound.com/",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Email",
+    "value": "alidarat@hotmail.com",
+    "source": "https://theonecompound.com/",
+    "verification": "Verified",
+    "note": "Hotmail address published on official site"
+   }
+  ],
+  "social": {},
+  "sources": [
+   "https://theonecompound.com/"
+  ],
+  "notes": "Site says the compound is in Al Khobar.",
+  "slug": null,
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 6,
+  "s_contact": 15,
+  "s_party": 0,
+  "s_collab": 0,
+  "total": 29,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management"
+  ]
+ },
+ {
+  "id": "KHB-041",
   "name_en": "Gulf Pearl Compound 2",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2352,7 +2426,7 @@
   ]
  },
  {
-  "id": "KHB-043",
+  "id": "KHB-042",
   "name_en": "Gulf Pearl Compound 1",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2398,7 +2472,7 @@
   ]
  },
  {
-  "id": "KHB-044",
+  "id": "KHB-043",
   "name_en": "Jouri Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2444,7 +2518,7 @@
   ]
  },
  {
-  "id": "KHB-045",
+  "id": "KHB-044",
   "name_en": "Al Rashid Residence Towers",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2489,7 +2563,7 @@
   ]
  },
  {
-  "id": "KHB-046",
+  "id": "KHB-045",
   "name_en": "Al Rashid Residence (Al Rashid Mall)",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2536,7 +2610,7 @@
   ]
  },
  {
-  "id": "KHB-047",
+  "id": "KHB-046",
   "name_en": "Oasis Gardens Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2598,7 +2672,7 @@
   ]
  },
  {
-  "id": "KHB-048",
+  "id": "KHB-047",
   "name_en": "Oasis Residential Resorts",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2666,7 +2740,7 @@
   ]
  },
  {
-  "id": "KHB-049",
+  "id": "KHB-048",
   "name_en": "Al Bustan Village",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2712,7 +2786,7 @@
   ]
  },
  {
-  "id": "KHB-050",
+  "id": "KHB-049",
   "name_en": "Al Danah & Al Nadah Compounds",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2760,7 +2834,7 @@
   ]
  },
  {
-  "id": "KHB-051",
+  "id": "KHB-050",
   "name_en": "Desert Rose Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2807,7 +2881,7 @@
   ]
  },
  {
-  "id": "KHB-052",
+  "id": "KHB-051",
   "name_en": "Emad Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2853,7 +2927,7 @@
   ]
  },
  {
-  "id": "KHB-053",
+  "id": "KHB-052",
   "name_en": "The Pearl Residential Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2901,7 +2975,7 @@
   ]
  },
  {
-  "id": "KHB-054",
+  "id": "KHB-053",
   "name_en": "Ronda Residence Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -2965,7 +3039,7 @@
   ]
  },
  {
-  "id": "KHB-055",
+  "id": "KHB-054",
   "name_en": "Rima Residences",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3038,7 +3112,7 @@
   ]
  },
  {
-  "id": "KHB-056",
+  "id": "KHB-055",
   "name_en": "Al Rawabi Pearl Complex",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3086,11 +3160,11 @@
   ]
  },
  {
-  "id": "KHB-057",
+  "id": "DMM-001",
   "name_en": "Gulf Homes Compound",
   "name_ar": "",
-  "city": "Dhahran (Greater Khobar)",
-  "district": "Prince Miteb St",
+  "city": "Dammam",
+  "district": "Al Muntazah (Prince Miteb St)",
   "address": "Prince Miteb bin Abdulaziz Street",
   "lat": 26.374511585040302,
   "lng": 50.12563705444336,
@@ -3108,32 +3182,43 @@
   "manager": "",
   "mgmt": "Unknown",
   "mgmt_src": "",
-  "contacts": [],
-  "social": {},
+  "contacts": [
+   {
+    "kind": "Mobile",
+    "value": "+966538555830",
+    "source": "https://www.instagram.com/gulf_homes_compound/",
+    "verification": "Unverified",
+    "note": "From search-engine copy of the compound's Instagram bio"
+   }
+  ],
+  "social": {
+   "ig": "https://www.instagram.com/gulf_homes_compound/"
+  },
   "sources": [
    "https://rightcompound.com/compounds/khobar/gulf-homes-compound",
-   "https://www.expat.com/en/forum/middle-east/saudi-arabia/khobar/778968-list-of-some-compounds-in-al-khobar-ksa.html"
+   "https://www.expat.com/en/forum/middle-east/saudi-arabia/khobar/778968-list-of-some-compounds-in-al-khobar-ksa.html",
+   "https://www.instagram.com/gulf_homes_compound/"
   ],
-  "notes": "",
+  "notes": "Official Instagram describes it as a gated complex in Dammam - Al Muntazah. Instagram could not be opened directly.",
   "slug": "gulf-homes-compound",
   "last_checked": "2026-10-11",
   "s_size": 15,
   "s_fit": 8,
-  "s_need": 20,
-  "s_contact": 0,
+  "s_need": 14,
+  "s_contact": 5,
   "s_party": 0,
   "s_collab": 5,
-  "total": 48,
+  "total": 47,
   "opps": [
    "Property management",
    "Marketing & leasing",
-   "Social media management",
    "Content & photography",
+   "Paid ad campaigns",
    "Integrated services"
   ]
  },
  {
-  "id": "KHB-058",
+  "id": "KHB-056",
   "name_en": "The Vertical Village",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3180,7 +3265,7 @@
   ]
  },
  {
-  "id": "KHB-059",
+  "id": "KHB-057",
   "name_en": "Al Ferdouse Village",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3227,7 +3312,7 @@
   ]
  },
  {
-  "id": "KHB-060",
+  "id": "KHB-058",
   "name_en": "Durrat Al Khaleej Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3273,7 +3358,7 @@
   ]
  },
  {
-  "id": "KHB-061",
+  "id": "KHB-059",
   "name_en": "Nouf Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3320,7 +3405,7 @@
   ]
  },
  {
-  "id": "KHB-062",
+  "id": "KHB-060",
   "name_en": "Meadow Park (Medo Park) Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3367,7 +3452,7 @@
   ]
  },
  {
-  "id": "KHB-063",
+  "id": "KHB-061",
   "name_en": "Nasamat Residence",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3413,7 +3498,7 @@
   ]
  },
  {
-  "id": "KHB-064",
+  "id": "KHB-062",
   "name_en": "Al Nawras Residential Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3459,7 +3544,7 @@
   ]
  },
  {
-  "id": "KHB-065",
+  "id": "KHB-063",
   "name_en": "Al Bilad Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3505,7 +3590,7 @@
   ]
  },
  {
-  "id": "KHB-066",
+  "id": "KHB-064",
   "name_en": "Al Falak Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3551,7 +3636,7 @@
   ]
  },
  {
-  "id": "KHB-067",
+  "id": "KHB-065",
   "name_en": "Al Khobar Views Complex",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3597,7 +3682,7 @@
   ]
  },
  {
-  "id": "KHB-068",
+  "id": "KHB-066",
   "name_en": "AlReemah Village",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3643,7 +3728,7 @@
   ]
  },
  {
-  "id": "KHB-069",
+  "id": "KHB-067",
   "name_en": "Azhar Residences Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3689,7 +3774,7 @@
   ]
  },
  {
-  "id": "KHB-070",
+  "id": "KHB-068",
   "name_en": "Daar Residence Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3735,7 +3820,7 @@
   ]
  },
  {
-  "id": "KHB-071",
+  "id": "KHB-069",
   "name_en": "Dewan Al Jazirah Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3781,7 +3866,7 @@
   ]
  },
  {
-  "id": "KHB-072",
+  "id": "KHB-070",
   "name_en": "Jadawel Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3827,7 +3912,7 @@
   ]
  },
  {
-  "id": "KHB-073",
+  "id": "DHN-003",
   "name_en": "Marbella Compound",
   "name_ar": "",
   "city": "Dhahran (Greater Khobar)",
@@ -3873,7 +3958,7 @@
   ]
  },
  {
-  "id": "KHB-074",
+  "id": "KHB-071",
   "name_en": "Mira Mar Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3919,7 +4004,7 @@
   ]
  },
  {
-  "id": "KHB-075",
+  "id": "KHB-072",
   "name_en": "Sanus Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -3965,7 +4050,7 @@
   ]
  },
  {
-  "id": "KHB-076",
+  "id": "KHB-073",
   "name_en": "Shahla Residential Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4011,7 +4096,7 @@
   ]
  },
  {
-  "id": "KHB-077",
+  "id": "KHB-074",
   "name_en": "Verona Villas",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4057,7 +4142,7 @@
   ]
  },
  {
-  "id": "KHB-078",
+  "id": "KHB-075",
   "name_en": "Al Bayt Residence",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4104,7 +4189,7 @@
   ]
  },
  {
-  "id": "KHB-079",
+  "id": "KHB-076",
   "name_en": "Ajdan Rise Residential Tower",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4151,7 +4236,7 @@
   ]
  },
  {
-  "id": "KHB-080",
+  "id": "KHB-077",
   "name_en": "Roseville Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4198,7 +4283,7 @@
   ]
  },
  {
-  "id": "KHB-081",
+  "id": "KHB-078",
   "name_en": "Al Rushaid Village",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4244,7 +4329,7 @@
   ]
  },
  {
-  "id": "KHB-082",
+  "id": "KHB-079",
   "name_en": "Al Hogait Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4290,7 +4375,7 @@
   ]
  },
  {
-  "id": "KHB-083",
+  "id": "KHB-080",
   "name_en": "Sara Village (BAE)",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4334,7 +4419,7 @@
   ]
  },
  {
-  "id": "KHB-084",
+  "id": "KHB-081",
   "name_en": "Al Subeaei Towers",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4380,7 +4465,7 @@
   ]
  },
  {
-  "id": "KHB-085",
+  "id": "KHB-082",
   "name_en": "HY Compound",
   "name_ar": "",
   "city": "Al Khobar",
@@ -4417,6 +4502,829 @@
   "s_party": 0,
   "s_collab": 10,
   "total": 32,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "DMM-002",
+  "name_en": "Larida Village",
+  "name_ar": "",
+  "city": "Dammam",
+  "district": "",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "maps": "",
+  "type": "Villa Compound",
+  "category": "Residential compound",
+  "status": "Unknown",
+  "opened": "",
+  "units": 106,
+  "unit_types": "",
+  "facilities": "",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://compoundin.com/compounds/dammam/larida-village"
+  ],
+  "notes": "",
+  "slug": null,
+  "last_checked": "2026-10-11",
+  "s_size": 15,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 0,
+  "s_collab": 0,
+  "total": 43,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "DMM-003",
+  "name_en": "Durrat Al-Awali Compound",
+  "name_ar": "",
+  "city": "Dammam",
+  "district": "Al Fayha (King Saud St)",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "maps": "",
+  "type": "Luxury Residential Compound",
+  "category": "Residential compound",
+  "status": "Unknown",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://www.aldalilalnatiq.com/en/durrat-al-awali-compound-the-best-luxury-residential-compounds-in-dammam-and-khobar/"
+  ],
+  "notes": "Listing page phone fields are garbled; no usable number.",
+  "slug": null,
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 14,
+  "s_contact": 0,
+  "s_party": 0,
+  "s_collab": 0,
+  "total": 22,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-001",
+  "name_en": "Saken Village",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "Jubail",
+  "lat": 26.962530526137055,
+  "lng": 49.6659919921875,
+  "maps": "https://www.google.com/maps?q=26.962530526137055,49.6659919921875",
+  "type": "Corporate Housing",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "Furnished apartments and villas (92,101 sqm site)",
+  "facilities": "Gym Swimming Pool Reserved Parking Baby Nursery Restaurant Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Bowling Children Playground Pest Control Security 24/7 Maintena",
+  "website": "https://saken.sa/",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Owner Managed",
+  "mgmt_src": "",
+  "contacts": [
+   {
+    "kind": "Phone",
+    "value": "+966133636590",
+    "source": "https://saken.sa/",
+    "verification": "Verified",
+    "note": "Also in ksa.directory listing"
+   },
+   {
+    "kind": "Mobile",
+    "value": "+966552986544",
+    "source": "https://saken.sa/",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "WhatsApp",
+    "value": "+966508920099",
+    "source": "https://saken.sa/",
+    "verification": "Verified",
+    "note": "wa.me link on official site"
+   },
+   {
+    "kind": "Email",
+    "value": "info@saken.sa",
+    "source": "https://saken.sa/",
+    "verification": "Verified",
+    "note": ""
+   }
+  ],
+  "social": {
+   "ig": "https://www.instagram.com/sakenvillage",
+   "fb": "https://www.facebook.com/sakencompound",
+   "other": "https://x.com/sakenvillage"
+  },
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/saken-village-compound-jubail",
+   "https://saken.sa/"
+  ],
+  "notes": "Operator says it serves Jubail Al Balad and Jubail Industrial City.",
+  "slug": "saken-village-compound-jubail",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 6,
+  "s_contact": 15,
+  "s_party": 0,
+  "s_collab": 5,
+  "total": 34,
+  "opps": [
+   "Marketing & leasing",
+   "Paid ad campaigns"
+  ]
+ },
+ {
+  "id": "JBI-001",
+  "name_en": "Murjan Village",
+  "name_ar": "",
+  "city": "Jubail Industrial City",
+  "district": "Al Fanateer",
+  "address": "Fanateer Al Jubail",
+  "lat": 27.16477041244692,
+  "lng": 49.55941173477174,
+  "maps": "https://www.google.com/maps?q=27.16477041244692,49.55941173477174",
+  "type": "Luxury Residential Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "2006",
+  "units": 343,
+  "unit_types": "",
+  "facilities": "Gym Swimming Pool Reserved Parking Library Restaurant Snack Bar Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Bowling Table Tennis Bus Transportation Cinema Garbage Chu",
+  "website": "https://zamilrealestate.com/en/communities/residential/murjan-village/6",
+  "owner": "Zamil Real Estate",
+  "developer": "",
+  "manager": "Zamil Real Estate",
+  "mgmt": "Developer Managed",
+  "mgmt_src": "https://zamilrealestate.com/en/communities/residential/murjan-village/6",
+  "contacts": [
+   {
+    "kind": "Phone (operator)",
+    "value": "+966138136225",
+    "source": "https://zamilrealestate.com/en/communities/residential/murjan-village/6",
+    "verification": "Verified",
+    "note": "Zamil Real Estate head office"
+   },
+   {
+    "kind": "Email (operator)",
+    "value": "info@zamilre.com",
+    "source": "https://zamilrealestate.com/en/communities/residential/murjan-village/6",
+    "verification": "Verified",
+    "note": ""
+   }
+  ],
+  "social": {
+   "other": "https://x.com/ZamilGroup"
+  },
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/mujan-village-al-jubail",
+   "https://zamilrealestate.com/en/communities/residential/murjan-village/6"
+  ],
+  "notes": "Older forum number +966 13 347 7777 is outdated and not used.",
+  "slug": "mujan-village-al-jubail",
+  "last_checked": "2026-10-11",
+  "s_size": 20,
+  "s_fit": 8,
+  "s_need": 6,
+  "s_contact": 15,
+  "s_party": 10,
+  "s_collab": 5,
+  "total": 64,
+  "opps": [
+   "Marketing & leasing",
+   "Paid ad campaigns"
+  ]
+ },
+ {
+  "id": "JBI-002",
+  "name_en": "INDEX Residence",
+  "name_ar": "",
+  "city": "Jubail Industrial City",
+  "district": "Al Lulu (Road 101)",
+  "address": "AL LULU District, Road 101",
+  "lat": 27.091639417545267,
+  "lng": 49.58246827125549,
+  "maps": "https://www.google.com/maps?q=27.091639417545267,49.58246827125549",
+  "type": "Luxury Residential Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "Villas and apartments",
+  "facilities": "Gym Swimming Pool Kindergarten Reserved Parking Baby Nursery Restaurant Snack Bar Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation Children Playground P",
+  "website": "https://www.indexaljubail.com/residence/",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [
+   {
+    "kind": "Phone",
+    "value": "+966135120512",
+    "source": "https://www.indexaljubail.com/residence/",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Mobile",
+    "value": "+966500380099",
+    "source": "https://www.indexaljubail.com/residence/",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Email",
+    "value": "info@indexaljubail.com",
+    "source": "https://www.indexaljubail.com/residence/",
+    "verification": "Verified",
+    "note": ""
+   }
+  ],
+  "social": {
+   "ig": "https://instagram.com/index.residence.aljubail",
+   "fb": "https://www.facebook.com/IndexresidenceJubail",
+   "li": "https://www.linkedin.com/company/indexajubail"
+  },
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/index-residence",
+   "https://www.indexaljubail.com/residence/"
+  ],
+  "notes": "",
+  "slug": "index-residence",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 6,
+  "s_contact": 15,
+  "s_party": 0,
+  "s_collab": 5,
+  "total": 34,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Paid ad campaigns"
+  ]
+ },
+ {
+  "id": "JBB-002",
+  "name_en": "Karawan Village Jubail",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "Tebah (King Faisal Rd West)",
+  "address": "Jubail , King Faisal Road",
+  "lat": 26.97823065136821,
+  "lng": 49.650755647485866,
+  "maps": "https://www.google.com/maps?q=26.97823065136821,49.650755647485866",
+  "type": "Villa Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "Villas 226-242 sqm",
+  "facilities": "Gym Swimming Pool Kindergarten Reserved Parking Baby Nursery Library Snack Bar Billiard Tables Basketball Court Wireless Internet Commercial Centre Recreational Room Business Centre Table Tennis Bus Transportation Children Playground Pest Control Sec",
+  "website": "https://beta.karawan.com/villa.php?village=jubail",
+  "owner": "Karawan Villages (Al Majdouie Holding)",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Owner Managed",
+  "mgmt_src": "https://beta.karawan.com/villa.php?village=jubail",
+  "contacts": [
+   {
+    "kind": "Unified number (operator)",
+    "value": "920004996",
+    "source": "https://beta.karawan.com/villa.php?village=jubail",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Email (operator)",
+    "value": "info@karawan.com",
+    "source": "https://beta.karawan.com/villa.php?village=jubail",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Mobile (listing)",
+    "value": "+966535602579",
+    "source": "https://www.waze.com/live-map/directions/sa/eastern-province/al-jubail/karawan-compound?to=place.ChIJCQfqM2qhNT4ROkpvUCfm70w",
+    "verification": "Unverified",
+    "note": "Waze / directory listing"
+   }
+  ],
+  "social": {
+   "li": "https://www.linkedin.com/company/almajdouie-holding"
+  },
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/karawan-jubail",
+   "https://beta.karawan.com/villa.php?village=jubail",
+   "https://www.waze.com/live-map/directions/sa/eastern-province/al-jubail/karawan-compound?to=place.ChIJCQfqM2qhNT4ROkpvUCfm70w"
+  ],
+  "notes": "",
+  "slug": "karawan-jubail",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 6,
+  "s_contact": 15,
+  "s_party": 10,
+  "s_collab": 5,
+  "total": 44,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Paid ad campaigns"
+  ]
+ },
+ {
+  "id": "JBB-003",
+  "name_en": "Bajrai Garden Village",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "Teebah (King Abdulaziz Rd)",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "maps": "",
+  "type": "Family Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "",
+  "website": "https://bajraigardenvillage.com/",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [
+   {
+    "kind": "Phone",
+    "value": "+966133641115",
+    "source": "https://sa.arabplaces.com/eastern-region/bajrai-garden-village-compound-88886",
+    "verification": "Cross-Checked",
+    "note": "Same number on saudiayp and icuae directories"
+   },
+   {
+    "kind": "WhatsApp",
+    "value": "+966552289138",
+    "source": "https://bajraigardenvillage.com/contact-us/",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Email (Admin)",
+    "value": "admin@bajraigardenvillage.com",
+    "source": "https://bajraigardenvillage.com/contact-us/",
+    "verification": "Verified",
+    "note": ""
+   },
+   {
+    "kind": "Email (Manager)",
+    "value": "manager@bajraigardenvillage.com",
+    "source": "https://bajraigardenvillage.com/contact-us/",
+    "verification": "Verified",
+    "note": ""
+   }
+  ],
+  "social": {},
+  "sources": [
+   "https://www.saudiayp.com/company/142000/BAJRAI_GARDEN_VILLAGE",
+   "https://sa.arabplaces.com/eastern-region/bajrai-garden-village-compound-88886",
+   "https://bajraigardenvillage.com/contact-us/"
+  ],
+  "notes": "",
+  "slug": null,
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 6,
+  "s_contact": 15,
+  "s_party": 0,
+  "s_collab": 0,
+  "total": 29,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management"
+  ]
+ },
+ {
+  "id": "JBB-004",
+  "name_en": "Nesma Village Jubail",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "KSA",
+  "lat": 27.0144786013464,
+  "lng": 49.65339660644531,
+  "maps": "https://www.google.com/maps?q=27.0144786013464,49.65339660644531",
+  "type": "Family Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": 127,
+  "unit_types": "Independent villas",
+  "facilities": "Gym Swimming Pool Reserved Parking Library Beauty Salon Restaurant Snack Bar Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation",
+  "website": "",
+  "owner": "NESMA Holding Co. Ltd.",
+  "developer": "",
+  "manager": "NESMA Holding Co. Ltd.",
+  "mgmt": "Owner Managed",
+  "mgmt_src": "https://rightcompound.com/compounds/jubail/nesma-village-jubail",
+  "contacts": [
+   {
+    "kind": "Mobile (listing)",
+    "value": "+966590742108",
+    "source": "https://www.coordinatesfinder.com/coordinates/74172-nesma-village-jubail-ksa",
+    "verification": "Unverified",
+    "note": "Single third-party listing"
+   }
+  ],
+  "social": {
+   "li": "https://www.linkedin.com/company/nesma-holding"
+  },
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/nesma-village-jubail",
+   "https://www.coordinatesfinder.com/coordinates/74172-nesma-village-jubail-ksa"
+  ],
+  "notes": "",
+  "slug": "nesma-village-jubail",
+  "last_checked": "2026-10-11",
+  "s_size": 15,
+  "s_fit": 8,
+  "s_need": 14,
+  "s_contact": 5,
+  "s_party": 10,
+  "s_collab": 5,
+  "total": 57,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Content & photography",
+   "Paid ad campaigns",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-005",
+  "name_en": "Nesma Roots Compound",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "KSA",
+  "lat": 27.012949273856503,
+  "lng": 49.657859802246094,
+  "maps": "https://www.google.com/maps?q=27.012949273856503,49.657859802246094",
+  "type": "Apartment Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": 146,
+  "unit_types": "Furnished apartments",
+  "facilities": "Gym Swimming Pool Reserved Parking Baby Nursery Beauty Salon Restaurant Billiard Tables Squash Court Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation",
+  "website": "",
+  "owner": "NESMA Holding Co. Ltd.",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Owner Managed",
+  "mgmt_src": "https://rightcompound.com/compounds/jubail/nesma-roots-compound",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/nesma-roots-compound"
+  ],
+  "notes": "",
+  "slug": "nesma-roots-compound",
+  "last_checked": "2026-10-11",
+  "s_size": 15,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 10,
+  "s_collab": 5,
+  "total": 58,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-006",
+  "name_en": "Nesma Palms Industrial Compound",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "KSA",
+  "lat": 27.00132570488806,
+  "lng": 49.653053283691406,
+  "maps": "https://www.google.com/maps?q=27.00132570488806,49.653053283691406",
+  "type": "Staff Accommodation",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "Labour accommodation (not for families)",
+  "facilities": "Reserved Parking Restaurant Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Table Tennis",
+  "website": "",
+  "owner": "NESMA Holding Co. Ltd.",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Owner Managed",
+  "mgmt_src": "https://rightcompound.com/compounds/jubail/nesma-palms-industrial-compound",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/nesma-palms-industrial-compound"
+  ],
+  "notes": "",
+  "slug": "nesma-palms-industrial-compound",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 10,
+  "s_collab": 5,
+  "total": 43,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-007",
+  "name_en": "Jubail Views Compound",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "Jubail",
+  "lat": 26.96176551184217,
+  "lng": 49.66088506622316,
+  "maps": "https://www.google.com/maps?q=26.96176551184217,49.66088506622316",
+  "type": "Mixed Residential Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "Gym Swimming Pool Kindergarten Reserved Parking Library Restaurant Snack Bar Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Table Tennis Bus Transportation Garbage Chute Children Pla",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "Awan Real Estate Co.",
+  "mgmt": "Third-Party Property Management",
+  "mgmt_src": "https://rightcompound.com/compounds/jubail/jubail-views-compound",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/jubail-views-compound"
+  ],
+  "notes": "",
+  "slug": "jubail-views-compound",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 10,
+  "s_collab": 5,
+  "total": 43,
+  "opps": [
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography"
+  ]
+ },
+ {
+  "id": "JBB-008",
+  "name_en": "Refan Compound",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "Jubail",
+  "lat": 26.96161250835967,
+  "lng": 49.67440339965822,
+  "maps": "https://www.google.com/maps?q=26.96161250835967,49.67440339965822",
+  "type": "Mixed Residential Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "Gym Swimming Pool Kindergarten Reserved Parking Baby Nursery Restaurant Billiard Tables Commercial Centre Bus Transportation Garbage Chute Children Playground Pest Control Security 24/7 Laundry Service Maintenance Barbecue Area Outdoor Children Playg",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/refan-compound"
+  ],
+  "notes": "",
+  "slug": "refan-compound",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 0,
+  "s_collab": 5,
+  "total": 33,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-009",
+  "name_en": "Al Jude Village",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "KSA",
+  "lat": 26.977386544654795,
+  "lng": 49.665842056274414,
+  "maps": "https://www.google.com/maps?q=26.977386544654795,49.665842056274414",
+  "type": "Mixed Residential Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "Gym Swimming Pool Reserved Parking Beauty Salon Restaurant Snack Bar Billiard Tables Basketball Court Volleyball Court Wireless Internet Tennis Court Satellite Cable Recreational Room Bowling Table Tennis Bus Transportation",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/al-jude-village"
+  ],
+  "notes": "",
+  "slug": "al-jude-village",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 0,
+  "s_collab": 5,
+  "total": 33,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-010",
+  "name_en": "Garden Estate Compound",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "Downtown (near market)",
+  "address": "KSA",
+  "lat": 27.008819985685154,
+  "lng": 49.658546447753906,
+  "maps": "https://www.google.com/maps?q=27.008819985685154,49.658546447753906",
+  "type": "Apartment Compound",
+  "category": "Residential compound",
+  "status": "Operating (listed)",
+  "opened": "",
+  "units": null,
+  "unit_types": "Furnished 1-2 bed apartments",
+  "facilities": "Swimming Pool Reserved Parking Basketball Court Recreational Room",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://rightcompound.com/compounds/jubail/garden-estate-compound-jubail"
+  ],
+  "notes": "",
+  "slug": "garden-estate-compound-jubail",
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 20,
+  "s_contact": 0,
+  "s_party": 0,
+  "s_collab": 5,
+  "total": 33,
+  "opps": [
+   "Property management",
+   "Marketing & leasing",
+   "Social media management",
+   "Content & photography",
+   "Integrated services"
+  ]
+ },
+ {
+  "id": "JBB-011",
+  "name_en": "Al Ventura Village",
+  "name_ar": "",
+  "city": "Jubail Al Balad",
+  "district": "",
+  "address": "",
+  "lat": null,
+  "lng": null,
+  "maps": "",
+  "type": "Family Compound",
+  "category": "Residential compound",
+  "status": "Unknown",
+  "opened": "",
+  "units": null,
+  "unit_types": "",
+  "facilities": "",
+  "website": "",
+  "owner": "",
+  "developer": "",
+  "manager": "",
+  "mgmt": "Unknown",
+  "mgmt_src": "",
+  "contacts": [],
+  "social": {},
+  "sources": [
+   "https://www.expat.com/en/forum/middle-east/saudi-arabia/jubail/71807-were-searching-for-a-house-on-a-nice-compound.html"
+  ],
+  "notes": "Only an ~2011 forum number (+966 13 364 1905 / 364 0489); treated as outdated and not used.",
+  "slug": null,
+  "last_checked": "2026-10-11",
+  "s_size": 0,
+  "s_fit": 8,
+  "s_need": 14,
+  "s_contact": 0,
+  "s_party": 0,
+  "s_collab": 0,
+  "total": 22,
   "opps": [
    "Property management",
    "Marketing & leasing",
