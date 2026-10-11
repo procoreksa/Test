@@ -54,3 +54,4 @@ next-env.d.ts
 /e2e/screenshots/
 design/agency/out/reel-layers/
 __pycache__/
+design/pcm/out/layers/
