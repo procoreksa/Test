@@ -345,6 +345,243 @@ def p12():
            + h('خطة <span class="gt">أول أسبوع</span> 🗓️', 84, 1.3) + rows
            + '<div style="text-align:center">' + end_cta("تبي تصور لمطعمك؟ راسلنا") + '</div></div>')
 
+
+# ------------------------------------------------------------------ generic photo Reel
+def photo_reel(name, files, hook_html, labels, cta_text, badge_text=None, seg=None, dur=15.0, cover_t=1.2):
+    W, H, FPS = 1080, 1920, 30
+    shots = [fit(os.path.join(PHOTOS, f)) for f in files]
+    n = len(shots)
+    body_end = dur - 3.4
+    seg = seg or body_end / n
+    T = 'class="ar" style="text-align:center;color:#fff;text-shadow:0 6px 30px rgba(0,0,0,.85)"'
+    hook = shot(f"{name}-hook", 1000, 320, f'<div {T}><div style="font:800 86px/1.3 Tajawal">{hook_html}</div></div>')
+    labs = [shot(f"{name}-l{i}", 1000, 160, f'<div {T}><div style="font:800 60px/1.3 Tajawal">{t}</div></div>') for i, t in enumerate(labels)]
+    badge = (shot(f"{name}-badge", 760, 110, f'<div style="text-align:center;padding-top:16px"><span class="ar" style="font:700 30px Tajawal;'
+                  f'color:#111;background:{YELLOW};padding:8px 22px;border-radius:999px">{badge_text}</span></div>') if badge_text else None)
+    cta = shot(f"{name}-cta", 1000, 170, f'<div style="text-align:center;padding-top:20px"><span class="btn ar">{cta_text}</span></div>')
+    slog = slogan_layer(f"{name}-slogan")
+    lg = logo_layer(620)
+    shade = bottom_shade()
+
+    def frames():
+        for i in range(int(dur * FPS)):
+            t = i / FPS
+            if t < body_end:
+                k = min(n - 1, int(t // seg))
+                lt = t - k * seg
+                fr = kb(shots[k], 1.0 + 0.09 * lt / seg, dy=-int(40 * lt / seg))
+                if k > 0 and lt < 0.4:
+                    fr = Image.blend(kb(shots[k - 1], 1.09, dy=-40), fr, ease(lt / 0.4))
+                fr = fr.convert("RGBA")
+                fr.alpha_composite(shade)
+                if badge:
+                    place(fr, badge, W / 2, 110)
+                if t < 2.4:
+                    place(fr, hook, W / 2, 1420, alpha=ease(t / 0.4) * (1 - ease((t - 2.0) / 0.4)))
+                elif k < len(labs):
+                    place(fr, labs[k], W / 2, 1540, alpha=ease((lt - 0.2) / 0.3) * (1 - ease((lt - seg + 0.3) / 0.3)))
+            else:
+                fr = reel_endcard(lg, slog, cta, body_end, t)
+            out = fr.convert("RGB")
+            fade = min(1.0, t / 0.3, (dur - t) / 0.4)
+            if fade < 1:
+                out = Image.blend(Image.new("RGB", (W, H)), out, max(0.0, fade))
+            yield out
+    dest = os.path.join(OUT, f"{name}-reel.mp4")
+    encode(frames(), dest, FPS, dur)
+    cover_from(dest, cover_t, os.path.join(OUT, f"{name}-reel-cover.jpg"))
+    print("reel", dest)
+
+
+def list_slide(name, i, n, title, rows, seed=0, extra=""):
+    r = "".join(f'<div class="card" style="padding:22px 30px;margin-top:16px;font:700 42px/1.45 Tajawal;display:flex;gap:20px;align-items:center">'
+                f'<span style="font-size:46px">{e}</span>{t}</div>' for e, t in rows)
+    render(name, seed=seed, inner=(pager(i, n) if n else "") +
+           '<div class="ar" style="position:absolute;left:80px;right:80px;top:330px">' + h(title, 80, 1.3) + r + extra + '</div>')
+
+
+def statement(name, title, subtitle, seed=0, extra="", top=380):
+    render(name, seed=seed, inner='<div class="ar" style="position:absolute;left:80px;right:80px;top:%dpx;text-align:center">' % top
+           + h(title, 100, 1.3) + (sub(subtitle, 44) if subtitle else "") + extra + '</div>')
+
+
+# ------------------------------------------------------------------ Day 4
+@post
+def p13():
+    render("P13-1", photo="p13_creator.jpg", photo_h=860, inner=block(
+        h('أول <span class="gt">3 ثواني</span><br>تقرر كل شي ⏱️', 100, 1.3) + sub("5 بدايات تخلي الناس يكملون فيديوك ←"), bottom=170))
+    hooks = [("لا تسوي هالغلطة لو…", "ابدأ بتحذير يمس جمهورك مباشرة"),
+             ("3 أشياء ما أحد قالك عنها", "رقم + فضول = مشاهدة أطول"),
+             ("لو عندك مشروع… هذا لك", "نادِ جمهورك باسمه من أول ثانية"),
+             ("قبل وبعد", "خل الفرق يتكلم قبل الكلام"),
+             ("سؤال مباشر", "«تبي تعرف ليش منشوراتك ما توصل؟»")]
+    for i, (q, d) in enumerate(hooks, 1):
+        numbered(f"P13-{i + 1}", i, 5, f"«{q}»", d, seed=i, extra=(end_cta("احفظها وجرّبها 📌") if i == 5 else ""))
+
+
+@post
+def p14():
+    render("P14-1", photo="p14_funnel.jpg", photo_h=900, inner=block(
+        h('ليش بعض الحملات<br><span class="gt">ما تجيب نتيجة</span>؟ 🎯', 92, 1.3) + sub("لأنها تكلم الكل بنفس الرسالة… اسحب ←"), bottom=170))
+    st = [("👀", "يعرفك", "محتوى يلفت ويعرّف بعلامتك"), ("🤔", "يهتم", "فيديوهات ونماذج توضح القيمة"),
+          ("✅", "يقرر", "إعلان واضح بعرض وسبب للثقة"), ("💬", "يتواصل", "رد سريع ومتابعة لين يصير عميل")]
+    for i, (e, t, d) in enumerate(st, 1):
+        numbered(f"P14-{i + 1}", i, 4, f'<span class="gt">{i:02d}</span> {t}', d, seed=i, emoji=e,
+                 extra=(end_cta("احفظ المنشور 📌") if i == 4 else ""))
+
+
+@post
+def p15():
+    render("P15-1", photo="villa_night.jpg", photo_h=900, inner=concept_badge() + block(
+        '<div style="font:700 34px Tajawal;color:#7FD6FF">نموذج تصوري · عقار</div>'
+        + h('بيتك الجاي…<br><span class="gt">يستاهل يتشاف</span> 🏡', 96, 1.3), bottom=170))
+    render("P15-2", photo="villa_pool.jpg", photo_h=900, inner=concept_badge() + pager(1, 2, 110) + block(
+        '<div style="font:800 40px Tajawal;color:#7FD6FF">الفكرة 💡</div>'
+        + h('صورة ليلية فخمة<br>+ <span class="gt">رسالة وحدة</span>', 88, 1.3)
+        + sub("نبيع الإحساس بالمكان… مو بس المساحة"), bottom=170))
+    list_slide("P15-3", 2, 2, 'عناصر <span class="gt">الإعلان</span> 🧩',
+               [("📸", "صور ليلية تبرز الإضاءة والتفاصيل"), ("🎬", "ريل جولة قصيرة داخل الفيلا"),
+                ("🗺️", "الموقع والمزايا بنقاط بسيطة"), ("📅", "دعوة واضحة: احجز زيارتك")], seed=2,
+               extra='<div style="text-align:center">' + end_cta("تبي إعلان لمشروعك؟ راسلنا") + '</div>')
+    # put concept badge on the list slide too
+    render("P15-3", seed=2, inner=concept_badge() + pager(2, 2, 110) +
+           '<div class="ar" style="position:absolute;left:80px;right:80px;top:330px">' + h('عناصر <span class="gt">الإعلان</span> 🧩', 80, 1.3)
+           + "".join(f'<div class="card" style="padding:22px 30px;margin-top:16px;font:700 42px/1.45 Tajawal;display:flex;gap:20px;align-items:center">'
+                     f'<span style="font-size:46px">{e}</span>{t}</div>' for e, t in
+                     [("📸", "صور ليلية تبرز الإضاءة والتفاصيل"), ("🎬", "ريل جولة قصيرة داخل الفيلا"),
+                      ("🗺️", "الموقع والمزايا بنقاط بسيطة"), ("📅", "دعوة واضحة: احجز زيارتك")])
+           + '<div style="text-align:center">' + end_cta("تبي إعلان لمشروعك؟ راسلنا") + '</div></div>')
+
+
+@post
+def p16():
+    statement("P16-engage", 'كمّل الجملة 👇', None, seed=1, top=330, extra=
+              '<div class="card" style="margin-top:50px;padding:50px 40px;font:800 70px/1.5 Tajawal">'
+              '«أكبر غلطة في<br>الإعلانات هي <span class="gt">……</span>»</div>'
+              '<div style="font:700 40px Tajawal;margin-top:40px;color:#c9cfe6">نبي نسمع رأيك بالتعليقات 💬</div>')
+
+
+# ------------------------------------------------------------------ Day 5
+@post
+def p17():
+    statement("P17-1", 'وش يخلي<br>الإعلان <span class="gt">يشتغل</span>؟ 🎯', "5 عناصر… شيّك كم واحد عندك ←", seed=0, top=420)
+    el = [("صورة توقف التمرير", "أول شي يشوفه العميل… خله يستاهل"), ("رسالة وحدة واضحة", "فكرة وحدة أقوى من عشر أفكار"),
+          ("فايدة مفهومة", "وش بيستفيد العميل؟ قلها بوضوح"), ("سبب يخليك تثق", "تجربة، ضمان، أو تفاصيل حقيقية"),
+          ("دعوة واضحة", "راسلنا، اطلب، احجز… خطوة وحدة")]
+    for i, (t, d) in enumerate(el, 1):
+        numbered(f"P17-{i + 1}", i, 5, t, d, seed=i, extra=(end_cta("كم عنصر عندك؟ علّق 👇") if i == 5 else ""))
+
+
+@post
+def p18():
+    steps = [("01", "نسمع", "هدفك وجمهورك"), ("02", "نبتكر", "فكرة ومحتوى يناسبك"), ("03", "ننفذ ونقيس", "ننشر ونتابع ونحسّن")]
+    cards = "".join(f'<div class="card" style="flex:1;padding:36px 20px;text-align:center"><div class="num gt" style="font-size:80px">{n}</div>'
+                    f'<div style="font:800 52px/1.3 Tajawal;margin-top:10px">{t}</div><div style="font:700 32px/1.5 Tajawal;color:#c9cfe6;margin-top:8px">{d}</div></div>'
+                    for n, t, d in steps)
+    statement("P18-steps", 'شغلنا ببساطة<br>في <span class="gt">3 خطوات</span> 👇', None, seed=2, top=330,
+              extra=f'<div style="display:flex;gap:22px;margin-top:50px">{cards}</div>' + end_cta("جاهز نبدأ؟ راسلنا"))
+
+
+@post
+def p19():
+    photo_reel("P19", ["b_shoot.jpg", "b_edit.jpg", "b_review.jpg"], 'يوم في الاستوديو 🎥☕',
+               ["تصوير وتجهيز 📸", "مونتاج وتلوين 🎞️", "مراجعة لين يطلع مضبوط ✅"], "تابعنا عشان تشوف أكثر 👀", cover_t=1.0)
+
+
+@post
+def p20():
+    statement("P20-1", 'محتوى ولا <span class="gt">إعلانات</span>؟ 🤔', "سؤال يوصلنا كثير… اسحب ←", seed=1, top=470)
+    numbered("P20-2", 1, 2, "المحتوى", "يبني الثقة ويعرّف الناس عليك… على المدى الطويل", seed=2, emoji="📱")
+    numbered("P20-3", 2, 2, "الإعلان", "يوصلك لناس جدد بسرعة… ويسرّع النتائج", seed=3, emoji="📣",
+             extra='<div style="font:800 46px Tajawal;margin-top:40px">الجواب؟ <span class="gt">الاثنين</span> مع بعض ✅</div>' + end_cta("اسألنا بالتعليقات 👇"))
+
+
+# ------------------------------------------------------------------ Day 6
+@post
+def p21():
+    statement("P21-1", 'راجع حسابك<br>في <span class="gt">دقيقتين</span> ✅', "5 نقاط… كم علامة صح بتطلع معك؟ ←", seed=0, top=420)
+    items = [("البايو يوضح وش تقدم؟", "جملة وحدة واضحة + طريقة تواصل"), ("صورة البروفايل واضحة؟", "شعار مقروء حتى بحجم صغير"),
+             ("الهايلايت مرتبة؟", "خدمات، أعمال، أسئلة، تواصل"), ("آخر 9 منشورات متناسقة؟", "نفس الألوان والأسلوب"),
+             ("طريقة التواصل واضحة؟", "زر تواصل أو رابط واتساب")]
+    for i, (t, d) in enumerate(items, 1):
+        numbered(f"P21-{i + 1}", i, 5, f"☑️ {t}", d, seed=i, extra=(end_cta("كم علامة صح؟ علّق 👇") if i == 5 else ""))
+
+
+@post
+def p22():
+    render("P22-1", photo="oud_chips.jpg", photo_h=920, inner=concept_badge() + block(
+        '<div style="font:700 34px Tajawal;color:#FFD23F">نموذج تصوري · إطلاق عطر</div>'
+        + h('عود… <span class="gt">بحضور مختلف</span> 🖤', 96, 1.3), bottom=170))
+    render("P22-2", photo="oud_hand.jpg", photo_h=920, inner=concept_badge() + pager(1, 3, 110) + block(
+        '<div style="font:800 40px Tajawal;color:#FFD23F">الإحساس ✨</div>'
+        + h('فخامة تلمس<br><span class="gt">الذوق السعودي</span>', 90, 1.3), bottom=170))
+    render("P22-3", photo="c_oud.jpg", photo_h=920, inner=concept_badge() + pager(2, 3, 110) + block(
+        '<div style="font:800 40px Tajawal;color:#FFD23F">الصور الإعلانية 📸</div>'
+        + h('بالذكاء الاصطناعي…<br><span class="gt">بدون جلسة تصوير</span>', 86, 1.3), bottom=170))
+    render("P22-4", seed=2, inner=concept_badge() + pager(3, 3, 110) +
+           '<div class="ar" style="position:absolute;left:80px;right:80px;top:330px">' + h('خطة <span class="gt">الإطلاق</span> 🗓️', 80, 1.3)
+           + "".join(f'<div class="card" style="padding:22px 30px;margin-top:16px;font:700 42px/1.45 Tajawal;display:flex;gap:20px;align-items:center">'
+                     f'<span style="font-size:46px">{e}</span>{t}</div>' for e, t in
+                     [("🔒", "تشويق: «قريبًا…» بصورة غامضة"), ("🎬", "ريل كشف العطر"), ("🖤", "منشور: قصة الرائحة"), ("🎁", "دعوة للتجربة في المتجر")])
+           + '<div style="text-align:center">' + end_cta("وش رأيك بالأسلوب؟ علّق 👇") + '</div></div>')
+
+
+@post
+def p23():
+    photo_reel("P23", ["s_riyadh.jpg", "s_shop.jpg", "s_phone.jpg"], 'ليش بدأنا<br><span style="color:#FFD23F">ProCore Media</span>؟ 💡',
+               ["كل يوم تبدأ مشاريع جديدة 🌅", "وكل مشروع يستاهل حضور يشبهه ✨", "ويوصل لجمهوره صح 📱"], "تابع رحلتنا 🚀", cover_t=1.0)
+
+
+@post
+def p24():
+    opts = [("A", "مطعم برجر 🍔"), ("B", "كافيه ☕"), ("C", "صالون 💇‍♀️"), ("D", "متجر عبايات 🖤")]
+    grid = "".join(f'<div class="card" style="padding:26px 26px;font:800 44px Tajawal;display:flex;gap:18px;align-items:center">'
+                   f'<span class="gt" style="font:700 52px Poppins">{k}</span>{v}</div>' for k, v in opts)
+    statement("P24-poll", 'أنتم <span class="gt">تختارون</span> 👇', "وش النموذج التصوري الجاي؟", seed=1, top=330,
+              extra=f'<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:44px;text-align:right">{grid}</div>'
+                    '<div style="font:700 38px Tajawal;margin-top:34px;color:#c9cfe6">الأكثر تصويتًا نشتغل عليه 🔥</div>')
+
+
+# ------------------------------------------------------------------ Day 7
+@post
+def p25():
+    statement("P25-1", 'خلص <span class="gt">أسبوعنا الأول</span> 🙌', "أبرز النماذج التصورية اللي اشتغلنا عليها ←", seed=0, top=440)
+    picks = [("prod_desert.jpg", "منتج واحد بثلاث أجواء"), ("p12_mandi.jpg", "مطعم مندي"), ("villa_night.jpg", "مشروع سكني"), ("oud_chips.jpg", "إطلاق عطر عود")]
+    for i, (f, t) in enumerate(picks, 1):
+        render(f"P25-{i + 1}", photo=f, photo_h=1000, inner=concept_badge() + pager(i, 4, 110) + block(
+            f'<div style="display:flex;align-items:baseline;gap:22px"><span class="num gt" style="font-size:96px">{i:02d}</span>'
+            f'<span style="font:800 72px Tajawal">{t}</span></div>', bottom=150))
+
+
+@post
+def p26():
+    rs = [("01", "أفكار تفهم السوق والذوق السعودي"), ("02", "إنتاج أسرع بأدوات الذكاء الاصطناعي"), ("03", "تنفيذ متكامل من الفكرة لين التقرير")]
+    rows = "".join(f'<div class="card" style="padding:26px 34px;margin-top:18px;display:flex;gap:26px;align-items:center">'
+                   f'<span class="num gt" style="font-size:64px">{n}</span><span style="font:800 46px/1.4 Tajawal">{t}</span></div>' for n, t in rs)
+    statement("P26-reasons", '3 أسباب تشتغل<br>مع <span class="gt">ProCore Media</span>', None, seed=2, top=270,
+              extra=f'<div style="margin-top:36px;text-align:right">{rows}</div>'
+                    '<div style="font:700 32px/1.5 Tajawal;margin-top:24px;color:#c9cfe6">شغل مدروس ومتابعة حقيقية 🤝</div>')
+
+
+@post
+def p27():
+    photo_reel("P27", ["c_oud.jpg", "c_juice.jpg", "c_watch.jpg", "c_horse.jpg", "prod_marble.jpg"],
+               'أسبوع من الإبداع…<br>في <span style="color:#FFD23F">15 ثانية</span> 🎬',
+               ["عطور وبخور", "مشروبات", "ساعات", "روح المكان", "منتجات العناية"], "تبي نسوي لعلامتك؟ راسلنا",
+               badge_text="نماذج تصورية · ليست مشاريع لعملاء", cover_t=1.0)
+
+
+@post
+def p28():
+    render("P28-cta", seed=1, show_logo=False, inner=
+           f'<img src="file://{os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo_lockup.png")}" '
+           'style="position:absolute;top:150px;left:50%;transform:translateX(-50%);width:440px;mix-blend-mode:screen">'
+           '<div class="ar" style="position:absolute;left:80px;right:80px;top:600px;text-align:center">'
+           + h('جاهز <span class="gt">تبدأ</span>؟ 🚀', 116, 1.3)
+           + sub("احكِ لنا عن مشروعك وهدفك… وخلّنا نقترح عليك فكرة تناسبك", 42)
+           + f'<div style="margin-top:44px;display:flex;align-items:center;gap:26px;justify-content:center">'
+             f'<span class="btn">راسلنا الآن</span><span style="font:700 42px Poppins;direction:ltr">{WA}</span></div></div>')
+
 # ------------------------------------------------------------------ helpers for review
 def sheet(prefix, cols=6):
     files = sorted(f for f in os.listdir(OUT) if f.startswith(prefix) and f.endswith(".jpg"))
