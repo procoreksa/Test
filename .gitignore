@@ -53,3 +53,4 @@ next-env.d.ts
 /playwright/.auth/
 /e2e/screenshots/
 design/agency/out/reel-layers/
+__pycache__/
