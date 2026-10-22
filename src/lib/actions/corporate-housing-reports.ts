@@ -276,7 +276,7 @@ export async function getCorporateAccountFinancialSnapshot(accountId: string) {
 
   const [contracts, invoices] = await Promise.all([
     prisma.contract.findMany({ where: { organizationId, renterId: account.renterId, status: "ACTIVE" }, select: { rentAmount: true } }),
-    prisma.invoice.findMany({ where: { organizationId, renterId: account.renterId }, select: { totalAmount: true, paidAmount: true, status: true, dueDate: true } }),
+    prisma.invoice.findMany({ where: { organizationId, renterId: account.renterId, category: "RENTAL" }, select: { totalAmount: true, paidAmount: true, status: true, dueDate: true } }),
   ]);
 
   const contractValue = contracts.reduce((sum, c) => sum.plus(c.rentAmount), new Prisma.Decimal(0));
@@ -353,7 +353,7 @@ export async function getCorporateFinancialSnapshotReport(page?: number) {
     accounts.map(async (account) => {
       const [contracts, invoices] = await Promise.all([
         prisma.contract.findMany({ where: { organizationId, renterId: account.renterId, status: "ACTIVE" }, select: { rentAmount: true } }),
-        prisma.invoice.findMany({ where: { organizationId, renterId: account.renterId }, select: { totalAmount: true, paidAmount: true, status: true, dueDate: true } }),
+        prisma.invoice.findMany({ where: { organizationId, renterId: account.renterId, category: "RENTAL" }, select: { totalAmount: true, paidAmount: true, status: true, dueDate: true } }),
       ]);
 
       const contractValue = contracts.reduce((sum, c) => sum.plus(c.rentAmount), new Prisma.Decimal(0));

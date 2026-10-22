@@ -30,7 +30,7 @@ export async function getTenantDashboard() {
           select: { dueDate: true, amount: true, status: true },
         })
       : null,
-    prisma.invoice.findMany({ where: { organizationId, renterId }, select: { totalAmount: true, paidAmount: true, status: true } }),
+    prisma.invoice.findMany({ where: { organizationId, renterId, category: "RENTAL" }, select: { totalAmount: true, paidAmount: true, status: true } }),
     prisma.maintenanceRequest.count({ where: { organizationId, renterId, status: { in: ["OPEN", "TRIAGED", "WORK_ORDER_CREATED"] } } }),
     current ? prisma.moveIn.findFirst({ where: { organizationId, contractId: current.id }, select: { id: true, status: true } }) : null,
     current ? prisma.moveOut.findFirst({ where: { organizationId, contractId: current.id }, select: { id: true, status: true } }) : null,

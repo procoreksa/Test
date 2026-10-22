@@ -214,7 +214,8 @@ export async function issueInvoiceForSchedule(formData: FormData) {
 export async function listInvoices() {
   const { organizationId } = await requirePermission("invoice.view");
   return prisma.invoice.findMany({
-    where: { organizationId },
+    // Service invoices are listed on /service-invoices.
+    where: { organizationId, category: "RENTAL" },
     include: { renter: true, contract: { include: { unit: true } }, payments: true },
     orderBy: { icv: "desc" },
   });
@@ -258,4 +259,5 @@ export async function cancelInvoice(invoiceId: string) {
   });
   revalidatePath("/invoices");
   revalidatePath("/collections");
+  revalidatePath("/service-invoices");
 }

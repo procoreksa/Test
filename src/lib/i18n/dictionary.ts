@@ -51,6 +51,7 @@ export interface Dictionary {
     contracts: string;
     collections: string;
     invoices: string;
+    serviceInvoices: string;
     payments: string;
     reports: string;
     auditLogs: string;
@@ -786,6 +787,7 @@ export interface Dictionary {
       vacancyByCompound: { title: string; description: string };
       ownerStatement: { title: string; description: string };
       ownerPortfolio: { title: string; description: string };
+      services: { title: string; description: string };
     };
     renterStatement: {
       title: string;
@@ -3590,6 +3592,68 @@ export interface Dictionary {
     emailAlreadyInUse: string;
     cannotDeactivateSelf: string;
     you: string;
+  };
+  serviceInvoices: {
+    title: string;
+    subtitle: string;
+    separateLedgerNotice: string;
+    newInvoiceTitle: string;
+    fieldCustomer: string;
+    fieldService: string;
+    fieldDescription: string;
+    fieldQuantity: string;
+    fieldUnitPrice: string;
+    fieldVatRate: string;
+    fieldPaymentMethod: string;
+    onAccount: string;
+    fieldReference: string;
+    fieldNotes: string;
+    selectPlaceholder: string;
+    noResults: string;
+    subtotal: string;
+    vat: string;
+    total: string;
+    submit: string;
+    noServicesYet: string;
+    empty: string;
+    colInvoiceNumber: string;
+    colDate: string;
+    colCustomer: string;
+    colService: string;
+    colTotal: string;
+    colPaid: string;
+    colOutstanding: string;
+    colPaymentMethod: string;
+    colStatus: string;
+    viewInvoice: string;
+    backToList: string;
+    catalogTitle: string;
+    catalogSubtitle: string;
+    catalogName: string;
+    catalogNameAr: string;
+    catalogDefaultPrice: string;
+    catalogVatRate: string;
+    catalogAdd: string;
+    catalogEmpty: string;
+    catalogInactive: string;
+    activate: string;
+    deactivate: string;
+    reportTitle: string;
+    reportFilterCustomer: string;
+    reportFilterService: string;
+    reportAllCustomers: string;
+    reportAllServices: string;
+    reportEmpty: string;
+    reportTotalLabel: string;
+    reportInvoiceCount: string;
+    validation: {
+      nameRequired: string;
+      nameTaken: string;
+      customerRequired: string;
+      serviceRequired: string;
+      quantityPositive: string;
+      amountPositive: string;
+    };
   };
 }
 

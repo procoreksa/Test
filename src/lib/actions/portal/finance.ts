@@ -65,6 +65,7 @@ export async function getTenantPayments() {
 /** Step 26 - one authoritative balance, computed server-side from the same Invoice rows getTenantInvoices() itself reads; never summed again ad hoc in a page. */
 export async function getTenantOutstandingBalance() {
   const { organizationId, renterId } = await requireTenantPrincipal();
-  const invoices = await prisma.invoice.findMany({ where: { organizationId, renterId }, select: { totalAmount: true, paidAmount: true, status: true } });
+  // Rent balance only - SERVICE invoices stay out of the rent account (docs/SERVICE-INVOICES.md).
+  const invoices = await prisma.invoice.findMany({ where: { organizationId, renterId, category: "RENTAL" }, select: { totalAmount: true, paidAmount: true, status: true } });
   return computeTenantOutstandingBalance(invoices);
 }

@@ -27,8 +27,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center justify-between no-print">
-        <Link href="/invoices" className="text-sm text-slate-500 hover:text-slate-800">
-          {t.invoiceDetail.back}
+        <Link
+          href={invoice.category === "SERVICE" ? "/service-invoices" : "/invoices"}
+          className="text-sm text-slate-500 hover:text-slate-800"
+        >
+          {invoice.category === "SERVICE" ? t.serviceInvoices.backToList : t.invoiceDetail.back}
         </Link>
         <div className="flex gap-2">
           <a

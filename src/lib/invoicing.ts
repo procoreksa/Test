@@ -6,7 +6,7 @@ import { computeInvoiceTotals, type LineInput } from "@/lib/zatca/vat";
 import { buildZatcaQrBase64 } from "@/lib/zatca/qr";
 import { hashInvoicePayload, GENESIS_HASH } from "@/lib/zatca/hash";
 import { recomputeScheduleStatus } from "@/lib/schedule-status";
-import type { InvoiceKind, InvoiceLineKind } from "@prisma/client";
+import type { InvoiceCategory, InvoiceKind, InvoiceLineKind } from "@prisma/client";
 
 type Tx = Prisma.TransactionClient | PrismaClient;
 
@@ -18,6 +18,10 @@ export interface IssueInvoiceInput {
   paymentScheduleId?: string | null;
   /** Reference-only traceability to a Security Deposit Settlement's "Additional Tenant Amount Due" receivable (see docs/SECURITY-DEPOSIT-SETTLEMENT.md) - never used to change invoicing/VAT/numbering behavior itself. */
   settlementId?: string | null;
+  /** RENTAL (default) for contract/schedule billing; SERVICE for standalone service invoices that stay out of the renter's rent statement (docs/SERVICE-INVOICES.md). Numbering, hash chain and QR are identical for both. */
+  category?: InvoiceCategory;
+  /** SERVICE invoices only: the catalog item billed. */
+  serviceId?: string | null;
   lines: Array<
     LineInput & {
       description: string;
@@ -85,6 +89,8 @@ export async function issueInvoice(input: IssueInvoiceInput, existingTx?: Tx) {
         uuid,
         kind,
         documentType: "TAX_INVOICE",
+        category: input.category ?? "RENTAL",
+        serviceId: input.serviceId ?? null,
         contractId: input.contractId ?? null,
         settlementId: input.settlementId ?? null,
         renterId: input.renterId,

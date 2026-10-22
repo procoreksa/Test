@@ -13,6 +13,7 @@ export default async function ReportsIndexPage() {
     { href: "/reports/expiring-contracts", icon: "📆", ...t.reports.cards.expiringContracts },
     { href: "/reports/collections", icon: "💰", ...t.reports.cards.collections },
     { href: "/reports/vat", icon: "🧾", ...t.reports.cards.vat },
+    { href: "/reports/services", icon: "🛎️", ...t.reports.cards.services },
     { href: "/reports/units-by-compound", icon: "🏘️", ...t.reports.cards.unitsByCompound },
     { href: "/reports/buildings-by-compound", icon: "🏬", ...t.reports.cards.buildingsByCompound },
     { href: "/reports/vacancy-by-compound", icon: "🔑", ...t.reports.cards.vacancyByCompound },

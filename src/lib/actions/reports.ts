@@ -111,12 +111,13 @@ export async function getRenterStatement(renterId: string) {
 
   const [invoices, payments, contracts, organization] = await Promise.all([
     prisma.invoice.findMany({
-      where: { organizationId, renterId, status: { not: "CANCELLED" } },
+      // Rent account statement only - SERVICE invoices have their own report (getServicesReport).
+      where: { organizationId, renterId, category: "RENTAL", status: { not: "CANCELLED" } },
       include: { contract: true, lines: true },
       orderBy: { issueDate: "asc" },
     }),
     prisma.payment.findMany({
-      where: { organizationId, renterId },
+      where: { organizationId, renterId, invoice: { category: "RENTAL" } },
       include: { invoice: { include: { contract: true } } },
       orderBy: { paymentDate: "asc" },
     }),

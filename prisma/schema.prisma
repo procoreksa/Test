@@ -77,6 +77,7 @@ model Organization {
   contracts                      Contract[]
   invoices                       Invoice[]
   payments                       Payment[]
+  serviceCatalogItems            ServiceCatalogItem[]
   counters                       Counter[]
   units                          Unit[]
   compounds                      Compound[]
@@ -588,6 +589,17 @@ enum InvoiceStatus {
   CANCELLED
 }
 
+// Which ledger an invoice belongs to. RENTAL invoices are the contract/
+// schedule-driven ones that make up a renter's rent account statement.
+// SERVICE invoices are standalone tax invoices for ad-hoc services billed
+// to a customer (see docs/SERVICE-INVOICES.md): they share the same ZATCA
+// numbering/hash chain and VAT reporting, but are deliberately excluded
+// from the renter statement and tenant/corporate rent balances.
+enum InvoiceCategory {
+  RENTAL
+  SERVICE
+}
+
 enum ZatcaSubmissionStatus {
   NOT_SUBMITTED
   PENDING
@@ -605,6 +617,12 @@ model Invoice {
   uuid                String                     @unique // ZATCA invoice UUID
   documentType        InvoiceDocumentType        @default(TAX_INVOICE)
   kind                InvoiceKind                @default(SIMPLIFIED)
+  category            InvoiceCategory            @default(RENTAL)
+  // SERVICE invoices only: the catalog service billed. SetNull so retiring
+  // a catalog entry can never block or rewrite an issued invoice - the
+  // invoice line keeps its own description snapshot.
+  serviceId           String?
+  service             ServiceCatalogItem?        @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   contractId          String?
   contract            Contract?                  @relation(fields: [contractId], references: [id])
   renterId            String
@@ -650,7 +668,31 @@ model Invoice {
   // (organizationId+status, ordered/filtered by dueDate -
   // src/lib/executive/collections.ts).
   @@index([organizationId, status, dueDate])
+  // Service invoices list/report: filtered by category and issue date.
+  @@index([organizationId, category, issueDate])
   @@map("invoices")
+}
+
+/// Catalog of billable services offered to customers outside the rent
+/// ledger (cleaning, maintenance call-outs, admin fees...). Picked when
+/// issuing a SERVICE invoice; prices/VAT are defaults the user can override.
+model ServiceCatalogItem {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  nameAr         String?
+  defaultPrice   Decimal?     @db.Decimal(12, 2)
+  vatRate        Decimal      @default(15) @db.Decimal(5, 2)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  invoices Invoice[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@map("service_catalog_items")
 }
 
 enum InvoiceLineKind {
@@ -944,8 +986,8 @@ model OwnerLedgerEntry {
   // financial record survive with its unit traceability quietly erased.
   // Same "must not silently destroy financial records" principle as
   // deleteUnit()'s other protected relations.
-  unitId String?
-  unit   Unit?   @relation(fields: [unitId], references: [id], onDelete: Restrict)
+  unitId     String?
+  unit       Unit?     @relation(fields: [unitId], references: [id], onDelete: Restrict)
 
   // Reversal linkage: set on the REVERSAL entry (points back at what it
   // reverses) and on the original entry (points forward, so it can't be

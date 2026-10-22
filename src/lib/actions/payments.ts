@@ -119,6 +119,7 @@ export async function recordPayment(formData: FormData) {
   });
 
   revalidatePath("/invoices");
+  revalidatePath("/service-invoices");
   revalidatePath("/collections");
   revalidatePath("/payments");
 }
