@@ -566,8 +566,7 @@ export interface Dictionary {
     back: string;
     downloadXml: string;
     vatNumberLabel: string;
-    taxInvoiceSimplified: string;
-    taxInvoiceStandard: string;
+    taxInvoiceTitle: string;
     customer: string;
     contractLine: (contractNumber: string, unitNumber: string, property: string) => string;
     qrCaption: string;

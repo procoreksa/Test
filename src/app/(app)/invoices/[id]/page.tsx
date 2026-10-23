@@ -68,7 +68,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="text-left">
             <p className="text-lg font-bold text-brand-gold-dark">
-              {invoice.kind === "SIMPLIFIED" ? t.invoiceDetail.taxInvoiceSimplified : t.invoiceDetail.taxInvoiceStandard}
+              {t.invoiceDetail.taxInvoiceTitle}
             </p>
             <p className="text-sm text-slate-500">{invoice.invoiceNumber}</p>
             <p className="text-xs text-slate-400 mt-1">{dateFmt.format(invoice.issueDate)}</p>

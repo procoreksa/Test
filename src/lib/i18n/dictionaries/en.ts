@@ -561,8 +561,7 @@ export const en: Dictionary = {
     back: "← Back to invoices",
     downloadXml: "Download XML (UBL)",
     vatNumberLabel: "VAT Number",
-    taxInvoiceSimplified: "Simplified Tax Invoice",
-    taxInvoiceStandard: "Tax Invoice",
+    taxInvoiceTitle: "Tax Invoice",
     customer: "Customer",
     contractLine: (contractNumber, unitNumber, property) =>
       `Contract #${contractNumber} — Unit ${unitNumber} (${property})`,

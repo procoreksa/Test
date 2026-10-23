@@ -561,8 +561,7 @@ export const ar: Dictionary = {
     back: "← رجوع إلى الفواتير",
     downloadXml: "تنزيل XML (UBL)",
     vatNumberLabel: "الرقم الضريبي",
-    taxInvoiceSimplified: "فاتورة ضريبية مبسّطة",
-    taxInvoiceStandard: "فاتورة ضريبية",
+    taxInvoiceTitle: "فاتورة ضريبية",
     customer: "العميل",
     contractLine: (contractNumber, unitNumber, property) =>
       `عقد رقم ${contractNumber} — وحدة ${unitNumber} (${property})`,
